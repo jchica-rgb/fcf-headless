@@ -1,5 +1,4 @@
 const axios = require("axios");
-const cheerio = require("cheerio");
 
 async function getClasificacion(url) {
   const { data } = await axios.get(url, {
@@ -8,29 +7,11 @@ async function getClasificacion(url) {
     }
   });
 
-  const $ = cheerio.load(data);
-
-  let tabla = [];
-
-  $("table tbody tr").each((i, el) => {
-    const cols = $(el).find("td");
-
-    if (cols.length >= 3) {
-      const pos = $(cols[0]).text().trim();
-      const equipo = $(cols[1]).text().trim();
-      const puntos = $(cols[2]).text().trim();
-
-      if (pos && equipo) {
-        tabla.push({
-          pos: Number(pos),
-          equipo,
-          puntos: Number(puntos)
-        });
-      }
-    }
-  });
-
-  return tabla;
+  // devolvemos fragmento REAL para ver estructura
+  return {
+    length: data.length,
+    preview: data.slice(0, 2000)
+  };
 }
 
 module.exports = { getClasificacion };
