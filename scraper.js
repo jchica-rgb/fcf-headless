@@ -7,10 +7,12 @@ async function getClasificacion(url) {
     }
   });
 
-  // devolvemos fragmento REAL para ver estructura
+  // extraer scripts
+  const scripts = data.match(/<script[\s\S]*?<\/script>/g) || [];
+
   return {
-    length: data.length,
-    preview: data.slice(0, 2000)
+    scriptsCount: scripts.length,
+    sample: scripts.slice(0, 3)
   };
 }
 
