@@ -1,6 +1,0 @@
-services:
-  - type: web
-    name: fcf-headless
-    env: node
-    buildCommand: npm install && npx playwright install --with-deps
-    startCommand: node server.js
