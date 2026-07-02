@@ -1,14 +1,14 @@
 {
   "name": "fcf-headless",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "server.js",
-  "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "postinstall": "npx playwright install chromium"
+    "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "playwright": "^1.40.0"
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12",
+    "cors": "^2.8.5"
   }
 }
