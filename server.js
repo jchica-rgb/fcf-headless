@@ -8,31 +8,33 @@ app.use(cors());
 app.use(express.json());
 
 // ============================
-// CLASIFICACIÓN SOFASCORE
+// CLASIFICACIÓN SOFASCORE FIX 403
 // ============================
 app.get("/clasificacion", async (req, res) => {
   try {
-    const tournamentId = req.query.id;
+    const id = req.query.id;
 
-    if (!tournamentId) {
+    if (!id) {
       return res.status(400).json({
         ok: false,
-        error: "Falta tournament id"
+        error: "Falta id"
       });
     }
 
-    const url = `https://api.sofascore.com/api/v1/tournament/${tournamentId}/standings`;
+    const url = `https://api.sofascore.com/api/v1/tournament/${id}/standings`;
 
     const response = await axios.get(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0"
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json",
+        "Referer": "https://www.sofascore.com/",
+        "Origin": "https://www.sofascore.com"
       }
     });
 
     const data = response.data;
 
-    // simplificamos salida para FutCat
-    const standings = [];
+    let standings = [];
 
     const groups = data?.standings || [];
 
@@ -52,14 +54,14 @@ app.get("/clasificacion", async (req, res) => {
     res.json({
       ok: true,
       source: "sofascore",
-      tournamentId,
       data: standings
     });
 
   } catch (err) {
     res.status(500).json({
       ok: false,
-      error: err.message
+      error: err.message,
+      detail: err.response?.status
     });
   }
 });
@@ -68,5 +70,5 @@ app.get("/clasificacion", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("FUTCAT API READY (SOFASCORE MODE)");
+  console.log("FUTCAT SOFASCORE FIX RUNNING");
 });
