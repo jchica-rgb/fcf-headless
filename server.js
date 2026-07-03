@@ -1,38 +1,36 @@
 const express = require("express");
 const cors = require("cors");
-const { getClasificacion } = require("./scraper");
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 
-app.get("/clasificacion", async (req, res) => {
-  try {
-    const url = req.query.url;
+let data = [];
 
-    if (!url) {
-      return res.status(400).json({
-        success: false,
-        error: "Falta URL FCF"
-      });
-    }
+// añadir / actualizar equipo
+app.post("/set", (req, res) => {
+  const { equipo, puntos } = req.body;
 
-    const data = await getClasificacion(url);
+  const index = data.findIndex(e => e.equipo === equipo);
 
-    res.json({
-      success: true,
-      data
-    });
-
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      error: err.message
-    });
+  if (index >= 0) {
+    data[index].puntos = puntos;
+  } else {
+    data.push({ equipo, puntos });
   }
+
+  res.json({ ok: true, data });
+});
+
+// obtener clasificación
+app.get("/clasificacion", (req, res) => {
+  const sorted = [...data].sort((a, b) => b.puntos - a.puntos);
+
+  res.json(sorted);
 });
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("FCF HEADLESS PRO RUNNING ON", PORT);
+  console.log("FUTCAT API RUNNING");
 });
