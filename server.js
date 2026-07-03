@@ -141,6 +141,97 @@ app.get("/test-api", (req, res) => {
 // ============================
 const PORT = process.env.PORT || 3000;
 
+// ============================
+// MOTOR PRO: CLASIFICACIÓN AUTOMÁTICA
+// ============================
+app.get("/clasificacion-auto", async (req, res) => {
+  try {
+    const liga = req.query.liga;
+
+    const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
+    const response = await axios.get(url);
+
+    let partidos = response.data;
+
+    // filtro liga
+    if (liga) {
+      partidos = partidos.filter(p => String(p.liga) === String(liga));
+    }
+
+    const tabla = {};
+
+    const init = (team) => {
+      if (!tabla[team]) {
+        tabla[team] = {
+          equipo: team,
+          puntos: 0,
+          jugados: 0,
+          ganados: 0,
+          empatados: 0,
+          perdidos: 0,
+          gf: 0,
+          gc: 0
+        };
+      }
+    };
+
+    partidos.forEach(p => {
+      const local = p.local;
+      const visitante = p.visitante;
+
+      const gl = Number(p.goles_local);
+      const gv = Number(p.goles_visitante);
+
+      init(local);
+      init(visitante);
+
+      tabla[local].jugados++;
+      tabla[visitante].jugados++;
+
+      tabla[local].gf += gl;
+      tabla[local].gc += gv;
+
+      tabla[visitante].gf += gv;
+      tabla[visitante].gc += gl;
+
+      if (gl > gv) {
+        tabla[local].ganados++;
+        tabla[local].puntos += 3;
+        tabla[visitante].perdidos++;
+      } else if (gl < gv) {
+        tabla[visitante].ganados++;
+        tabla[visitante].puntos += 3;
+        tabla[local].perdidos++;
+      } else {
+        tabla[local].empatados++;
+        tabla[visitante].empatados++;
+        tabla[local].puntos += 1;
+        tabla[visitante].puntos += 1;
+      }
+    });
+
+    const result = Object.values(tabla)
+      .sort((a, b) => b.puntos - a.puntos)
+      .map((t, i) => ({
+        position: i + 1,
+        liga: liga || "all",
+        ...t
+      }));
+
+    res.json({
+      ok: true,
+      source: "auto-engine",
+      data: result
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log("FUTCAT ENGINE RUNNING ⚽");
 });
