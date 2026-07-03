@@ -13,12 +13,12 @@ app.use(express.json());
 const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
 
 // ============================
-// HELPERS (NORMALIZADOR)
+// HELPERS
 // ============================
 function normalizeTeam(t) {
   return {
-    liga: t.liga || "",
-    equipo: t.equipo || "",
+    liga: (t.liga || "").toString().trim(),
+    equipo: (t.equipo || "").toString().trim(),
     puntos: Number(t.puntos || 0),
     jugados: Number(t.jugados || 0),
     ganados: Number(t.ganados || 0),
@@ -30,7 +30,7 @@ function normalizeTeam(t) {
 }
 
 // ============================
-// CLASIFICACIÓN FUTCAT
+// CLASIFICACIÓN
 // ============================
 app.get("/clasificacion", async (req, res) => {
   try {
@@ -42,18 +42,22 @@ app.get("/clasificacion", async (req, res) => {
 
     let data = response.data;
 
-    // normalizar datos (IMPORTANTE)
+    // normalizar datos
     data = data.map(normalizeTeam);
 
-    // filtro por liga
+    // filtro robusto (A PRUEBA DE ERRORES)
     if (liga) {
-      data = data.filter(t => t.liga == liga);
+      const ligaClean = liga.toString().trim().toLowerCase();
+
+      data = data.filter(t =>
+        (t.liga || "").toString().trim().toLowerCase() === ligaClean
+      );
     }
 
     // ordenar por puntos
     data.sort((a, b) => b.puntos - a.puntos);
 
-    // salida final ordenada (CONTROL TOTAL)
+    // ranking final
     const result = data.map((t, i) => ({
       position: i + 1,
       liga: t.liga,
@@ -83,7 +87,7 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 // ============================
-// PARTIDOS (FUTURO READY)
+// PARTIDOS
 // ============================
 app.get("/partidos", async (req, res) => {
   try {
@@ -97,11 +101,17 @@ app.get("/partidos", async (req, res) => {
     const jornada = req.query.jornada;
 
     if (liga) {
-      data = data.filter(p => p.liga == liga);
+      const ligaClean = liga.toString().trim().toLowerCase();
+
+      data = data.filter(p =>
+        (p.liga || "").toString().trim().toLowerCase() === ligaClean
+      );
     }
 
     if (jornada) {
-      data = data.filter(p => p.jornada == jornada);
+      data = data.filter(p =>
+        (p.jornada || "").toString().trim() === jornada.toString().trim()
+      );
     }
 
     res.json({
