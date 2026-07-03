@@ -1,36 +1,73 @@
 const express = require("express");
 const cors = require("cors");
+const axios = require("axios");
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-let data = [];
+// ============================
+// TEST CONEXIÓN API-FOOTBALL
+// ============================
+app.get("/test-api", async (req, res) => {
+  try {
+    const response = await axios.get(
+      "https://v3.football.api-sports.io/status",
+      {
+        headers: {
+          "x-apisports-key": process.env.API_FOOTBALL_KEY
+        }
+      }
+    );
 
-// añadir / actualizar equipo
-app.post("/set", (req, res) => {
-  const { equipo, puntos } = req.body;
+    res.json(response.data);
 
-  const index = data.findIndex(e => e.equipo === equipo);
-
-  if (index >= 0) {
-    data[index].puntos = puntos;
-  } else {
-    data.push({ equipo, puntos });
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
   }
-
-  res.json({ ok: true, data });
 });
 
-// obtener clasificación
-app.get("/clasificacion", (req, res) => {
-  const sorted = [...data].sort((a, b) => b.puntos - a.puntos);
+// ============================
+// CLASIFICACIÓN API-FOOTBALL
+// ============================
+app.get("/clasificacion", async (req, res) => {
+  try {
+    const response = await axios.get(
+      "https://v3.football.api-sports.io/standings",
+      {
+        headers: {
+          "x-apisports-key": process.env.API_FOOTBALL_KEY
+        },
+        params: {
+          league: 140,   // LaLiga (ejemplo)
+          season: 2024
+        }
+      }
+    );
 
-  res.json(sorted);
+    const data = response.data.response;
+
+    res.json({
+      ok: true,
+      data
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+  }
 });
 
+// ============================
+// SERVER
+// ============================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("FUTCAT API RUNNING");
+  console.log("FUTCAT API RUNNING ON PORT", PORT);
 });
