@@ -1,7 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
-const cheerio = require("cheerio");
 
 const app = express();
 
@@ -9,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 // ============================
-// CLASIFICACIÓN FUTCAT
+// CLASIFICACIÓN (DIAGNÓSTICO WEB)
 // ============================
 app.get("/clasificacion", async (req, res) => {
   try {
@@ -28,25 +27,38 @@ app.get("/clasificacion", async (req, res) => {
       }
     });
 
-    const $ = cheerio.load(response.data);
+    const html = response.data;
 
-    let rows = [];
+    // 🔍 detectar posible Next.js / JSON embebido
+    const hasNextData = html.includes("__NEXT_DATA__");
+    const hasJsonLd = html.includes("application/ld+json");
 
-    $("table tr").each((i, el) => {
-      let cols = [];
+    // 🧪 intentar extraer JSON embebido si existe
+    let nextData = null;
 
-      $(el).find("td,th").each((j, td) => {
-        cols.push($(td).text().trim());
-      });
+    if (hasNextData) {
+      const match = html.match(
+        /<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/
+      );
 
-      if (cols.length > 2) {
-        rows.push(cols);
+      if (match && match[1]) {
+        try {
+          nextData = JSON.parse(match[1]);
+        } catch (e) {
+          nextData = "ERROR parsing JSON";
+        }
       }
-    });
+    }
 
     res.json({
       ok: true,
-      data: rows
+      url,
+      analysis: {
+        length: html.length,
+        hasNextData,
+        hasJsonLd
+      },
+      nextData
     });
 
   } catch (err) {
@@ -61,5 +73,5 @@ app.get("/clasificacion", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("FUTCAT SCRAPER RUNNING ON PORT", PORT);
+  console.log("FUTCAT SCRAPER DIAGNOSTIC RUNNING");
 });
