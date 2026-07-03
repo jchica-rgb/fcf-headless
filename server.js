@@ -13,12 +13,25 @@ app.use(express.json());
 const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
 
 // ============================
-// HELPERS
+// MAPA DE LIGAS (NORMALIZADO)
+// ============================
+const LIGAS = {
+  "1": "Lliga Elit",
+  "2": "Primera Catalana",
+  "3": "Segunda Catalana",
+  "4": "Tercera Catalana",
+  "5": "1RFEF",
+  "6": "2RFEF",
+  "7": "3RFEF"
+};
+
+// ============================
+// NORMALIZADOR
 // ============================
 function normalizeTeam(t) {
   return {
-    liga: (t.liga || "").toString().trim(),
-    equipo: (t.equipo || "").toString().trim(),
+    liga: String(t.liga || "").trim(),
+    equipo: String(t.equipo || "").trim(),
     puntos: Number(t.puntos || 0),
     jugados: Number(t.jugados || 0),
     ganados: Number(t.ganados || 0),
@@ -37,21 +50,13 @@ app.get("/clasificacion", async (req, res) => {
     const liga = req.query.liga;
 
     const url = `https://opensheet.elk.sh/${SHEET_ID}/EQUIPOS`;
-
     const response = await axios.get(url);
 
-    let data = response.data;
+    let data = response.data.map(normalizeTeam);
 
-    // normalizar datos
-    data = data.map(normalizeTeam);
-
-    // filtro robusto (A PRUEBA DE ERRORES)
+    // filtro por ID de liga (ESTABLE)
     if (liga) {
-      const ligaClean = liga.toString().trim().toLowerCase();
-
-      data = data.filter(t =>
-        (t.liga || "").toString().trim().toLowerCase() === ligaClean
-      );
+      data = data.filter(t => t.liga === String(liga));
     }
 
     // ordenar por puntos
@@ -60,7 +65,7 @@ app.get("/clasificacion", async (req, res) => {
     // ranking final
     const result = data.map((t, i) => ({
       position: i + 1,
-      liga: t.liga,
+      liga: LIGAS[t.liga] || t.liga,
       equipo: t.equipo,
       puntos: t.puntos,
       jugados: t.jugados,
@@ -92,7 +97,6 @@ app.get("/clasificacion", async (req, res) => {
 app.get("/partidos", async (req, res) => {
   try {
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
-
     const response = await axios.get(url);
 
     let data = response.data;
@@ -101,17 +105,11 @@ app.get("/partidos", async (req, res) => {
     const jornada = req.query.jornada;
 
     if (liga) {
-      const ligaClean = liga.toString().trim().toLowerCase();
-
-      data = data.filter(p =>
-        (p.liga || "").toString().trim().toLowerCase() === ligaClean
-      );
+      data = data.filter(p => String(p.liga || "").trim() === String(liga));
     }
 
     if (jornada) {
-      data = data.filter(p =>
-        (p.jornada || "").toString().trim() === jornada.toString().trim()
-      );
+      data = data.filter(p => String(p.jornada || "").trim() === String(jornada));
     }
 
     res.json({
@@ -126,6 +124,16 @@ app.get("/partidos", async (req, res) => {
       error: err.message
     });
   }
+});
+
+// ============================
+// HEALTH CHECK
+// ============================
+app.get("/test-api", (req, res) => {
+  res.json({
+    ok: true,
+    status: "FUTCAT ENGINE RUNNING ⚽"
+  });
 });
 
 // ============================
