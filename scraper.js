@@ -1,76 +1,29 @@
-const express = require("express");
-const cors = require("cors");
-const axios = require("axios");
+function parseStandings(apiResponse) {
+  const standings = [];
 
-const app = express();
+  const leagues = apiResponse?.response || [];
 
-app.use(cors());
-app.use(express.json());
+  leagues.forEach((leagueData) => {
+    const groups = leagueData?.league?.standings || [];
 
-// ============================
-// CLASIFICACIÓN FUTCAT (JSON-LD SCRAPER)
-// ============================
-app.get("/clasificacion", async (req, res) => {
-  try {
-    const url = req.query.url;
-
-    if (!url) {
-      return res.status(400).json({
-        ok: false,
-        error: "Falta URL"
+    groups.forEach((group) => {
+      group.forEach((team) => {
+        standings.push({
+          position: team.rank,
+          team: team.team.name,
+          points: team.points,
+          played: team.all.played,
+          win: team.all.win,
+          draw: team.all.draw,
+          lose: team.all.lose,
+          goalsFor: team.all.goals.for,
+          goalsAgainst: team.all.goals.against
+        });
       });
-    }
-
-    const response = await axios.get(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0"
-      }
     });
+  });
 
-    const html = response.data;
+  return standings;
+}
 
-    // ============================
-    // EXTRAER JSON-LD
-    // ============================
-    const jsonLdMatches = [
-      ...html.matchAll(
-        /<script type="application\/ld\+json">(.*?)<\/script>/gs
-      )
-    ];
-
-    let jsonLdData = [];
-
-    for (const match of jsonLdMatches) {
-      try {
-        jsonLdData.push(JSON.parse(match[1]));
-      } catch (e) {
-        // ignoramos errores de parseo
-      }
-    }
-
-    // ============================
-    // RESPUESTA FINAL
-    // ============================
-    res.json({
-      ok: true,
-      source: url,
-      found: jsonLdData.length,
-      data: jsonLdData
-    });
-
-  } catch (err) {
-    res.status(500).json({
-      ok: false,
-      error: err.message
-    });
-  }
-});
-
-// ============================
-// SERVER
-// ============================
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("FUTCAT JSON-LD SCRAPER RUNNING ON", PORT);
-});
+module.exports = { parseStandings };
