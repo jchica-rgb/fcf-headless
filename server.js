@@ -8,18 +8,20 @@ app.use(cors());
 app.use(express.json());
 
 // ============================
-// CLASIFICACIÓN (DIAGNÓSTICO WEB)
+// CLASIFICACIÓN SOFASCORE
 // ============================
 app.get("/clasificacion", async (req, res) => {
   try {
-    const url = req.query.url;
+    const tournamentId = req.query.id;
 
-    if (!url) {
+    if (!tournamentId) {
       return res.status(400).json({
         ok: false,
-        error: "Falta URL"
+        error: "Falta tournament id"
       });
     }
+
+    const url = `https://api.sofascore.com/api/v1/tournament/${tournamentId}/standings`;
 
     const response = await axios.get(url, {
       headers: {
@@ -27,38 +29,31 @@ app.get("/clasificacion", async (req, res) => {
       }
     });
 
-    const html = response.data;
+    const data = response.data;
 
-    // 🔍 detectar posible Next.js / JSON embebido
-    const hasNextData = html.includes("__NEXT_DATA__");
-    const hasJsonLd = html.includes("application/ld+json");
+    // simplificamos salida para FutCat
+    const standings = [];
 
-    // 🧪 intentar extraer JSON embebido si existe
-    let nextData = null;
+    const groups = data?.standings || [];
 
-    if (hasNextData) {
-      const match = html.match(
-        /<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/
-      );
-
-      if (match && match[1]) {
-        try {
-          nextData = JSON.parse(match[1]);
-        } catch (e) {
-          nextData = "ERROR parsing JSON";
-        }
+    for (const group of groups) {
+      for (const row of group.rows || []) {
+        standings.push({
+          team: row.team?.name,
+          points: row.points,
+          played: row.matches,
+          wins: row.wins,
+          draws: row.draws,
+          losses: row.losses
+        });
       }
     }
 
     res.json({
       ok: true,
-      url,
-      analysis: {
-        length: html.length,
-        hasNextData,
-        hasJsonLd
-      },
-      nextData
+      source: "sofascore",
+      tournamentId,
+      data: standings
     });
 
   } catch (err) {
@@ -73,5 +68,5 @@ app.get("/clasificacion", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("FUTCAT SCRAPER DIAGNOSTIC RUNNING");
+  console.log("FUTCAT API READY (SOFASCORE MODE)");
 });
