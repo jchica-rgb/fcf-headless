@@ -1,35 +1,76 @@
+const express = require("express");
+const cors = require("cors");
 const axios = require("axios");
-const cheerio = require("cheerio");
 
-async function getClasificacion(url) {
-  const { data } = await axios.get(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0"
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// ============================
+// CLASIFICACIÓN FUTCAT (JSON-LD SCRAPER)
+// ============================
+app.get("/clasificacion", async (req, res) => {
+  try {
+    const url = req.query.url;
+
+    if (!url) {
+      return res.status(400).json({
+        ok: false,
+        error: "Falta URL"
+      });
     }
-  });
 
-  const $ = cheerio.load(data);
-
-  let rows = [];
-
-  $("table tr").each((i, el) => {
-    const cols = [];
-
-    $(el).find("td,th").each((j, td) => {
-      cols.push($(td).text().trim());
+    const response = await axios.get(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0"
+      }
     });
 
-    if (cols.length > 0) {
-      rows.push(cols);
+    const html = response.data;
+
+    // ============================
+    // EXTRAER JSON-LD
+    // ============================
+    const jsonLdMatches = [
+      ...html.matchAll(
+        /<script type="application\/ld\+json">(.*?)<\/script>/gs
+      )
+    ];
+
+    let jsonLdData = [];
+
+    for (const match of jsonLdMatches) {
+      try {
+        jsonLdData.push(JSON.parse(match[1]));
+      } catch (e) {
+        // ignoramos errores de parseo
+      }
     }
-  });
 
-  // limpieza básica
-  rows = rows.filter(r => r.length > 2);
+    // ============================
+    // RESPUESTA FINAL
+    // ============================
+    res.json({
+      ok: true,
+      source: url,
+      found: jsonLdData.length,
+      data: jsonLdData
+    });
 
-  return {
-    data: rows
-  };
-}
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+  }
+});
 
-module.exports = { getClasificacion };
+// ============================
+// SERVER
+// ============================
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("FUTCAT JSON-LD SCRAPER RUNNING ON", PORT);
+});
