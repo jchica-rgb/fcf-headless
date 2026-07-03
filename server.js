@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
+const cheerio = require("cheerio");
 
 const app = express();
 
@@ -8,51 +9,44 @@ app.use(cors());
 app.use(express.json());
 
 // ============================
-// TEST CONEXIÓN API-FOOTBALL
-// ============================
-app.get("/test-api", async (req, res) => {
-  try {
-    const response = await axios.get(
-      "https://v3.football.api-sports.io/status",
-      {
-        headers: {
-          "x-apisports-key": process.env.API_FOOTBALL_KEY
-        }
-      }
-    );
-
-    res.json(response.data);
-
-  } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
-  }
-});
-
-// ============================
-// CLASIFICACIÓN API-FOOTBALL
+// CLASIFICACIÓN FUTCAT
 // ============================
 app.get("/clasificacion", async (req, res) => {
   try {
-    const response = await axios.get(
-      "https://v3.football.api-sports.io/standings",
-      {
-        headers: {
-          "x-apisports-key": process.env.API_FOOTBALL_KEY
-        },
-        params: {
-          league: 140,   // LaLiga (ejemplo)
-          season: 2024
-        }
-      }
-    );
+    const url = req.query.url;
 
-    const data = response.data.response;
+    if (!url) {
+      return res.status(400).json({
+        ok: false,
+        error: "Falta URL"
+      });
+    }
+
+    const response = await axios.get(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0"
+      }
+    });
+
+    const $ = cheerio.load(response.data);
+
+    let rows = [];
+
+    $("table tr").each((i, el) => {
+      let cols = [];
+
+      $(el).find("td,th").each((j, td) => {
+        cols.push($(td).text().trim());
+      });
+
+      if (cols.length > 2) {
+        rows.push(cols);
+      }
+    });
 
     res.json({
       ok: true,
-      data
+      data: rows
     });
 
   } catch (err) {
@@ -64,10 +58,8 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 // ============================
-// SERVER
-// ============================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("FUTCAT API RUNNING ON PORT", PORT);
+  console.log("FUTCAT SCRAPER RUNNING ON PORT", PORT);
 });
