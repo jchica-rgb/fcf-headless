@@ -14,27 +14,14 @@ app.use(express.json());
 const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
 
 // ============================
-// PANEL ADMIN (HTML)
+// STATIC ADMIN PANEL
 // ============================
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
 
 // ============================
-// MAPA DE LIGAS
-// ============================
-const LIGAS = {
-  "1": "Lliga Elit",
-  "2": "Primera Catalana",
-  "3": "Segunda Catalana",
-  "4": "Tercera Catalana",
-  "5": "1RFEF",
-  "6": "2RFEF",
-  "7": "3RFEF"
-};
-
-// ============================
-// LIMPIEZA KEYS SHEETS
+// HELPERS
 // ============================
 function cleanKey(obj) {
   const cleaned = {};
@@ -118,7 +105,6 @@ app.get("/clasificacion", async (req, res) => {
       .sort((a, b) => b.puntos - a.puntos)
       .map((t, i) => ({
         position: i + 1,
-        liga: LIGAS[liga] || liga,
         equipo: t.equipo,
         puntos: t.puntos,
         jugados: t.jugados,
@@ -144,7 +130,7 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 // ============================
-// PARTIDOS RAW
+// PARTIDOS (LECTURA)
 // ============================
 app.get("/partidos", async (req, res) => {
   try {
@@ -155,8 +141,38 @@ app.get("/partidos", async (req, res) => {
 
     res.json({
       ok: true,
-      source: "google-sheets",
       data
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+  }
+});
+
+// ============================
+// AÑADIR PARTIDO (ADMIN)
+// ============================
+app.post("/add-partido", async (req, res) => {
+  try {
+    const { liga, local, visitante, goles_local, goles_visitante } = req.body;
+
+    const url = `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec`;
+
+    await axios.post(url, {
+      liga,
+      local,
+      visitante,
+      goles_local,
+      goles_visitante,
+      estado: "final"
+    });
+
+    res.json({
+      ok: true,
+      message: "Partido guardado"
     });
 
   } catch (err) {
@@ -177,8 +193,6 @@ app.get("/test-api", (req, res) => {
   });
 });
 
-// ============================
-// SERVER
 // ============================
 const PORT = process.env.PORT || 3000;
 
