@@ -5,63 +5,92 @@
   <style>
     body {
       font-family: Arial;
-      padding: 20px;
       background: #111;
       color: white;
+      padding: 20px;
     }
 
-    input, select {
+    .box {
+      background: #222;
+      padding: 15px;
+      border-radius: 10px;
+      max-width: 400px;
+    }
+
+    input {
+      width: 100%;
       padding: 10px;
-      margin: 5px;
-      width: 200px;
+      margin: 5px 0;
+      border-radius: 5px;
+      border: none;
     }
 
     button {
-      padding: 10px 20px;
+      width: 100%;
+      padding: 12px;
       background: green;
       color: white;
       border: none;
       cursor: pointer;
+      margin-top: 10px;
     }
 
-    .box {
-      margin-bottom: 20px;
-      padding: 10px;
-      background: #222;
-      border-radius: 10px;
+    button:hover {
+      background: #00aa00;
+    }
+
+    .msg {
+      margin-top: 10px;
+      font-size: 14px;
     }
   </style>
 </head>
+
 <body>
 
 <h1>⚽ FutCat Admin Panel</h1>
 
 <div class="box">
-  <h3>Nuevo Partido</h3>
 
-  <input id="liga" placeholder="Liga (1,2,3...)"><br>
-  <input id="local" placeholder="Local"><br>
-  <input id="visitante" placeholder="Visitante"><br>
-  <input id="gl" placeholder="Goles local"><br>
-  <input id="gv" placeholder="Goles visitante"><br>
+  <input id="liga" placeholder="Liga (1,2,3...)">
+  <input id="local" placeholder="Equipo local">
+  <input id="visitante" placeholder="Equipo visitante">
+  <input id="gl" placeholder="Goles local">
+  <input id="gv" placeholder="Goles visitante">
 
-  <button onclick="addMatch()">Guardar</button>
+  <button onclick="saveMatch()">Guardar partido</button>
+
+  <div class="msg" id="msg"></div>
+
 </div>
 
 <script>
-async function addMatch() {
+async function saveMatch() {
+
   const data = {
     liga: document.getElementById("liga").value,
     local: document.getElementById("local").value,
     visitante: document.getElementById("visitante").value,
     goles_local: document.getElementById("gl").value,
-    goles_visitante: document.getElementById("gv").value,
-    estado: "final"
+    goles_visitante: document.getElementById("gv").value
   };
 
-  alert("⚠️ Ahora conectaremos esto a Google Sheets en el siguiente paso");
+  const res = await fetch("/add-partido", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  });
 
-  console.log(data);
+  const json = await res.json();
+
+  if (json.ok) {
+    document.getElementById("msg").innerHTML = "✅ Partido guardado correctamente";
+  } else {
+    document.getElementById("msg").innerHTML = "❌ Error: " + json.error;
+  }
+
 }
 </script>
 
