@@ -22,29 +22,7 @@ app.get("/admin", (req, res) => {
 });
 
 // ============================
-// SAFE GOOGLE AUTH (ANTI CRASH)
-// ============================
-function getAuth() {
-  const creds = process.env.GOOGLE_CREDENTIALS;
-
-  if (!creds) {
-    console.error("❌ GOOGLE_CREDENTIALS NO DEFINIDO EN RENDER");
-    return null;
-  }
-
-  try {
-    return new google.auth.GoogleAuth({
-      credentials: JSON.parse(creds),
-      scopes: ["https://www.googleapis.com/auth/spreadsheets"]
-    });
-  } catch (err) {
-    console.error("❌ ERROR PARSEANDO GOOGLE_CREDENTIALS", err.message);
-    return null;
-  }
-}
-
-// ============================
-// CLEAN SHEETS KEYS
+// CLEAN KEYS
 // ============================
 function cleanKey(obj) {
   const cleaned = {};
@@ -52,6 +30,29 @@ function cleanKey(obj) {
     cleaned[key.trim().toLowerCase()] = obj[key];
   });
   return cleaned;
+}
+
+// ============================
+// GOOGLE AUTH (FIX JWT SIGNATURE ERROR)
+// ============================
+function getGoogleAuth() {
+  const raw = process.env.GOOGLE_CREDENTIALS;
+
+  if (!raw) {
+    throw new Error("GOOGLE_CREDENTIALS no existe en Render");
+  }
+
+  const creds = JSON.parse(raw);
+
+  // 🔥 FIX CRÍTICO: arregla saltos de línea del private_key
+  if (creds.private_key) {
+    creds.private_key = creds.private_key.replace(/\\n/g, "\n");
+  }
+
+  return new google.auth.GoogleAuth({
+    credentials: creds,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"]
+  });
 }
 
 // ============================
@@ -176,21 +177,13 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ============================
-// GUARDAR PARTIDO (PRO SAFE)
+// GUARDAR PARTIDO (FIX JWT FINAL)
 // ============================
 app.post("/add-partido", async (req, res) => {
   try {
     const { liga, local, visitante, goles_local, goles_visitante } = req.body;
 
-    const auth = getAuth();
-
-    if (!auth) {
-      return res.status(500).json({
-        ok: false,
-        error: "GOOGLE_CREDENTIALS no configurado correctamente"
-      });
-    }
-
+    const auth = getGoogleAuth();
     const client = await auth.getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
 
@@ -221,7 +214,7 @@ app.post("/add-partido", async (req, res) => {
 
     res.status(500).json({
       ok: false,
-      error: err.message || "error desconocido"
+      error: err.message
     });
   }
 });
