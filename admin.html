@@ -53,8 +53,8 @@
 <div class="box">
 
   <input id="liga" placeholder="Liga (1,2,3...)">
-  <input id="local" placeholder="Equipo local">
-  <input id="visitante" placeholder="Equipo visitante">
+  <input id="local" placeholder="Local">
+  <input id="visitante" placeholder="Visitante">
   <input id="gl" placeholder="Goles local">
   <input id="gv" placeholder="Goles visitante">
 
@@ -66,31 +66,48 @@
 
 <script>
 async function saveMatch() {
+  try {
+    const data = {
+      liga: document.getElementById("liga").value,
+      local: document.getElementById("local").value,
+      visitante: document.getElementById("visitante").value,
+      goles_local: document.getElementById("gl").value,
+      goles_visitante: document.getElementById("gv").value
+    };
 
-  const data = {
-    liga: document.getElementById("liga").value,
-    local: document.getElementById("local").value,
-    visitante: document.getElementById("visitante").value,
-    goles_local: document.getElementById("gl").value,
-    goles_visitante: document.getElementById("gv").value
-  };
+    const res = await fetch("/add-partido", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(data)
+    });
 
-  const res = await fetch("/add-partido", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(data)
-  });
+    // 👇 esto evita el crash
+    const text = await res.text();
 
-  const json = await res.json();
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch (e) {
+      document.getElementById("msg").innerHTML =
+        "❌ Error servidor no devuelve JSON: " + text;
+      return;
+    }
 
-  if (json.ok) {
-    document.getElementById("msg").innerHTML = "✅ Partido guardado correctamente";
-  } else {
-    document.getElementById("msg").innerHTML = "❌ Error: " + json.error;
+    if (!res.ok || !json.ok) {
+      document.getElementById("msg").innerHTML =
+        "❌ Error: " + (json.error || "error desconocido");
+      return;
+    }
+
+    document.getElementById("msg").innerHTML =
+      "✅ Partido guardado correctamente";
+
+  } catch (err) {
+    document.getElementById("msg").innerHTML =
+      "❌ Error frontend: " + err.message;
   }
-
 }
 </script>
 
