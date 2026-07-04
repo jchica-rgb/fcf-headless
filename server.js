@@ -26,85 +26,20 @@ const LIGAS = {
 };
 
 // ============================
-// LIMPIEZA DE KEYS (CLAVE)
+// LIMPIEZA DE KEYS (ANTI-ERRORES SHEETS)
 // ============================
 function cleanKey(obj) {
   const cleaned = {};
-
   Object.keys(obj).forEach(key => {
-    const newKey = key.trim().toLowerCase(); // elimina espacios invisibles
-    cleaned[newKey] = obj[key];
+    cleaned[key.trim().toLowerCase()] = obj[key];
   });
-
   return cleaned;
 }
 
 // ============================
-// CLASIFICACIÓN
+// CLASIFICACIÓN (SOLO AUTOMÁTICA)
 // ============================
 app.get("/clasificacion", async (req, res) => {
-  try {
-    const liga = req.query.liga;
-
-    const url = `https://opensheet.elk.sh/${SHEET_ID}/EQUIPOS`;
-    const response = await axios.get(url);
-
-    let data = response.data.map(cleanKey);
-
-    // normalizar
-    data = data.map(t => ({
-      liga: String(t.liga || "").trim(),
-      equipo: String(t.equipo || "").trim(),
-      puntos: Number(t.puntos || 0),
-      jugados: Number(t.jugados || 0),
-      ganados: Number(t.ganados || 0),
-      empatados: Number(t.empatados || 0),
-      perdidos: Number(t.perdidos || 0),
-      gf: Number(t.gf || 0),
-      gc: Number(t.gc || 0)
-    }));
-
-    // filtro robusto
-    if (liga) {
-      data = data.filter(t =>
-        String(t.liga).trim() === String(liga).trim()
-      );
-    }
-
-    // ordenar
-    data.sort((a, b) => b.puntos - a.puntos);
-
-    const result = data.map((t, i) => ({
-      position: i + 1,
-      liga: LIGAS[t.liga] || t.liga,
-      equipo: t.equipo,
-      puntos: t.puntos,
-      jugados: t.jugados,
-      ganados: t.ganados,
-      empatados: t.empatados,
-      perdidos: t.perdidos,
-      gf: t.gf,
-      gc: t.gc
-    }));
-
-    res.json({
-      ok: true,
-      source: "google-sheets",
-      data: result
-    });
-
-  } catch (err) {
-    res.status(500).json({
-      ok: false,
-      error: err.message
-    });
-  }
-});
-
-// ============================
-// PARTIDOS (AUTO ENGINE BASE)
-// ============================
-app.get("/clasificacion-auto", async (req, res) => {
   try {
     const liga = req.query.liga;
 
@@ -176,8 +111,15 @@ app.get("/clasificacion-auto", async (req, res) => {
       .sort((a, b) => b.puntos - a.puntos)
       .map((t, i) => ({
         position: i + 1,
-        liga: liga || "all",
-        ...t
+        liga: LIGAS[liga] || liga,
+        equipo: t.equipo,
+        puntos: t.puntos,
+        jugados: t.jugados,
+        ganados: t.ganados,
+        empatados: t.empatados,
+        perdidos: t.perdidos,
+        gf: t.gf,
+        gc: t.gc
       }));
 
     res.json({
@@ -195,14 +137,14 @@ app.get("/clasificacion-auto", async (req, res) => {
 });
 
 // ============================
-// PARTIDOS RAW
+// PARTIDOS (RAW)
 // ============================
 app.get("/partidos", async (req, res) => {
   try {
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
     const response = await axios.get(url);
 
-    let data = response.data.map(cleanKey);
+    const data = response.data.map(cleanKey);
 
     res.json({
       ok: true,
@@ -228,8 +170,6 @@ app.get("/test-api", (req, res) => {
   });
 });
 
-// ============================
-// SERVER
 // ============================
 const PORT = process.env.PORT || 3000;
 
