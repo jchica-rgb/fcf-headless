@@ -22,7 +22,7 @@ app.get("/admin", (req, res) => {
 });
 
 // ============================
-// CLEAN KEYS (Sheets safety)
+// CLEAN KEYS
 // ============================
 function cleanKey(obj) {
   const cleaned = {};
@@ -33,13 +33,13 @@ function cleanKey(obj) {
 }
 
 // ============================
-// GOOGLE AUTH (FINAL FIX JWT SIGNATURE)
+// GOOGLE AUTH (FIX FINAL JWT)
 // ============================
 function getGoogleAuth() {
   const raw = process.env.GOOGLE_CREDENTIALS;
 
   if (!raw) {
-    throw new Error("❌ GOOGLE_CREDENTIALS NO CONFIGURADO EN RENDER");
+    throw new Error("❌ GOOGLE_CREDENTIALS no configurado en Render");
   }
 
   let creds;
@@ -47,10 +47,10 @@ function getGoogleAuth() {
   try {
     creds = JSON.parse(raw);
   } catch (e) {
-    throw new Error("❌ GOOGLE_CREDENTIALS JSON MAL FORMADO");
+    throw new Error("❌ GOOGLE_CREDENTIALS JSON mal formado");
   }
 
-  // 🔥 FIX CRÍTICO JWT (ESTO ARREGLA TU ERROR)
+  // 🔥 FIX CRÍTICO JWT
   if (creds.private_key) {
     creds.private_key = creds.private_key
       .replace(/\\n/g, "\n")
@@ -185,11 +185,18 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ============================
-// GUARDAR PARTIDO (FINAL PRO FIXED)
+// GUARDAR PARTIDO (JORNADA MANUAL)
 // ============================
 app.post("/add-partido", async (req, res) => {
   try {
-    const { liga, local, visitante, goles_local, goles_visitante } = req.body;
+    const {
+      jornada,
+      liga,
+      local,
+      visitante,
+      goles_local,
+      goles_visitante
+    } = req.body;
 
     const auth = getGoogleAuth();
     const client = await auth.getClient();
@@ -201,7 +208,7 @@ app.post("/add-partido", async (req, res) => {
       valueInputOption: "RAW",
       requestBody: {
         values: [[
-          Date.now(),
+          jornada,
           liga,
           local,
           visitante,
