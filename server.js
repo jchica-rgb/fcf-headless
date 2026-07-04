@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
+const path = require("path");
 
 const app = express();
 
@@ -11,6 +12,13 @@ app.use(express.json());
 // CONFIG
 // ============================
 const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
+
+// ============================
+// PANEL ADMIN (HTML)
+// ============================
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
+});
 
 // ============================
 // MAPA DE LIGAS
@@ -26,7 +34,7 @@ const LIGAS = {
 };
 
 // ============================
-// LIMPIEZA DE KEYS (ANTI-ERRORES SHEETS)
+// LIMPIEZA KEYS SHEETS
 // ============================
 function cleanKey(obj) {
   const cleaned = {};
@@ -37,7 +45,7 @@ function cleanKey(obj) {
 }
 
 // ============================
-// CLASIFICACIÓN (SOLO AUTOMÁTICA)
+// CLASIFICACIÓN AUTOMÁTICA
 // ============================
 app.get("/clasificacion", async (req, res) => {
   try {
@@ -48,7 +56,6 @@ app.get("/clasificacion", async (req, res) => {
 
     let partidos = response.data.map(cleanKey);
 
-    // filtro liga
     if (liga) {
       partidos = partidos.filter(p =>
         String(p.liga).trim() === String(liga).trim()
@@ -137,7 +144,7 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 // ============================
-// PARTIDOS (RAW)
+// PARTIDOS RAW
 // ============================
 app.get("/partidos", async (req, res) => {
   try {
@@ -170,6 +177,8 @@ app.get("/test-api", (req, res) => {
   });
 });
 
+// ============================
+// SERVER
 // ============================
 const PORT = process.env.PORT || 3000;
 
