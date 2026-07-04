@@ -22,7 +22,7 @@ app.get("/admin", (req, res) => {
 });
 
 // ============================
-// CLEAN SHEETS KEYS
+// CLEAN KEYS (ANTI SHEETS BUGS)
 // ============================
 function cleanKey(obj) {
   const cleaned = {};
@@ -33,15 +33,13 @@ function cleanKey(obj) {
 }
 
 // ============================
-// GOOGLE AUTH (PRO MODE - RENDER SAFE)
+// GOOGLE AUTH (RENDER SAFE)
 // ============================
-function getSheetsClient() {
-  const auth = new google.auth.GoogleAuth({
+function getAuth() {
+  return new google.auth.GoogleAuth({
     credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
     scopes: ["https://www.googleapis.com/auth/spreadsheets"]
   });
-
-  return auth;
 }
 
 // ============================
@@ -128,14 +126,15 @@ app.get("/clasificacion", async (req, res) => {
         gc: t.gc
       }));
 
-    res.json({
+    return res.json({
       ok: true,
       source: "auto-engine",
       data: result
     });
 
   } catch (err) {
-    res.status(500).json({
+    console.error("ERROR CLASIFICACION:", err);
+    return res.status(500).json({
       ok: false,
       error: err.message
     });
@@ -143,7 +142,7 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 // ============================
-// PARTIDOS
+// PARTIDOS (READ)
 // ============================
 app.get("/partidos", async (req, res) => {
   try {
@@ -152,13 +151,13 @@ app.get("/partidos", async (req, res) => {
 
     const data = response.data.map(cleanKey);
 
-    res.json({
+    return res.json({
       ok: true,
       data
     });
 
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       ok: false,
       error: err.message
     });
@@ -166,17 +165,13 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ============================
-// GUARDAR PARTIDO (GOOGLE SHEETS REAL)
+// GUARDAR PARTIDO (FIXED 100%)
 // ============================
 app.post("/add-partido", async (req, res) => {
   try {
     const { liga, local, visitante, goles_local, goles_visitante } = req.body;
 
-    const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
-      scopes: ["https://www.googleapis.com/auth/spreadsheets"]
-    });
-
+    const auth = getAuth();
     const client = await auth.getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
 
@@ -197,15 +192,17 @@ app.post("/add-partido", async (req, res) => {
       }
     });
 
-    res.json({
+    return res.json({
       ok: true,
       message: "Partido guardado correctamente"
     });
 
   } catch (err) {
-    res.status(500).json({
+    console.error("ERROR ADD PARTIDO:", err);
+
+    return res.status(500).json({
       ok: false,
-      error: err.message
+      error: err.message || "error desconocido"
     });
   }
 });
