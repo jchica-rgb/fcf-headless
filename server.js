@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const path = require("path");
+const { google } = require("googleapis");
 
 const app = express();
 
@@ -14,14 +15,14 @@ app.use(express.json());
 const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
 
 // ============================
-// STATIC ADMIN PANEL
+// ADMIN PANEL
 // ============================
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
 
 // ============================
-// HELPERS
+// CLEAN SHEETS KEYS
 // ============================
 function cleanKey(obj) {
   const cleaned = {};
@@ -153,26 +154,40 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ============================
-// AÑADIR PARTIDO (ADMIN)
+// GUARDAR PARTIDO (GOOGLE SHEETS REAL)
 // ============================
 app.post("/add-partido", async (req, res) => {
   try {
     const { liga, local, visitante, goles_local, goles_visitante } = req.body;
 
-    const url = `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec`;
+    const auth = new google.auth.GoogleAuth({
+      keyFile: "credentials.json",
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"]
+    });
 
-    await axios.post(url, {
-      liga,
-      local,
-      visitante,
-      goles_local,
-      goles_visitante,
-      estado: "final"
+    const client = await auth.getClient();
+    const sheets = google.sheets({ version: "v4", auth: client });
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: "PARTIDOS!A:G",
+      valueInputOption: "RAW",
+      requestBody: {
+        values: [[
+          Date.now(),
+          liga,
+          local,
+          visitante,
+          goles_local,
+          goles_visitante,
+          "final"
+        ]]
+      }
     });
 
     res.json({
       ok: true,
-      message: "Partido guardado"
+      message: "Partido guardado correctamente"
     });
 
   } catch (err) {
