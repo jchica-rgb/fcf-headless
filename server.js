@@ -22,7 +22,29 @@ app.get("/admin", (req, res) => {
 });
 
 // ============================
-// CLEAN KEYS (ANTI SHEETS BUGS)
+// SAFE GOOGLE AUTH (ANTI CRASH)
+// ============================
+function getAuth() {
+  const creds = process.env.GOOGLE_CREDENTIALS;
+
+  if (!creds) {
+    console.error("❌ GOOGLE_CREDENTIALS NO DEFINIDO EN RENDER");
+    return null;
+  }
+
+  try {
+    return new google.auth.GoogleAuth({
+      credentials: JSON.parse(creds),
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"]
+    });
+  } catch (err) {
+    console.error("❌ ERROR PARSEANDO GOOGLE_CREDENTIALS", err.message);
+    return null;
+  }
+}
+
+// ============================
+// CLEAN SHEETS KEYS
 // ============================
 function cleanKey(obj) {
   const cleaned = {};
@@ -30,16 +52,6 @@ function cleanKey(obj) {
     cleaned[key.trim().toLowerCase()] = obj[key];
   });
   return cleaned;
-}
-
-// ============================
-// GOOGLE AUTH (RENDER SAFE)
-// ============================
-function getAuth() {
-  return new google.auth.GoogleAuth({
-    credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"]
-  });
 }
 
 // ============================
@@ -126,15 +138,14 @@ app.get("/clasificacion", async (req, res) => {
         gc: t.gc
       }));
 
-    return res.json({
+    res.json({
       ok: true,
       source: "auto-engine",
       data: result
     });
 
   } catch (err) {
-    console.error("ERROR CLASIFICACION:", err);
-    return res.status(500).json({
+    res.status(500).json({
       ok: false,
       error: err.message
     });
@@ -142,7 +153,7 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 // ============================
-// PARTIDOS (READ)
+// PARTIDOS
 // ============================
 app.get("/partidos", async (req, res) => {
   try {
@@ -151,13 +162,13 @@ app.get("/partidos", async (req, res) => {
 
     const data = response.data.map(cleanKey);
 
-    return res.json({
+    res.json({
       ok: true,
       data
     });
 
   } catch (err) {
-    return res.status(500).json({
+    res.status(500).json({
       ok: false,
       error: err.message
     });
@@ -165,13 +176,21 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ============================
-// GUARDAR PARTIDO (FIXED 100%)
+// GUARDAR PARTIDO (PRO SAFE)
 // ============================
 app.post("/add-partido", async (req, res) => {
   try {
     const { liga, local, visitante, goles_local, goles_visitante } = req.body;
 
     const auth = getAuth();
+
+    if (!auth) {
+      return res.status(500).json({
+        ok: false,
+        error: "GOOGLE_CREDENTIALS no configurado correctamente"
+      });
+    }
+
     const client = await auth.getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
 
@@ -192,7 +211,7 @@ app.post("/add-partido", async (req, res) => {
       }
     });
 
-    return res.json({
+    res.json({
       ok: true,
       message: "Partido guardado correctamente"
     });
@@ -200,7 +219,7 @@ app.post("/add-partido", async (req, res) => {
   } catch (err) {
     console.error("ERROR ADD PARTIDO:", err);
 
-    return res.status(500).json({
+    res.status(500).json({
       ok: false,
       error: err.message || "error desconocido"
     });
