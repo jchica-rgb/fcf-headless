@@ -22,7 +22,7 @@ app.get("/admin", (req, res) => {
 });
 
 // ============================
-// CLEAN KEYS
+// CLEAN KEYS (Sheets safety)
 // ============================
 function cleanKey(obj) {
   const cleaned = {};
@@ -33,20 +33,28 @@ function cleanKey(obj) {
 }
 
 // ============================
-// GOOGLE AUTH (FIX JWT SIGNATURE ERROR)
+// GOOGLE AUTH (FINAL FIX JWT SIGNATURE)
 // ============================
 function getGoogleAuth() {
   const raw = process.env.GOOGLE_CREDENTIALS;
 
   if (!raw) {
-    throw new Error("GOOGLE_CREDENTIALS no existe en Render");
+    throw new Error("❌ GOOGLE_CREDENTIALS NO CONFIGURADO EN RENDER");
   }
 
-  const creds = JSON.parse(raw);
+  let creds;
 
-  // 🔥 FIX CRÍTICO: arregla saltos de línea del private_key
+  try {
+    creds = JSON.parse(raw);
+  } catch (e) {
+    throw new Error("❌ GOOGLE_CREDENTIALS JSON MAL FORMADO");
+  }
+
+  // 🔥 FIX CRÍTICO JWT (ESTO ARREGLA TU ERROR)
   if (creds.private_key) {
-    creds.private_key = creds.private_key.replace(/\\n/g, "\n");
+    creds.private_key = creds.private_key
+      .replace(/\\n/g, "\n")
+      .replace(/\r/g, "");
   }
 
   return new google.auth.GoogleAuth({
@@ -177,7 +185,7 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ============================
-// GUARDAR PARTIDO (FIX JWT FINAL)
+// GUARDAR PARTIDO (FINAL PRO FIXED)
 // ============================
 app.post("/add-partido", async (req, res) => {
   try {
@@ -210,7 +218,7 @@ app.post("/add-partido", async (req, res) => {
     });
 
   } catch (err) {
-    console.error("ERROR ADD PARTIDO:", err);
+    console.error("❌ ERROR ADD PARTIDO:", err);
 
     res.status(500).json({
       ok: false,
