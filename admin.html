@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>FutCat Admin</title>
+  <title>FutCat Admin Pro</title>
   <style>
     body {
       font-family: Arial;
@@ -12,16 +12,16 @@
 
     .box {
       background: #222;
-      padding: 15px;
-      border-radius: 10px;
-      max-width: 400px;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 420px;
     }
 
     input {
       width: 100%;
       padding: 10px;
-      margin: 5px 0;
-      border-radius: 5px;
+      margin: 6px 0;
+      border-radius: 6px;
       border: none;
     }
 
@@ -33,6 +33,7 @@
       border: none;
       cursor: pointer;
       margin-top: 10px;
+      font-weight: bold;
     }
 
     button:hover {
@@ -48,13 +49,14 @@
 
 <body>
 
-<h1>⚽ FutCat Admin Panel</h1>
+<h1>⚽ FutCat Admin PRO</h1>
 
 <div class="box">
 
+  <input id="jornada" placeholder="Jornada (1,2,3...)">
   <input id="liga" placeholder="Liga (1,2,3...)">
-  <input id="local" placeholder="Local">
-  <input id="visitante" placeholder="Visitante">
+  <input id="local" placeholder="Equipo local">
+  <input id="visitante" placeholder="Equipo visitante">
   <input id="gl" placeholder="Goles local">
   <input id="gv" placeholder="Goles visitante">
 
@@ -67,7 +69,9 @@
 <script>
 async function saveMatch() {
   try {
+
     const data = {
+      jornada: document.getElementById("jornada").value,
       liga: document.getElementById("liga").value,
       local: document.getElementById("local").value,
       visitante: document.getElementById("visitante").value,
@@ -83,7 +87,6 @@ async function saveMatch() {
       body: JSON.stringify(data)
     });
 
-    // 👇 esto evita el crash
     const text = await res.text();
 
     let json;
@@ -91,13 +94,13 @@ async function saveMatch() {
       json = JSON.parse(text);
     } catch (e) {
       document.getElementById("msg").innerHTML =
-        "❌ Error servidor no devuelve JSON: " + text;
+        "❌ Error servidor: " + text;
       return;
     }
 
     if (!res.ok || !json.ok) {
       document.getElementById("msg").innerHTML =
-        "❌ Error: " + (json.error || "error desconocido");
+        "❌ Error: " + (json.error || "desconocido");
       return;
     }
 
