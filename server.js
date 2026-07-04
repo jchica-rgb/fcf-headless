@@ -33,6 +33,18 @@ function cleanKey(obj) {
 }
 
 // ============================
+// GOOGLE AUTH (PRO MODE - RENDER SAFE)
+// ============================
+function getSheetsClient() {
+  const auth = new google.auth.GoogleAuth({
+    credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"]
+  });
+
+  return auth;
+}
+
+// ============================
 // CLASIFICACIÓN AUTOMÁTICA
 // ============================
 app.get("/clasificacion", async (req, res) => {
@@ -131,7 +143,7 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 // ============================
-// PARTIDOS (LECTURA)
+// PARTIDOS
 // ============================
 app.get("/partidos", async (req, res) => {
   try {
@@ -161,7 +173,7 @@ app.post("/add-partido", async (req, res) => {
     const { liga, local, visitante, goles_local, goles_visitante } = req.body;
 
     const auth = new google.auth.GoogleAuth({
-      
+      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
       scopes: ["https://www.googleapis.com/auth/spreadsheets"]
     });
 
