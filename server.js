@@ -161,7 +161,7 @@ app.post("/add-partido", async (req, res) => {
     const { liga, local, visitante, goles_local, goles_visitante } = req.body;
 
     const auth = new google.auth.GoogleAuth({
-      keyFile: "credentials.json",
+      
       scopes: ["https://www.googleapis.com/auth/spreadsheets"]
     });
 
