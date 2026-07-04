@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>FutCat Admin</title>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+      background: #111;
+      color: white;
+    }
+
+    input, select {
+      padding: 10px;
+      margin: 5px;
+      width: 200px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: green;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .box {
+      margin-bottom: 20px;
+      padding: 10px;
+      background: #222;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>⚽ FutCat Admin Panel</h1>
+
+<div class="box">
+  <h3>Nuevo Partido</h3>
+
+  <input id="liga" placeholder="Liga (1,2,3...)"><br>
+  <input id="local" placeholder="Local"><br>
+  <input id="visitante" placeholder="Visitante"><br>
+  <input id="gl" placeholder="Goles local"><br>
+  <input id="gv" placeholder="Goles visitante"><br>
+
+  <button onclick="addMatch()">Guardar</button>
+</div>
+
+<script>
+async function addMatch() {
+  const data = {
+    liga: document.getElementById("liga").value,
+    local: document.getElementById("local").value,
+    visitante: document.getElementById("visitante").value,
+    goles_local: document.getElementById("gl").value,
+    goles_visitante: document.getElementById("gv").value,
+    estado: "final"
+  };
+
+  alert("⚠️ Ahora conectaremos esto a Google Sheets en el siguiente paso");
+
+  console.log(data);
+}
+</script>
+
+</body>
+</html>
