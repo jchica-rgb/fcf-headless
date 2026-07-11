@@ -28,8 +28,22 @@
     }
 
     /* ======================
-       SELECT LIGAS
+       LIVE STATUS
     ====================== */
+
+    #live {
+      text-align: center;
+      color: #00ff88;
+      margin: 10px 0 15px;
+      font-size: 13px;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.4; }
+      50% { opacity: 1; }
+      100% { opacity: 0.4; }
+    }
 
     select {
       width: 100%;
@@ -42,7 +56,7 @@
     }
 
     /* ======================
-       TABLE PRO
+       TABLE
     ====================== */
 
     table {
@@ -86,13 +100,8 @@
       color: #ff4d4d !important;
     }
 
-    /* 🏆 TOP 3 highlight */
-    tr:nth-child(1) td {
-      box-shadow: inset 0 0 10px rgba(255,215,0,0.1);
-    }
-
     /* ======================
-       MATCH CARDS PRO
+       MATCH CARDS
     ====================== */
 
     .match {
@@ -124,20 +133,6 @@
       text-align: center;
     }
 
-    .live {
-      text-align: center;
-      color: #00ff88;
-      font-size: 12px;
-      margin-bottom: 10px;
-      animation: pulse 1.5s infinite;
-    }
-
-    @keyframes pulse {
-      0% { opacity: 0.4; }
-      50% { opacity: 1; }
-      100% { opacity: 0.4; }
-    }
-
   </style>
 </head>
 
@@ -147,13 +142,9 @@
 
 <div class="container">
 
-  <div class="live">🔴 LIVE DATA</div>
+  <div id="live">🔴 LIVE DATA</div>
 
-  <select id="liga" onchange="loadData()">
-    <option value="1">Lliga Elit</option>
-    <option value="2">Primera Catalana</option>
-    <option value="3">Segunda Catalana</option>
-  </select>
+  <select id="liga" onchange="loadData()"></select>
 
   <h3>📊 Clasificación</h3>
 
@@ -181,6 +172,39 @@
 
 const API = "https://fcf-headless.onrender.com";
 
+// ======================
+// LIVE STATUS REAL
+// ======================
+function updateLiveStatus() {
+  const now = new Date();
+  const time = now.toLocaleTimeString();
+  document.getElementById("live").innerText =
+    "🔴 Última actualización: " + time;
+}
+
+// ======================
+// LIGAS DINÁMICAS
+// ======================
+async function loadLigas() {
+
+  const res = await fetch(`${API}/ligas`);
+  const json = await res.json();
+
+  const select = document.getElementById("liga");
+
+  select.innerHTML = "";
+
+  json.data.forEach(l => {
+    const opt = document.createElement("option");
+    opt.value = l;
+    opt.textContent = "Liga " + l;
+    select.appendChild(opt);
+  });
+}
+
+// ======================
+// LOAD DATA
+// ======================
 async function loadData() {
 
   const liga = document.getElementById("liga").value;
@@ -225,8 +249,17 @@ async function loadData() {
 
 }
 
+// ======================
+// INIT
+// ======================
+loadLigas();
 loadData();
-setInterval(loadData, 15000);
+updateLiveStatus();
+
+setInterval(() => {
+  loadData();
+  updateLiveStatus();
+}, 15000);
 
 </script>
 
