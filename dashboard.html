@@ -36,10 +36,6 @@
       border-radius: 6px;
     }
 
-    /* =========================
-       TABLE STYLE
-    ========================== */
-
     table {
       width: 100%;
       border-collapse: collapse;
@@ -61,31 +57,23 @@
 
     tr:hover td {
       background: #1a1a1a;
-      transition: 0.2s;
     }
 
-    /* 🥇 PODIUM */
-    tr:nth-child(1) td {
-      color: #ffd700 !important;
+    /* 🟢 VERDE ASCENSO */
+    tr.green td {
+      color: #00ff88 !important;
       font-weight: bold;
     }
 
-    tr:nth-child(2) td {
-      color: #c0c0c0 !important;
-    }
-
-    tr:nth-child(3) td {
-      color: #cd7f32 !important;
+    /* 🟡 MEDIA */
+    tr.yellow td {
+      color: #ffd166 !important;
     }
 
     /* 🔴 DESCENSO */
-    tr:nth-child(n+7) td {
+    tr.red td {
       color: #ff4d4d !important;
     }
-
-    /* =========================
-       PARTIDOS
-    ========================== */
 
     .match {
       background: #151515;
@@ -97,17 +85,12 @@
       border: 1px solid #1f1f1f;
     }
 
-    .match:hover {
-      border: 1px solid #00ff88;
-    }
-
     .score {
       color: #00ff88;
       font-weight: bold;
       min-width: 80px;
       text-align: center;
     }
-
   </style>
 </head>
 
@@ -117,12 +100,7 @@
 
 <div class="container">
 
-  <select id="liga" onchange="loadData()">
-    <option value="">Todas las ligas</option>
-    <option value="1">Lliga Elit</option>
-    <option value="2">Primera Catalana</option>
-    <option value="3">Segunda Catalana</option>
-  </select>
+  <select id="liga" onchange="loadData()"></select>
 
   <h3>📊 Clasificación</h3>
 
@@ -150,31 +128,53 @@
 
 const API = "https://fcf-headless.onrender.com";
 
-// =========================
+// ======================
+// LIGAS DINÁMICAS
+// ======================
+async function loadLigas() {
+
+  const res = await fetch(`${API}/ligas`);
+  const json = await res.json();
+
+  const select = document.getElementById("liga");
+
+  select.innerHTML = `<option value="">Todas las ligas</option>`;
+
+  json.data.forEach(l => {
+    const opt = document.createElement("option");
+    opt.value = l;
+    opt.textContent = "Liga " + l;
+    select.appendChild(opt);
+  });
+}
+
+// ======================
 // LOAD DATA
-// =========================
+// ======================
 async function loadData() {
 
   const liga = document.getElementById("liga").value;
 
-  try {
+  const res = await fetch(`${API}/clasificacion?liga=${liga}`);
+  const json = await res.json();
 
-    // =====================
-    // CLASIFICACIÓN
-    // =====================
-    const res = await fetch(`${API}/clasificacion?liga=${liga}`);
-    const json = await res.json();
+  const tabla = document.getElementById("tabla");
 
-    const tabla = document.getElementById("tabla");
+  const data = json.data || [];
 
-    if (!json.data) {
-      tabla.innerHTML = "<tr><td colspan='7'>Sin datos</td></tr>";
-      return;
-    }
+  const total = data.length;
 
-    tabla.innerHTML = json.data.map((t,i)=>`
-      <tr>
-        <td>${i+1}</td>
+  tabla.innerHTML = data.map((t, i) => {
+
+    let rowClass = "";
+
+    if (i < total * 0.25) rowClass = "green";
+    else if (i > total * 0.75) rowClass = "red";
+    else rowClass = "yellow";
+
+    return `
+      <tr class="${rowClass}">
+        <td>${i + 1}</td>
         <td>${t.equipo}</td>
         <td>${t.puntos}</td>
         <td>${t.jugados}</td>
@@ -182,39 +182,29 @@ async function loadData() {
         <td>${t.empatados}</td>
         <td>${t.perdidos}</td>
       </tr>
-    `).join("");
+    `;
+  }).join("");
 
-    // =====================
-    // PARTIDOS
-    // =====================
-    const res2 = await fetch(`${API}/partidos?liga=${liga}`);
-    const json2 = await res2.json();
+  const res2 = await fetch(`${API}/partidos?liga=${liga}`);
+  const json2 = await res2.json();
 
-    const partidos = document.getElementById("partidos");
+  const partidos = document.getElementById("partidos");
 
-    if (!json2.data) {
-      partidos.innerHTML = "<p>Sin partidos</p>";
-      return;
-    }
+  partidos.innerHTML = (json2.data || []).map(p => `
+    <div class="match">
+      <div>${p.local}</div>
+      <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
+      <div>${p.visitante}</div>
+    </div>
+  `).join("");
 
-    partidos.innerHTML = json2.data.map(p=>`
-      <div class="match">
-        <div>${p.local}</div>
-        <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-        <div>${p.visitante}</div>
-      </div>
-    `).join("");
-
-  } catch (err) {
-    console.error(err);
-  }
 }
 
-// =========================
+// ======================
 // INIT
-// =========================
+// ======================
+loadLigas();
 loadData();
-setInterval(loadData, 15000);
 
 </script>
 
