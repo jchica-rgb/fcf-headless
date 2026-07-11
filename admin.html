@@ -1,30 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>FutCat Admin PRO</title>
+  <title>FutCat Admin LIVE</title>
 
   <style>
     body {
-      font-family: Arial;
-      background: #111;
-      color: white;
       margin: 0;
+      font-family: Arial;
+      background: #0f0f0f;
+      color: white;
       display: flex;
       justify-content: center;
-      align-items: flex-start;
       padding-top: 40px;
     }
 
     .box {
       width: 420px;
-      background: #1c1c1c;
+      background: #1a1a1a;
       padding: 20px;
       border-radius: 10px;
     }
 
     h2 {
       text-align: center;
-      margin-bottom: 15px;
     }
 
     input, select {
@@ -38,10 +36,9 @@
     button {
       width: 100%;
       padding: 12px;
-      margin-top: 10px;
       background: #00aa00;
-      color: white;
       border: none;
+      color: white;
       font-weight: bold;
       border-radius: 6px;
       cursor: pointer;
@@ -51,10 +48,9 @@
       background: #00cc00;
     }
 
-    .msg {
+    #msg {
       text-align: center;
       margin-top: 10px;
-      font-size: 14px;
     }
   </style>
 </head>
@@ -63,111 +59,75 @@
 
 <div class="box">
 
-  <h2>⚽ FutCat Admin PRO</h2>
+  <h2>⚽ FutCat ADMIN</h2>
 
   <input id="jornada" placeholder="Jornada">
 
   <select id="liga">
-    <option value="">Selecciona liga</option>
+    <option value="">Liga</option>
     <option value="1">Lliga Elit</option>
     <option value="2">Primera Catalana</option>
     <option value="3">Segunda Catalana</option>
   </select>
 
-  <select id="local">
-    <option value="">Local</option>
-    <option>Barcelona</option>
-    <option>Espanyol</option>
-    <option>Girona</option>
-    <option>Madrid</option>
-    <option>Atletico</option>
-  </select>
-
-  <select id="visitante">
-    <option value="">Visitante</option>
-    <option>Barcelona</option>
-    <option>Espanyol</option>
-    <option>Girona</option>
-    <option>Madrid</option>
-    <option>Atletico</option>
-  </select>
+  <input id="local" placeholder="Local">
+  <input id="visitante" placeholder="Visitante">
 
   <input id="gl" placeholder="Goles local">
   <input id="gv" placeholder="Goles visitante">
 
-  <button onclick="saveMatch()">Guardar partido</button>
+  <button onclick="save()">Guardar partido</button>
 
-  <div class="msg" id="msg"></div>
+  <div id="msg"></div>
 
 </div>
 
 <script>
 
-// ============================
-// MEMORIA DE LIGA (UX PRO)
-// ============================
-function saveLastLiga(liga) {
-  localStorage.setItem("lastLiga", liga);
-}
+const API = "https://fct-headless.onrender.com";
 
-function getLastLiga() {
-  return localStorage.getItem("lastLiga");
-}
-
-// ============================
-// AUTO CARGA LIGA
-// ============================
-window.onload = () => {
-  const liga = getLastLiga();
-  if (liga) {
-    document.getElementById("liga").value = liga;
-  }
-};
-
-// ============================
+// =========================
 // GUARDAR PARTIDO
-// ============================
-async function saveMatch() {
-
-  const liga = document.getElementById("liga").value;
-  saveLastLiga(liga);
+// =========================
+async function save() {
 
   const data = {
     jornada: document.getElementById("jornada").value,
-    liga: liga,
+    liga: document.getElementById("liga").value,
     local: document.getElementById("local").value,
     visitante: document.getElementById("visitante").value,
     goles_local: document.getElementById("gl").value,
     goles_visitante: document.getElementById("gv").value
   };
 
-  const res = await fetch("/add-partido", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(data)
-  });
+  try {
 
-  const json = await res.json();
+    const res = await fetch(`${API}/add-partido`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(data)
+    });
 
-  if (json.ok) {
-    document.getElementById("msg").innerHTML = "✅ Partido guardado";
-    clearForm();
-  } else {
-    document.getElementById("msg").innerHTML = "❌ " + json.error;
+    const json = await res.json();
+
+    if (json.ok) {
+      document.getElementById("msg").innerHTML = "✅ Guardado correctamente";
+
+      document.getElementById("jornada").value = "";
+      document.getElementById("local").value = "";
+      document.getElementById("visitante").value = "";
+      document.getElementById("gl").value = "";
+      document.getElementById("gv").value = "";
+
+    } else {
+      document.getElementById("msg").innerHTML = "❌ Error: " + json.error;
+    }
+
+  } catch (err) {
+    document.getElementById("msg").innerHTML = "❌ Error de conexión";
   }
-}
-
-// ============================
-// LIMPIAR FORM
-// ============================
-function clearForm() {
-  document.getElementById("jornada").value = "";
-  document.getElementById("local").value = "";
-  document.getElementById("visitante").value = "";
-  document.getElementById("gl").value = "";
-  document.getElementById("gv").value = "";
 }
 
 </script>
