@@ -89,9 +89,8 @@
 
 <div class="container">
 
-  <div id="live">🔴 LIVE</div>
+  <div id="live">🔴 Iniciando...</div>
 
-  <!-- LIGAS -->
   <select id="liga" onchange="loadData()"></select>
 
   <h3>📊 Clasificación</h3>
@@ -121,15 +120,37 @@
 const API = "https://fcf-headless.onrender.com";
 
 // ======================
-// LIVE
+// STATE (LIVE REAL)
 // ======================
-function updateLive() {
-  document.getElementById("live").innerText =
-    "🔴 Última actualización: " + new Date().toLocaleTimeString();
+let lastHash = "";
+let lastUpdate = null;
+
+// ======================
+// HASH FUNC
+// ======================
+function createHash(obj) {
+  return JSON.stringify(obj);
 }
 
 // ======================
-// LIGAS (FIX CRÍTICO)
+// LIVE DISPLAY
+// ======================
+function updateLive() {
+
+  if (!lastUpdate) {
+    document.getElementById("live").innerText =
+      "🔴 Sin cambios todavía";
+    return;
+  }
+
+  document.getElementById("live").innerText =
+    "🔴 Última actualización real: " +
+    lastUpdate.toLocaleDateString() + " " +
+    lastUpdate.toLocaleTimeString();
+}
+
+// ======================
+// LIGAS
 // ======================
 async function loadLigas() {
 
@@ -140,29 +161,19 @@ async function loadLigas() {
 
   select.innerHTML = "";
 
-  const data = json.data || [];
-
-  data.forEach(l => {
+  (json.data || []).forEach(l => {
 
     const opt = document.createElement("option");
 
-    // 🧠 FIX REAL
     opt.value = l.id;
-
-    // ❌ ESTO EVITA [object Object]
     opt.textContent = l.name;
 
     select.appendChild(opt);
   });
-
-  // seleccionar primera liga automáticamente
-  if (data.length > 0) {
-    select.value = data[0].id;
-  }
 }
 
 // ======================
-// DATOS
+// LOAD DATA (LIVE LOGIC)
 // ======================
 async function loadData() {
 
@@ -172,6 +183,14 @@ async function loadData() {
   const json = await res.json();
 
   const data = json.data || [];
+  const hash = createHash(data);
+
+  // 🔥 DETECTAR CAMBIO REAL
+  if (hash !== lastHash) {
+    lastHash = hash;
+    lastUpdate = new Date();
+  }
+
   const total = data.length;
 
   document.getElementById("tabla").innerHTML = data.map((t,i)=>{
@@ -206,6 +225,8 @@ async function loadData() {
         <div>${p.visitante}</div>
       </div>
     `).join("");
+
+  updateLive();
 }
 
 // ======================
@@ -213,12 +234,8 @@ async function loadData() {
 // ======================
 loadLigas();
 loadData();
-updateLive();
 
-setInterval(() => {
-  loadData();
-  updateLive();
-}, 15000);
+setInterval(loadData, 15000);
 
 </script>
 
