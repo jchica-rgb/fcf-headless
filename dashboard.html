@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  console.log("🔥 NUEVO DASHBOARD CARGADO - VERSION ACTUALIZADA");
   <meta charset="UTF-8">
   <title>TERRITORI FUTCAT LIVE</title>
 
@@ -50,13 +49,9 @@
       border-bottom: 1px solid #222;
     }
 
-    th {
-      color: #00ff88;
-    }
+    th { color: #00ff88; }
 
-    tr:hover td {
-      background: #1a1a1a;
-    }
+    tr:hover td { background: #1a1a1a; }
 
     tr.green td { color: #00ff88 !important; font-weight: bold; }
     tr.yellow td { color: #ffd166 !important; }
@@ -120,24 +115,22 @@
 
 <script>
 
-const API = "https://fcf-headless.onrender.com";
+const API = "https://fcf-headless.onrender.com"; 
+// 🔥 ESTA ES TU DIRECCIÓN REAL DEL BACKEND (NO TOCAR)
 
-// ======================
-// STATE GLOBAL
-// ======================
 let currentLiga = null;
 let lastStateByLiga = {};
 let lastUpdate = null;
 
 // ======================
-// INIT SEGURO
+// INIT
 // ======================
 async function init() {
   await loadLigas();
 }
 
 // ======================
-// LIGAS (ROBUSTO)
+// LIGAS
 // ======================
 async function loadLigas() {
 
@@ -151,32 +144,24 @@ async function loadLigas() {
     const select = document.getElementById("liga");
     select.innerHTML = "";
 
-    if (!Array.isArray(data) || data.length === 0) {
-      select.innerHTML = "<option>No hay ligas</option>";
-      return;
-    }
-
     data.forEach(l => {
 
       const opt = document.createElement("option");
 
-      opt.value = l.id ?? "";
-      opt.textContent = l.name ?? "Liga sin nombre";
+      opt.value = l.id;
+      opt.textContent = l.name;
 
       select.appendChild(opt);
     });
 
-    // 🔥 IMPORTANTE: set inicial seguro
-    currentLiga = data[0].id;
+    currentLiga = data[0]?.id || null;
     select.value = currentLiga;
 
-    // evento controlado
     select.addEventListener("change", (e) => {
       currentLiga = e.target.value;
       loadData();
     });
 
-    // 🔥 FORZAR PRIMERA CARGA
     loadData();
 
   } catch (err) {
@@ -185,7 +170,7 @@ async function loadLigas() {
 }
 
 // ======================
-// DATA PRINCIPAL
+// DATA
 // ======================
 async function loadData() {
 
@@ -198,7 +183,6 @@ async function loadData() {
 
     const data = json.data || [];
 
-    // 🔥 DETECCIÓN DE CAMBIO POR LIGA
     const hash = JSON.stringify(data);
 
     if (lastStateByLiga[currentLiga] !== hash) {
@@ -220,7 +204,7 @@ async function loadData() {
 }
 
 // ======================
-// RENDER CLASIFICACION
+// RENDER TABLE
 // ======================
 function renderTable(data) {
 
@@ -249,7 +233,7 @@ function renderTable(data) {
 }
 
 // ======================
-// RENDER PARTIDOS
+// MATCHES
 // ======================
 function renderMatches(matches) {
 
@@ -273,13 +257,6 @@ function updateLive() {
       ? "🔴 Última actualización: " + lastUpdate.toLocaleTimeString()
       : "🔴 Sin cambios";
 }
-
-// ======================
-// AUTO REFRESH
-// ======================
-setInterval(() => {
-  if (currentLiga) loadData();
-}, 15000);
 
 // ======================
 // START
