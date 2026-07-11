@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <title>TERRITORI FUTCAT LIVE</title>
 
@@ -28,7 +28,7 @@
     select {
       width: 100%;
       padding: 10px;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
       background: #1a1a1a;
       color: white;
       border: none;
@@ -55,21 +55,9 @@
       background: #1a1a1a;
     }
 
-    /* 🟢 ASCENSO */
-    tr.green td {
-      color: #00ff88 !important;
-      font-weight: bold;
-    }
-
-    /* 🟡 MEDIA */
-    tr.yellow td {
-      color: #ffd166 !important;
-    }
-
-    /* 🔴 DESCENSO */
-    tr.red td {
-      color: #ff4d4d !important;
-    }
+    tr.green td { color: #00ff88 !important; font-weight: bold; }
+    tr.yellow td { color: #ffd166 !important; }
+    tr.red td { color: #ff4d4d !important; }
 
     .match {
       background: #151515;
@@ -86,13 +74,17 @@
       text-align: center;
     }
 
-    /* 🔴 LIVE INDICATOR (NO CAMBIA TU UI) */
+    .topbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
     #live {
       text-align: center;
       color: #00ff88;
       font-size: 12px;
       margin-bottom: 10px;
-      opacity: 0.8;
     }
   </style>
 </head>
@@ -103,13 +95,20 @@
 
 <div class="container">
 
-  <!-- LIVE INDICATOR -->
-  <div id="live">🔴 Actualizando...</div>
+  <!-- 🌍 IDIOMA -->
+  <div class="topbar">
+    <select id="lang" onchange="changeLang()">
+      <option value="es">Español</option>
+      <option value="ca">Català</option>
+      <option value="en">English</option>
+    </select>
 
-  <!-- LIGA -->
-  <select id="liga" onchange="loadData()"></select>
+    <select id="liga" onchange="loadData()"></select>
+  </div>
 
-  <h3>📊 Clasificación</h3>
+  <div id="live">🔴 LIVE</div>
+
+  <h3 id="t_classification"></h3>
 
   <table>
     <thead>
@@ -126,7 +125,7 @@
     <tbody id="tabla"></tbody>
   </table>
 
-  <h3>⚽ Partidos</h3>
+  <h3 id="t_matches"></h3>
   <div id="partidos"></div>
 
 </div>
@@ -136,16 +135,60 @@
 const API = "https://fcf-headless.onrender.com";
 
 // ======================
-// LIVE STATUS
+// TRADUCCIONES
 // ======================
-function updateLive() {
-  const now = new Date();
-  document.getElementById("live").innerText =
-    "🔴 Última actualización: " + now.toLocaleTimeString();
+const TEXT = {
+  es: {
+    classification: "Clasificación",
+    matches: "Partidos"
+  },
+  ca: {
+    classification: "Classificació",
+    matches: "Partits"
+  },
+  en: {
+    classification: "Standings",
+    matches: "Matches"
+  }
+};
+
+// ======================
+// IDIOMA ACTIVO
+// ======================
+let LANG = localStorage.getItem("lang") || "es";
+
+// ======================
+// CAMBIO IDIOMA
+// ======================
+function changeLang() {
+  LANG = document.getElementById("lang").value;
+  localStorage.setItem("lang", LANG);
+  applyLang();
 }
 
 // ======================
-// LIGAS DINÁMICAS (SIN CAMBIAR UI)
+// APLICAR IDIOMA
+// ======================
+function applyLang() {
+  document.getElementById("t_classification").innerText =
+    TEXT[LANG].classification;
+
+  document.getElementById("t_matches").innerText =
+    TEXT[LANG].matches;
+
+  document.getElementById("lang").value = LANG;
+}
+
+// ======================
+// LIVE
+// ======================
+function updateLive() {
+  document.getElementById("live").innerText =
+    "🔴 " + new Date().toLocaleTimeString();
+}
+
+// ======================
+// LIGAS DINÁMICAS
 // ======================
 async function loadLigas() {
 
@@ -158,8 +201,8 @@ async function loadLigas() {
 
   json.data.forEach(l => {
     const opt = document.createElement("option");
-    opt.value = l;
-    opt.textContent = "Liga " + l;
+    opt.value = l.id;
+    opt.textContent = l.name;
     select.appendChild(opt);
   });
 }
@@ -201,20 +244,21 @@ async function loadData() {
   const res2 = await fetch(`${API}/partidos?liga=${liga}`);
   const json2 = await res2.json();
 
-  document.getElementById("partidos").innerHTML = (json2.data || []).map(p=>`
-    <div class="match">
-      <div>${p.local}</div>
-      <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-      <div>${p.visitante}</div>
-    </div>
-  `).join("");
-
+  document.getElementById("partidos").innerHTML =
+    (json2.data || []).map(p=>`
+      <div class="match">
+        <div>${p.local}</div>
+        <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
+        <div>${p.visitante}</div>
+      </div>
+    `).join("");
 }
 
 // ======================
 // INIT
 // ======================
 loadLigas();
+applyLang();
 loadData();
 updateLive();
 
