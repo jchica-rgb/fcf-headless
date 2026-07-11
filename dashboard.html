@@ -57,11 +57,18 @@
       margin-bottom: 8px;
       display: flex;
       justify-content: space-between;
+      border-radius: 6px;
     }
 
     .score {
       color: #00ff88;
       font-weight: bold;
+    }
+
+    .title {
+      margin-top: 25px;
+      margin-bottom: 10px;
+      color: #00ff88;
     }
   </style>
 </head>
@@ -79,7 +86,7 @@
     <option value="3">Segunda Catalana</option>
   </select>
 
-  <h2>📊 Clasificación</h2>
+  <div class="title">📊 Clasificación</div>
   <table>
     <thead>
       <tr>
@@ -95,7 +102,7 @@
     <tbody id="tabla"></tbody>
   </table>
 
-  <h2>⚽ Partidos</h2>
+  <div class="title">⚽ Partidos</div>
   <div id="partidos"></div>
 
 </div>
@@ -104,55 +111,67 @@
 
 const API = "https://fct-headless.onrender.com";
 
+// =========================
+// CARGAR DATOS
+// =========================
 async function loadData() {
 
   const liga = document.getElementById("liga").value;
 
-  // =====================
-  // CLASIFICACIÓN
-  // =====================
-  const res = await fetch(`${API}/clasificacion?liga=${liga}`);
-  const json = await res.json();
+  try {
 
-  let html = "";
+    // =====================
+    // CLASIFICACIÓN
+    // =====================
+    const res = await fetch(`${API}/clasificacion?liga=${liga}`);
+    const json = await res.json();
 
-  json.data.forEach((t, i) => {
-    html += `
-      <tr>
-        <td>${i+1}</td>
-        <td>${t.equipo}</td>
-        <td>${t.puntos}</td>
-        <td>${t.jugados}</td>
-        <td>${t.ganados}</td>
-        <td>${t.empatados}</td>
-        <td>${t.perdidos}</td>
-      </tr>
-    `;
-  });
+    let html = "";
 
-  document.getElementById("tabla").innerHTML = html;
+    json.data.forEach((t, i) => {
+      html += `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${t.equipo}</td>
+          <td>${t.puntos}</td>
+          <td>${t.jugados}</td>
+          <td>${t.ganados}</td>
+          <td>${t.empatados}</td>
+          <td>${t.perdidos}</td>
+        </tr>
+      `;
+    });
 
-  // =====================
-  // PARTIDOS
-  // =====================
-  const res2 = await fetch(`${API}/partidos?liga=${liga}`);
-  const json2 = await res2.json();
+    document.getElementById("tabla").innerHTML = html;
 
-  let html2 = "";
+    // =====================
+    // PARTIDOS
+    // =====================
+    const res2 = await fetch(`${API}/partidos?liga=${liga}`);
+    const json2 = await res2.json();
 
-  json2.data.forEach(p => {
-    html2 += `
-      <div class="match">
-        <div>${p.local}</div>
-        <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-        <div>${p.visitante}</div>
-      </div>
-    `;
-  });
+    let html2 = "";
 
-  document.getElementById("partidos").innerHTML = html2;
+    json2.data.forEach(p => {
+      html2 += `
+        <div class="match">
+          <div>${p.local}</div>
+          <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
+          <div>${p.visitante}</div>
+        </div>
+      `;
+    });
+
+    document.getElementById("partidos").innerHTML = html2;
+
+  } catch (err) {
+    console.error("Error cargando datos:", err);
+  }
 }
 
+// =========================
+// INIT
+// =========================
 loadData();
 setInterval(loadData, 15000);
 
