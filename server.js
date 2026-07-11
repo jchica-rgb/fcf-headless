@@ -1,56 +1,62 @@
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
-const path = require("path");
 const session = require("express-session");
+const path = require("path");
 const { google } = require("googleapis");
 
 const app = express();
 
-// ============================
+// ======================
 // MIDDLEWARE
-// ============================
+// ======================
 app.use(cors());
 app.use(express.json());
 
 app.use(session({
-  secret: "futcat-production-key",
+  secret: "futcat_secret_key",
   resave: false,
   saveUninitialized: true
 }));
 
-// ============================
+// ======================
 // CONFIG
-// ============================
+// ======================
 const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
 
-// ============================
-// ADMIN
-// ============================
+// ======================
+// ADMIN SIMPLE
+// ======================
 const ADMIN = {
   user: "admin",
-  pass: "futcat2026"
+  pass: "futcat"
 };
 
-// ============================
-// CLEAN DATA
-// ============================
-function clean(obj) {
-  const out = {};
-  Object.keys(obj).forEach(k => {
-    out[k.toLowerCase().trim()] = obj[k];
+// ======================
+// TEST ROOT (CRÍTICO)
+// ======================
+app.get("/", (req, res) => {
+  res.json({
+    ok: true,
+    status: "FUTCAT SERVER RUNNING ⚽"
   });
-  return out;
-}
+});
 
-// ============================
+// ======================
+// TEST API
+// ======================
+app.get("/test-api", (req, res) => {
+  res.json({
+    ok: true,
+    status: "API OK ⚽"
+  });
+});
+
+// ======================
 // GOOGLE AUTH
-// ============================
+// ======================
 function getAuth() {
-  const raw = process.env.GOOGLE_CREDENTIALS;
-  if (!raw) throw new Error("Missing GOOGLE_CREDENTIALS");
-
-  const creds = JSON.parse(raw);
+  const creds = JSON.parse(process.env.GOOGLE_CREDENTIALS);
 
   if (creds.private_key) {
     creds.private_key = creds.private_key.replace(/\\n/g, "\n");
@@ -62,87 +68,33 @@ function getAuth() {
   });
 }
 
-// ============================
-// TEST API (CRÍTICO)
-// ============================
-app.get("/test-api", (req, res) => {
-  res.json({
-    ok: true,
-    status: "FUTCAT PRODUCTION RUNNING ⚽"
-  });
-});
-
-// ============================
-// LOGIN
-// ============================
-app.post("/login", express.urlencoded({ extended: true }), (req, res) => {
-  const { user, pass } = req.body;
-
-  if (user === ADMIN.user && pass === ADMIN.pass) {
-    req.session.auth = true;
-    return res.redirect("/admin");
-  }
-
-  res.send("Login incorrecto");
-});
-
-function auth(req, res, next) {
-  if (req.session.auth) return next();
-  res.redirect("/login");
-}
-
-// ============================
-// FRONT
-// ============================
-app.get("/admin", auth, (req, res) => {
-  res.sendFile(path.join(__dirname, "admin.html"));
-});
-
-app.get("/dashboard", (req, res) => {
-  res.sendFile(path.join(__dirname, "dashboard.html"));
-});
-
-// ============================
+// ======================
 // PARTIDOS
-// ============================
+// ======================
 app.get("/partidos", async (req, res) => {
   try {
-    const liga = req.query.liga;
-
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
     const r = await axios.get(url);
 
-    let data = r.data.map((p, i) => ({
-      id: i + 2,
-      ...clean(p)
-    }));
-
-    if (liga) {
-      data = data.filter(x => String(x.liga) === String(liga));
-    }
-
-    res.json({ ok: true, data });
+    res.json({
+      ok: true,
+      data: r.data
+    });
 
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// ============================
-// CLASIFICACIÓN
-// ============================
+// ======================
+// CLASIFICACIÓN SIMPLE
+// ======================
 app.get("/clasificacion", async (req, res) => {
   try {
-    const liga = req.query.liga;
-
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
     const r = await axios.get(url);
 
-    let partidos = r.data.map(clean);
-
-    if (liga) {
-      partidos = partidos.filter(p => String(p.liga) === String(liga));
-    }
+    const partidos = r.data;
 
     const table = {};
 
@@ -154,9 +106,7 @@ app.get("/clasificacion", async (req, res) => {
           jugados: 0,
           ganados: 0,
           empatados: 0,
-          perdidos: 0,
-          gf: 0,
-          gc: 0
+          perdidos: 0
         };
       }
     };
@@ -173,12 +123,6 @@ app.get("/clasificacion", async (req, res) => {
 
       table[l].jugados++;
       table[v].jugados++;
-
-      table[l].gf += gl;
-      table[l].gc += gv;
-
-      table[v].gf += gv;
-      table[v].gc += gl;
 
       if (gl > gv) {
         table[l].ganados++;
@@ -206,16 +150,16 @@ app.get("/clasificacion", async (req, res) => {
   }
 });
 
-// ============================
+// ======================
 // ADD PARTIDO
-// ============================
-app.post("/add-partido", auth, async (req, res) => {
+// ======================
+app.post("/add-partido", async (req, res) => {
   try {
-    const { jornada, liga, local, visitante, goles_local, goles_visitante } = req.body;
-
     const authClient = getAuth();
     const client = await authClient.getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
+
+    const { jornada, liga, local, visitante, goles_local, goles_visitante } = req.body;
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
@@ -233,11 +177,11 @@ app.post("/add-partido", auth, async (req, res) => {
   }
 });
 
-// ============================
+// ======================
 // SERVER START
-// ============================
+// ======================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("FUTCAT RUNNING ⚽");
+  console.log("FUTCAT SERVER RUNNING ⚽");
 });
