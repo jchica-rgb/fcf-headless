@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>FutCat Live Pro</title>
+  <title>FutCat Live</title>
 
   <style>
     body {
@@ -15,7 +15,7 @@
       padding: 18px;
       text-align: center;
       background: #111;
-      font-size: 22px;
+      font-size: 20px;
       font-weight: bold;
       border-bottom: 1px solid #222;
     }
@@ -23,7 +23,7 @@
     .container {
       max-width: 900px;
       margin: auto;
-      padding: 20px;
+      padding: 15px;
     }
 
     select {
@@ -40,7 +40,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 30px;
+      margin-bottom: 25px;
       background: #111;
       border-radius: 10px;
       overflow: hidden;
@@ -56,14 +56,6 @@
       padding: 10px;
       text-align: center;
       border-bottom: 1px solid #222;
-    }
-
-    /* JORNADA */
-    .jornada {
-      margin-top: 25px;
-      margin-bottom: 10px;
-      color: #00ff88;
-      font-weight: bold;
     }
 
     /* PARTIDO */
@@ -99,7 +91,7 @@
 
 <body>
 
-<header>⚽ FutCat LIVE PRO</header>
+<header>⚽ FutCat LIVE</header>
 
 <div class="container">
 
@@ -137,9 +129,6 @@ async function loadData() {
 
   const liga = document.getElementById("liga").value;
 
-  // =====================
-  // CLASIFICACIÓN
-  // =====================
   const res = await fetch("/clasificacion?liga=" + liga);
   const json = await res.json();
 
@@ -161,45 +150,24 @@ async function loadData() {
 
   document.getElementById("tabla").innerHTML = html;
 
-  // =====================
-  // PARTIDOS AGRUPADOS
-  // =====================
-  const res2 = await fetch("/partidos");
+  const res2 = await fetch("/partidos?liga=" + liga);
   const json2 = await res2.json();
-
-  const partidos = json2.data;
 
   let html2 = "";
 
-  // agrupar por jornada
-  const grupos = {};
+  json2.data.forEach(p => {
+    html2 += `
+      <div class="match">
+        <div class="team">${p.local}</div>
+        <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
+        <div class="team" style="text-align:right">${p.visitante}</div>
+      </div>
 
-  partidos.forEach(p => {
-    const j = p.jornada || "Sin jornada";
-    if (!grupos[j]) grupos[j] = [];
-    grupos[j].push(p);
+      <div class="meta">
+        Jornada ${p.jornada} | Liga ${p.liga}
+      </div>
+    `;
   });
-
-  Object.keys(grupos)
-    .sort((a, b) => a - b)
-    .forEach(jornada => {
-
-      html2 += `<div class="jornada">JORNADA ${jornada}</div>`;
-
-      grupos[jornada].forEach(p => {
-        html2 += `
-          <div class="match">
-            <div class="team">${p.local}</div>
-            <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-            <div class="team" style="text-align:right">${p.visitante}</div>
-          </div>
-
-          <div class="meta">
-            Liga ${p.liga}
-          </div>
-        `;
-      });
-    });
 
   document.getElementById("partidos").innerHTML = html2;
 }
