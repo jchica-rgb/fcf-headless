@@ -1,112 +1,139 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>FutCat Admin PRO</title>
+  <title>FutCat Admin PRO Panel</title>
 
   <style>
     body {
       font-family: Arial;
       background: #111;
       color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
       margin: 0;
-    }
-
-    .box {
-      background: #1c1c1c;
-      padding: 25px;
-      border-radius: 12px;
-      width: 420px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      padding: 20px;
     }
 
     h2 {
       text-align: center;
     }
 
-    select, input {
+    .form {
+      max-width: 500px;
+      margin: auto;
+      background: #1c1c1c;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    input, select {
       width: 100%;
       padding: 10px;
       margin: 6px 0;
       border-radius: 6px;
       border: none;
-      outline: none;
     }
 
     button {
       width: 100%;
       padding: 12px;
+      margin-top: 10px;
       background: green;
       color: white;
       border: none;
-      cursor: pointer;
       font-weight: bold;
-      margin-top: 10px;
+      cursor: pointer;
       border-radius: 6px;
     }
 
-    button:hover {
-      background: #00aa00;
+    .match {
+      background: #1a1a1a;
+      padding: 10px;
+      margin: 10px auto;
+      max-width: 600px;
+      border-radius: 8px;
     }
 
-    .msg {
-      text-align: center;
-      margin-top: 10px;
-      font-size: 14px;
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn {
+      background: red;
+      padding: 5px 10px;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-left: 5px;
+    }
+
+    .btn.edit {
+      background: orange;
     }
   </style>
 </head>
 
 <body>
 
-<div class="box">
+<h2>⚽ FutCat Admin PRO Panel</h2>
 
-  <h2>⚽ FutCat Admin PRO</h2>
+<div class="form">
 
   <input id="jornada" placeholder="Jornada">
 
-  <!-- LIGA -->
   <select id="liga">
-    <option value="">Selecciona liga</option>
+    <option value="">Liga</option>
     <option value="1">Lliga Elit</option>
     <option value="2">Primera Catalana</option>
     <option value="3">Segunda Catalana</option>
   </select>
 
-  <!-- EQUIPOS -->
-  <select id="local">
-    <option value="">Local</option>
-    <option>Barcelona</option>
-    <option>Espanyol</option>
-    <option>Girona</option>
-    <option>Real Madrid</option>
-    <option>Atletico</option>
-  </select>
-
-  <select id="visitante">
-    <option value="">Visitante</option>
-    <option>Barcelona</option>
-    <option>Espanyol</option>
-    <option>Girona</option>
-    <option>Real Madrid</option>
-    <option>Atletico</option>
-  </select>
-
+  <input id="local" placeholder="Local">
+  <input id="visitante" placeholder="Visitante">
   <input id="gl" placeholder="Goles local">
   <input id="gv" placeholder="Goles visitante">
 
-  <button onclick="saveMatch()">Guardar partido</button>
-
-  <div class="msg" id="msg"></div>
+  <button onclick="save()">Guardar partido</button>
 
 </div>
 
+<h2>📋 Partidos</h2>
+<div id="list"></div>
+
 <script>
 
-async function saveMatch() {
+let partidos = [];
+
+async function load() {
+  const res = await fetch("/partidos");
+  const json = await res.json();
+
+  partidos = json.data;
+
+  let html = "";
+
+  partidos.forEach(p => {
+    html += `
+      <div class="match">
+        <div class="row">
+          <div>
+            <b>${p.local}</b> ${p.goles_local} - ${p.goles_visitante} <b>${p.visitante}</b><br>
+            Jornada ${p.jornada} | Liga ${p.liga}
+          </div>
+          <div>
+            <button class="btn edit" onclick="editMatch(${p.id})">Editar</button>
+            <button class="btn" onclick="deleteMatch(${p.id})">X</button>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById("list").innerHTML = html;
+}
+
+async function save() {
 
   const data = {
     jornada: document.getElementById("jornada").value,
@@ -117,22 +144,50 @@ async function saveMatch() {
     goles_visitante: document.getElementById("gv").value
   };
 
-  const res = await fetch("/add-partido", {
+  await fetch("/add-partido", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
   });
 
-  const json = await res.json();
-
-  if (!json.ok) {
-    document.getElementById("msg").innerHTML = "❌ " + json.error;
-  } else {
-    document.getElementById("msg").innerHTML = "✅ Partido guardado";
-  }
+  load();
 }
+
+async function deleteMatch(id) {
+  await fetch("/delete-partido", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ row: id })
+  });
+
+  load();
+}
+
+async function editMatch(id) {
+
+  const p = partidos.find(x => x.id === id);
+
+  const gl = prompt("Goles local", p.goles_local);
+  const gv = prompt("Goles visitante", p.goles_visitante);
+
+  await fetch("/edit-partido", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      row: id,
+      jornada: p.jornada,
+      liga: p.liga,
+      local: p.local,
+      visitante: p.visitante,
+      goles_local: gl,
+      goles_visitante: gv
+    })
+  });
+
+  load();
+}
+
+load();
 
 </script>
 
