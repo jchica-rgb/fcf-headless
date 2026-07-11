@@ -7,122 +7,72 @@
     body {
       margin: 0;
       font-family: Arial;
-      background: radial-gradient(circle at top, #111 0%, #000 100%);
+      background: #0a0a0a;
       color: white;
     }
 
     header {
-      padding: 18px;
+      padding: 15px;
       text-align: center;
-      background: #0d0d0d;
-      font-size: 22px;
+      background: #111;
+      font-size: 20px;
       font-weight: bold;
-      letter-spacing: 1px;
-      border-bottom: 1px solid #1f1f1f;
     }
 
     .container {
       max-width: 1000px;
       margin: auto;
-      padding: 20px;
+      padding: 15px;
     }
 
     select {
       width: 100%;
-      padding: 12px;
-      margin-bottom: 20px;
-      background: #151515;
+      padding: 10px;
+      margin-bottom: 15px;
+      background: #1a1a1a;
       color: white;
-      border: 1px solid #222;
-      border-radius: 8px;
-      outline: none;
+      border: none;
     }
-
-    /* =========================
-       TABLE DESIGN PRO
-    ========================== */
 
     table {
       width: 100%;
       border-collapse: collapse;
-      background: #0f0f0f;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      background: #111;
+      margin-bottom: 20px;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: center;
+      border-bottom: 1px solid #222;
     }
 
     th {
-      background: #111;
       color: #00ff88;
-      padding: 14px;
-      font-size: 14px;
     }
 
-    td {
-      padding: 12px;
-      text-align: center;
-      border-bottom: 1px solid #1c1c1c;
-      transition: 0.2s;
-    }
-
-    tr:hover td {
-      background: #161616;
-    }
-
-    /* TOP 3 EFFECT */
     tr:nth-child(1) td {
-      color: #ffd700;
+      color: #00ff88;
       font-weight: bold;
     }
 
-    tr:nth-child(2) td {
-      color: #c0c0c0;
-    }
-
-    tr:nth-child(3) td {
-      color: #cd7f32;
-    }
-
-    /* =========================
-       MATCH CARDS
-    ========================== */
-
-    .title {
-      margin: 25px 0 10px;
-      font-size: 18px;
-      color: #00ff88;
-      letter-spacing: 1px;
+    tr:nth-child(n+7) td {
+      color: #ff4d4d;
     }
 
     .match {
-      background: linear-gradient(145deg, #151515, #0d0d0d);
-      padding: 14px 18px;
-      margin-bottom: 10px;
-      border-radius: 10px;
+      background: #151515;
+      padding: 12px;
+      margin-bottom: 8px;
+      border-radius: 8px;
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      border: 1px solid #1c1c1c;
-      transition: 0.2s;
-    }
-
-    .match:hover {
-      transform: scale(1.01);
-      border-color: #00ff88;
     }
 
     .score {
-      font-size: 18px;
-      font-weight: bold;
       color: #00ff88;
-      min-width: 80px;
-      text-align: center;
+      font-weight: bold;
     }
-
-    .team {
-      width: 40%;
-    }
-
   </style>
 </head>
 
@@ -139,8 +89,7 @@
     <option value="3">Segunda Catalana</option>
   </select>
 
-  <div class="title">📊 Clasificación</div>
-
+  <h3>📊 Clasificación</h3>
   <table>
     <thead>
       <tr>
@@ -156,7 +105,7 @@
     <tbody id="tabla"></tbody>
   </table>
 
-  <div class="title">⚽ Partidos</div>
+  <h3>⚽ Partidos</h3>
   <div id="partidos"></div>
 
 </div>
@@ -165,6 +114,9 @@
 
 const API = "https://fcf-headless.onrender.com";
 
+// =========================
+// LOAD DATA
+// =========================
 async function loadData() {
 
   const liga = document.getElementById("liga").value;
@@ -211,9 +163,9 @@ async function loadData() {
 
     partidos.innerHTML = json2.data.map(p=>`
       <div class="match">
-        <div class="team">${p.local}</div>
+        <div>${p.local}</div>
         <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-        <div class="team" style="text-align:right">${p.visitante}</div>
+        <div>${p.visitante}</div>
       </div>
     `).join("");
 
