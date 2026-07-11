@@ -6,39 +6,16 @@ app.use(cors());
 app.use(express.json());
 
 // ======================
-// CACHE GLOBAL
+// NORMALIZADOR CLAVE
 // ======================
-let cache = {
-  clasificacion: {},
-  partidos: {},
-  lastUpdate: null
-};
-
-// ======================
-// NORMALIZADOR (CLAVE DEL FIX)
-// ======================
-function normalize(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase();
+function normalize(v) {
+  return String(v || "").trim().toLowerCase();
 }
 
 // ======================
-// SIMULACIÓN SHEETS (REEMPLAZA ESTO POR TU LÓGICA REAL)
-// ======================
-async function getClasificacionFromSheets() {
-  return []; // <- tu conexión real aquí
-}
-
-async function getPartidosFromSheets() {
-  return []; // <- tu conexión real aquí
-}
-
-// ======================
-// LIGAS FIX (IMPORTANTE)
+// LIGAS
 // ======================
 app.get("/ligas", (req, res) => {
-
   res.json({
     data: [
       { id: "1", nombre: "Liga Elit" },
@@ -46,56 +23,35 @@ app.get("/ligas", (req, res) => {
       { id: "3", nombre: "Segona Catalana" }
     ]
   });
-
 });
 
 // ======================
-// CLASIFICACIÓN (FIX REAL)
+// CLASIFICACION (TU ORIGINAL PERO ARREGLADO)
 // ======================
 app.get("/clasificacion", async (req, res) => {
 
   const ligaId = normalize(req.query.liga);
 
-  const rows = await getClasificacionFromSheets();
+  const rows = await getClasificacionFromSheets(); // TU FUNCIÓN REAL
 
   const filtered = rows.filter(r =>
     normalize(r.liga) === ligaId
   );
 
-  const newKey = JSON.stringify(filtered);
-
-  const oldKey = cache.clasificacion[ligaId];
-
-  let changed = false;
-
-  if (newKey !== oldKey) {
-    cache.clasificacion[ligaId] = newKey;
-    changed = true;
-
-    cache.lastUpdate = new Date().toLocaleString("es-ES", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-  }
-
   res.json({
     data: filtered,
-    lastUpdate: cache.lastUpdate,
-    changed
+    lastUpdate: cache?.lastUpdate || null
   });
 });
 
 // ======================
-// PARTIDOS (FIX REAL)
+// PARTIDOS
 // ======================
 app.get("/partidos", async (req, res) => {
 
   const ligaId = normalize(req.query.liga);
 
-  const rows = await getPartidosFromSheets();
+  const rows = await getPartidosFromSheets(); // TU FUNCIÓN REAL
 
   const filtered = rows.filter(r =>
     normalize(r.liga) === ligaId
@@ -107,20 +63,10 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ======================
-// HEALTH CHECK
-// ======================
 app.get("/", (req, res) => {
-  res.json({
-    ok: true,
-    status: "FUTCAT BACKEND OK ⚽"
-  });
+  res.json({ ok: true });
 });
 
-// ======================
-// START SERVER
 // ======================
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("⚽ SERVER RUNNING ON PORT", PORT);
-});
+app.listen(PORT, () => console.log("RUNNING", PORT));
