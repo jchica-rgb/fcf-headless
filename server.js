@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 // ============================
-// SESIÓN
+// SESIONES
 // ============================
 app.use(session({
   secret: "futcat-pro-2026",
@@ -41,7 +41,7 @@ app.get("/login", (req, res) => {
     <html>
       <body style="background:#111;color:white;display:flex;justify-content:center;align-items:center;height:100vh;font-family:Arial;">
         <form method="POST" action="/login">
-          <h2>Login FutCat</h2>
+          <h2>FutCat Login</h2>
           <input name="user" placeholder="Usuario"><br><br>
           <input name="pass" type="password" placeholder="Contraseña"><br><br>
           <button>Entrar</button>
@@ -62,11 +62,17 @@ app.post("/login", express.urlencoded({ extended: true }), (req, res) => {
   res.send("Login incorrecto");
 });
 
+// ============================
+// PROTECCIÓN
+// ============================
 function checkAuth(req, res, next) {
   if (req.session.auth) return next();
   return res.redirect("/login");
-});
+}
 
+// ============================
+// FRONT
+// ============================
 app.get("/admin", checkAuth, (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
@@ -76,7 +82,7 @@ app.get("/dashboard", (req, res) => {
 });
 
 // ============================
-// CLEAN
+// CLEAN DATA
 // ============================
 function cleanKey(obj) {
   const cleaned = {};
@@ -107,6 +113,26 @@ function getGoogleAuth() {
     scopes: ["https://www.googleapis.com/auth/spreadsheets"]
   });
 }
+
+// ============================
+// PARTIDOS
+// ============================
+app.get("/partidos", async (req, res) => {
+  try {
+    const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
+    const response = await axios.get(url);
+
+    const data = response.data.map((p, i) => ({
+      id: i + 2,
+      ...cleanKey(p)
+    }));
+
+    res.json({ ok: true, data });
+
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 // ============================
 // CLASIFICACIÓN
@@ -170,7 +196,10 @@ app.get("/clasificacion", async (req, res) => {
       }
     });
 
-    res.json({ ok: true, data: Object.values(tabla) });
+    res.json({
+      ok: true,
+      data: Object.values(tabla)
+    });
 
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -178,16 +207,63 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 // ============================
-// PARTIDOS
+// ESTADÍSTICAS
 // ============================
-app.get("/partidos", async (req, res) => {
+app.get("/estadisticas", async (req, res) => {
   try {
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
     const response = await axios.get(url);
 
+    const partidos = response.data.map(cleanKey);
+
+    const stats = {};
+
+    const init = (t) => {
+      if (!stats[t]) {
+        stats[t] = {
+          equipo: t,
+          gf: 0,
+          gc: 0,
+          partidos: 0,
+          victorias: 0
+        };
+      }
+    };
+
+    partidos.forEach(p => {
+      const l = p.local;
+      const v = p.visitante;
+
+      const gl = Number(p.goles_local);
+      const gv = Number(p.goles_visitante);
+
+      init(l);
+      init(v);
+
+      stats[l].partidos++;
+      stats[v].partidos++;
+
+      stats[l].gf += gl;
+      stats[l].gc += gv;
+
+      stats[v].gf += gv;
+      stats[v].gc += gl;
+
+      if (gl > gv) stats[l].victorias++;
+      else if (gv > gl) stats[v].victorias++;
+    });
+
     res.json({
       ok: true,
-      data: response.data.map(cleanKey)
+      data: Object.values(stats).map(t => ({
+        equipo: t.equipo,
+        gf: t.gf,
+        gc: t.gc,
+        diferencia: t.gf - t.gc,
+        victorias: t.victorias,
+        partidos: t.partidos,
+        winrate: t.partidos ? ((t.victorias / t.partidos) * 100).toFixed(1) : 0
+      }))
     });
 
   } catch (err) {
@@ -200,14 +276,7 @@ app.get("/partidos", async (req, res) => {
 // ============================
 app.post("/add-partido", checkAuth, async (req, res) => {
   try {
-    const {
-      jornada,
-      liga,
-      local,
-      visitante,
-      goles_local,
-      goles_visitante
-    } = req.body;
+    const { jornada, liga, local, visitante, goles_local, goles_visitante } = req.body;
 
     const gl = Number(goles_local);
     const gv = Number(goles_visitante);
@@ -245,15 +314,7 @@ app.post("/add-partido", checkAuth, async (req, res) => {
 // ============================
 app.post("/edit-partido", checkAuth, async (req, res) => {
   try {
-    const {
-      row,
-      jornada,
-      liga,
-      local,
-      visitante,
-      goles_local,
-      goles_visitante
-    } = req.body;
+    const { row, jornada, liga, local, visitante, goles_local, goles_visitante } = req.body;
 
     const gl = Number(goles_local);
     const gv = Number(goles_visitante);
@@ -319,7 +380,6 @@ app.get("/test-api", (req, res) => {
 
 // ============================
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
   console.log("FUTCAT PRO RUNNING ⚽");
 });
