@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 // ======================
-// CONFIG
+// SHEETS IDS
 // ======================
 const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
 
@@ -16,37 +16,47 @@ const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
 // ROOT
 // ======================
 app.get("/", (req, res) => {
-  res.json({
-    ok: true,
-    status: "FCF HEADLESS ONLINE ⚽"
-  });
+  res.json({ ok: true, status: "FUTCAT SHEETS SYSTEM RUNNING ⚽" });
 });
 
 // ======================
-// TEST
-// ======================
-app.get("/test-api", (req, res) => {
-  res.json({ ok: true });
-});
-
-// ======================
-// LIGAS DINÁMICAS ⭐ NUEVO
+// LIGAS (DINÁMICO)
 // ======================
 app.get("/ligas", async (req, res) => {
-  try {
-    const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
-    const r = await axios.get(url);
 
-    const ligas = [...new Set(r.data.map(p => p.liga))];
+  try {
+
+    const r = await axios.get(`https://opensheet.elk.sh/${SHEET_ID}/LIGAS`);
 
     res.json({
       ok: true,
-      data: ligas
+      data: r.data
     });
 
   } catch (err) {
     res.status(500).json({ ok: false });
   }
+
+});
+
+// ======================
+// EQUIPOS
+// ======================
+app.get("/equipos", async (req, res) => {
+
+  try {
+
+    const r = await axios.get(`https://opensheet.elk.sh/${SHEET_ID}/EQUIPOS`);
+
+    res.json({
+      ok: true,
+      data: r.data
+    });
+
+  } catch (err) {
+    res.status(500).json({ ok: false });
+  }
+
 });
 
 // ======================
@@ -58,27 +68,24 @@ app.get("/partidos", async (req, res) => {
 
     const liga = req.query.liga;
 
-    const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
-    const r = await axios.get(url);
+    let r = await axios.get(`https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`);
 
     let data = r.data;
 
-    if (liga && liga !== "") {
-      data = data.filter(p => String(p.liga) === String(liga));
+    if (liga) {
+      data = data.filter(p => p.liga == liga);
     }
 
-    res.json({
-      ok: true,
-      data
-    });
+    res.json({ ok: true, data });
 
   } catch (err) {
     res.status(500).json({ ok: false });
   }
+
 });
 
 // ======================
-// CLASIFICACIÓN
+// CLASIFICACION
 // ======================
 app.get("/clasificacion", async (req, res) => {
 
@@ -86,13 +93,11 @@ app.get("/clasificacion", async (req, res) => {
 
     const liga = req.query.liga;
 
-    const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
-    const r = await axios.get(url);
-
+    const r = await axios.get(`https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`);
     let partidos = r.data;
 
-    if (liga && liga !== "") {
-      partidos = partidos.filter(p => String(p.liga) === String(liga));
+    if (liga) {
+      partidos = partidos.filter(p => p.liga == liga);
     }
 
     const table = {};
@@ -140,21 +145,19 @@ app.get("/clasificacion", async (req, res) => {
       }
     });
 
-    res.json({
-      ok: true,
-      data: Object.values(table)
-    });
+    const result = Object.values(table).sort((a,b)=>b.puntos - a.puntos);
+
+    res.json({ ok: true, data: result });
 
   } catch (err) {
     res.status(500).json({ ok: false });
   }
+
 });
 
-// ======================
-// START
 // ======================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("FCF HEADLESS RUNNING ⚽");
+  console.log("FUTCAT SHEETS SYSTEM RUNNING ⚽");
 });
