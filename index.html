@@ -49,13 +49,9 @@
       border-bottom: 1px solid #222;
     }
 
-    th {
-      color: #00ff88;
-    }
+    th { color: #00ff88; }
 
-    tr:hover td {
-      background: #1a1a1a;
-    }
+    tr:hover td { background: #1a1a1a; }
 
     tr.green td { color: #00ff88 !important; font-weight: bold; }
     tr.yellow td { color: #ffd166 !important; }
@@ -122,9 +118,6 @@
 
 const API = "https://fcf-headless.onrender.com";
 
-// ======================
-// STATE
-// ======================
 let currentLiga = null;
 let lastStateByLiga = {};
 let lastUpdate = null;
@@ -137,7 +130,7 @@ async function init() {
 }
 
 // ======================
-// LIGAS (FIX DEFINITIVO)
+// LIGAS (FIX DEFINITIVO nombre vs name)
 // ======================
 async function loadLigas() {
 
@@ -145,8 +138,6 @@ async function loadLigas() {
 
     const res = await fetch(`${API}/ligas`);
     const json = await res.json();
-
-    console.log("LIGAS RAW:", json);
 
     const data = json.data || [];
 
@@ -163,9 +154,9 @@ async function loadLigas() {
       const opt = document.createElement("option");
 
       opt.value = l.id ?? "";
-      opt.textContent = (l.name && l.name.trim() !== "")
-        ? l.name
-        : `Liga ${l.id}`;
+
+      // 🔥 FIX CLAVE AQUÍ
+      opt.textContent = l.nombre || l.name || `Liga ${l.id}`;
 
       select.appendChild(opt);
     });
@@ -203,8 +194,6 @@ async function loadData() {
 
     if (lastStateByLiga[currentLiga] !== hash) {
       lastStateByLiga[currentLiga] = hash;
-
-      // 🔥 FECHA REAL SOLO SI CAMBIA DATA
       lastUpdate = new Date();
     }
 
@@ -266,7 +255,7 @@ function renderMatches(matches) {
 }
 
 // ======================
-// LIVE STATUS REAL
+// LIVE
 // ======================
 function updateLive() {
 
