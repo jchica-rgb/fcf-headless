@@ -130,7 +130,7 @@ async function init() {
 }
 
 // ======================
-// LIGAS (ROBUSTO + FALLBACK)
+// LIGAS
 // ======================
 async function loadLigas() {
 
@@ -152,8 +152,8 @@ async function loadLigas() {
     data.forEach(l => {
 
       const opt = document.createElement("option");
-      opt.value = l.id;
 
+      opt.value = l.id;
       opt.textContent = l.nombre || l.name || `Liga ${l.id}`;
 
       select.appendChild(opt);
@@ -175,7 +175,7 @@ async function loadLigas() {
 }
 
 // ======================
-// DATA (VERSIÓN ESTABLE REAL)
+// DATA (FIX DEFINITIVO CAMBIOS REALES)
 // ======================
 async function loadData() {
 
@@ -194,20 +194,22 @@ async function loadData() {
     const clasificacion = j1.data || [];
     const partidos = j2.data || [];
 
-    // 🔥 IMPORTANTE: lastUpdate SOLO viene del backend (si existe)
-    if (j1.lastUpdate) {
-      lastUpdate = j1.lastUpdate;
-    }
-
+    // 🔥 DETECCIÓN REAL DE CAMBIOS (SIN FALSOS UPDATES)
     const hash = JSON.stringify({ clasificacion, partidos });
 
-    if (lastStateByLiga[currentLiga] !== hash) {
+    const hasChanged = lastStateByLiga[currentLiga] !== hash;
+
+    if (hasChanged) {
       lastStateByLiga[currentLiga] = hash;
 
-      // SOLO actualiza si hay cambio REAL
-      if (!j1.lastUpdate) {
-        lastUpdate = new Date().toLocaleString("es-ES");
-      }
+      // 🔥 SOLO AQUÍ se actualiza la hora REAL
+      lastUpdate = new Date().toLocaleString("es-ES", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
     }
 
     renderTable(clasificacion);
@@ -264,7 +266,7 @@ function renderMatches(matches) {
 }
 
 // ======================
-// LIVE STATUS
+// LIVE
 // ======================
 function updateLive() {
 
