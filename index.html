@@ -130,7 +130,7 @@ async function init() {
 }
 
 // ======================
-// LIGAS (FIX DEFINITIVO nombre vs name)
+// LIGAS (nombre real + fallback)
 // ======================
 async function loadLigas() {
 
@@ -155,7 +155,6 @@ async function loadLigas() {
 
       opt.value = l.id ?? "";
 
-      // 🔥 FIX CLAVE AQUÍ
       opt.textContent = l.nombre || l.name || `Liga ${l.id}`;
 
       select.appendChild(opt);
@@ -177,7 +176,7 @@ async function loadLigas() {
 }
 
 // ======================
-// DATA PRINCIPAL
+// DATA PRINCIPAL (CON LASTUPDATE BACKEND)
 // ======================
 async function loadData() {
 
@@ -190,11 +189,13 @@ async function loadData() {
 
     const data = json.data || [];
 
+    // 🔥 AQUÍ YA VIENE DEL BACKEND
+    lastUpdate = json.lastUpdate || null;
+
     const hash = JSON.stringify(data);
 
     if (lastStateByLiga[currentLiga] !== hash) {
       lastStateByLiga[currentLiga] = hash;
-      lastUpdate = new Date();
     }
 
     renderTable(data);
@@ -255,13 +256,13 @@ function renderMatches(matches) {
 }
 
 // ======================
-// LIVE
+// LIVE (REAL BACKEND TIME)
 // ======================
 function updateLive() {
 
   document.getElementById("live").innerText =
     lastUpdate
-      ? "🔴 Última actualización real: " + lastUpdate.toLocaleTimeString()
+      ? "🔴 Última actualización: " + lastUpdate
       : "🔴 Sin cambios detectados";
 }
 
