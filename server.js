@@ -14,10 +14,9 @@ app.use(cors());
 app.use(express.json());
 
 app.use(session({
-  secret: "futcat-production-2026",
+  secret: "futcat-production-key",
   resave: false,
-  saveUninitialized: false,
-  cookie: { secure: false }
+  saveUninitialized: true
 }));
 
 // ============================
@@ -26,7 +25,7 @@ app.use(session({
 const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
 
 // ============================
-// ADMIN LOGIN
+// ADMIN
 // ============================
 const ADMIN = {
   user: "admin",
@@ -36,10 +35,10 @@ const ADMIN = {
 // ============================
 // CLEAN DATA
 // ============================
-function cleanKey(obj) {
+function clean(obj) {
   const out = {};
   Object.keys(obj).forEach(k => {
-    out[k.trim().toLowerCase()] = obj[k];
+    out[k.toLowerCase().trim()] = obj[k];
   });
   return out;
 }
@@ -47,7 +46,7 @@ function cleanKey(obj) {
 // ============================
 // GOOGLE AUTH
 // ============================
-function getGoogleAuth() {
+function getAuth() {
   const raw = process.env.GOOGLE_CREDENTIALS;
   if (!raw) throw new Error("Missing GOOGLE_CREDENTIALS");
 
@@ -64,31 +63,18 @@ function getGoogleAuth() {
 }
 
 // ============================
-// AUTH MIDDLEWARE
+// TEST API (CRÍTICO)
 // ============================
-function checkAuth(req, res, next) {
-  if (req.session.auth) return next();
-  return res.redirect("/login");
-}
-
-// ============================
-// FRONT ROUTES
-// ============================
-app.get("/login", (req, res) => {
-  res.send(`
-    <html>
-      <body style="background:#111;color:white;display:flex;justify-content:center;align-items:center;height:100vh;font-family:Arial;">
-        <form method="POST" action="/login">
-          <h2>FutCat Login</h2>
-          <input name="user" placeholder="Usuario"><br><br>
-          <input name="pass" type="password" placeholder="Contraseña"><br><br>
-          <button>Entrar</button>
-        </form>
-      </body>
-    </html>
-  `);
+app.get("/test-api", (req, res) => {
+  res.json({
+    ok: true,
+    status: "FUTCAT PRODUCTION RUNNING ⚽"
+  });
 });
 
+// ============================
+// LOGIN
+// ============================
 app.post("/login", express.urlencoded({ extended: true }), (req, res) => {
   const { user, pass } = req.body;
 
@@ -100,7 +86,15 @@ app.post("/login", express.urlencoded({ extended: true }), (req, res) => {
   res.send("Login incorrecto");
 });
 
-app.get("/admin", checkAuth, (req, res) => {
+function auth(req, res, next) {
+  if (req.session.auth) return next();
+  res.redirect("/login");
+}
+
+// ============================
+// FRONT
+// ============================
+app.get("/admin", auth, (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
 
@@ -116,15 +110,15 @@ app.get("/partidos", async (req, res) => {
     const liga = req.query.liga;
 
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
-    const response = await axios.get(url);
+    const r = await axios.get(url);
 
-    let data = response.data.map((p, i) => ({
+    let data = r.data.map((p, i) => ({
       id: i + 2,
-      ...cleanKey(p)
+      ...clean(p)
     }));
 
     if (liga) {
-      data = data.filter(p => String(p.liga) === String(liga));
+      data = data.filter(x => String(x.liga) === String(liga));
     }
 
     res.json({ ok: true, data });
@@ -142,20 +136,20 @@ app.get("/clasificacion", async (req, res) => {
     const liga = req.query.liga;
 
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
-    const response = await axios.get(url);
+    const r = await axios.get(url);
 
-    let partidos = response.data.map(cleanKey);
+    let partidos = r.data.map(clean);
 
     if (liga) {
       partidos = partidos.filter(p => String(p.liga) === String(liga));
     }
 
-    const tabla = {};
+    const table = {};
 
-    const init = (t) => {
-      if (!tabla[t]) {
-        tabla[t] = {
-          equipo: t,
+    const init = (team) => {
+      if (!table[team]) {
+        table[team] = {
+          equipo: team,
           puntos: 0,
           jugados: 0,
           ganados: 0,
@@ -177,32 +171,35 @@ app.get("/clasificacion", async (req, res) => {
       init(l);
       init(v);
 
-      tabla[l].jugados++;
-      tabla[v].jugados++;
+      table[l].jugados++;
+      table[v].jugados++;
 
-      tabla[l].gf += gl;
-      tabla[l].gc += gv;
+      table[l].gf += gl;
+      table[l].gc += gv;
 
-      tabla[v].gf += gv;
-      tabla[v].gc += gl;
+      table[v].gf += gv;
+      table[v].gc += gl;
 
       if (gl > gv) {
-        tabla[l].ganados++;
-        tabla[l].puntos += 3;
-        tabla[v].perdidos++;
-      } else if (gl < gv) {
-        tabla[v].ganados++;
-        tabla[v].puntos += 3;
-        tabla[l].perdidos++;
+        table[l].ganados++;
+        table[l].puntos += 3;
+        table[v].perdidos++;
+      } else if (gv > gl) {
+        table[v].ganados++;
+        table[v].puntos += 3;
+        table[l].perdidos++;
       } else {
-        tabla[l].empatados++;
-        tabla[v].empatados++;
-        tabla[l].puntos++;
-        tabla[v].puntos++;
+        table[l].empatados++;
+        table[v].empatados++;
+        table[l].puntos++;
+        table[v].puntos++;
       }
     });
 
-    res.json({ ok: true, data: Object.values(tabla) });
+    res.json({
+      ok: true,
+      data: Object.values(table)
+    });
 
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -210,49 +207,19 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 // ============================
-// GUARDAR PARTIDO
+// ADD PARTIDO
 // ============================
-app.post("/add-partido", checkAuth, async (req, res) => {
+app.post("/add-partido", auth, async (req, res) => {
   try {
     const { jornada, liga, local, visitante, goles_local, goles_visitante } = req.body;
 
-    const gl = Number(goles_local);
-    const gv = Number(goles_visitante);
-
-    const auth = getGoogleAuth();
-    const client = await auth.getClient();
+    const authClient = getAuth();
+    const client = await authClient.getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
       range: "PARTIDOS!A:G",
-      valueInputOption: "RAW",
-      requestBody: {
-        values: [[jornada, liga, local, visitante, gl, gv, "final"]]
-      }
-    });
-
-    res.json({ ok: true });
-
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ============================
-// EDITAR PARTIDO
-// ============================
-app.post("/edit-partido", checkAuth, async (req, res) => {
-  try {
-    const { row, jornada, liga, local, visitante, goles_local, goles_visitante } = req.body;
-
-    const auth = getGoogleAuth();
-    const client = await auth.getClient();
-    const sheets = google.sheets({ version: "v4", auth: client });
-
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID,
-      range: `PARTIDOS!A${row}:G${row}`,
       valueInputOption: "RAW",
       requestBody: {
         values: [[jornada, liga, local, visitante, goles_local, goles_visitante, "final"]]
@@ -267,44 +234,10 @@ app.post("/edit-partido", checkAuth, async (req, res) => {
 });
 
 // ============================
-// BORRAR PARTIDO
-// ============================
-app.post("/delete-partido", checkAuth, async (req, res) => {
-  try {
-    const { row } = req.body;
-
-    const auth = getGoogleAuth();
-    const client = await auth.getClient();
-    const sheets = google.sheets({ version: "v4", auth: client });
-
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SHEET_ID,
-      requestBody: {
-        requests: [{
-          deleteDimension: {
-            range: {
-              sheetId: 0,
-              dimension: "ROWS",
-              startIndex: row - 1,
-              endIndex: row
-            }
-          }
-        }]
-      }
-    });
-
-    res.json({ ok: true });
-
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ============================
-// START SERVER
+// SERVER START
 // ============================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("FUTCAT PRODUCTION RUNNING ⚽");
+  console.log("FUTCAT RUNNING ⚽");
 });
