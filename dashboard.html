@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <meta charset="UTF-8">
   <title>TERRITORI FUTCAT LIVE</title>
 
   <style>
@@ -26,24 +27,29 @@
     }
 
     /* ======================
-       SELECT FIX (CLAVE)
+       🔥 SELECT FIX DEFINITIVO
     ====================== */
 
     select {
       width: 100%;
       padding: 10px;
       margin-bottom: 10px;
-      background: #1a1a1a;
-      color: #ffffff;
+
+      background: #1a1a1a !important;
+      color: #ffffff !important;
+
       border: 1px solid #333;
       border-radius: 6px;
+
       outline: none;
+
+      /* FIX DARK MODE NAVEGADOR */
+      color-scheme: dark;
     }
 
-    /* 🔥 FIX OPCIONES INVISIBLES */
-    option {
-      background: #1a1a1a;
-      color: #ffffff;
+    select option {
+      background: #1a1a1a !important;
+      color: #ffffff !important;
     }
 
     table {
@@ -102,7 +108,7 @@
 
 <div class="container">
 
-  <div id="live">🔴 LIVE</div>
+  <div id="live">🔴 Inicializando...</div>
 
   <!-- LIGAS -->
   <select id="liga" onchange="loadData()"></select>
@@ -151,30 +157,46 @@ async function loadLigas() {
     const res = await fetch(`${API}/ligas`);
     const json = await res.json();
 
+    console.log("LIGAS DEBUG:", json);
+
     const select = document.getElementById("liga");
 
     select.innerHTML = "";
 
-    const data = json.data || [];
+    const data = Array.isArray(json.data) ? json.data : [];
+
+    if (data.length === 0) {
+      select.innerHTML = "<option>No hay ligas</option>";
+      return;
+    }
 
     data.forEach(l => {
 
       const opt = document.createElement("option");
 
-      opt.value = l.id;
+      // 🔥 FIX ID
+      opt.value = l.id ?? "";
 
-      // 🔥 FIX IMPORTANTE (VISIBLE SIEMPRE)
-      opt.textContent = l.name;
+      // 🔥 FIX NAME (EVITA undefined / object)
+      opt.textContent =
+        (typeof l.name === "string" && l.name.trim() !== "")
+          ? l.name
+          : "Liga sin nombre";
 
       select.appendChild(opt);
     });
 
-    if (data.length > 0) {
+    // auto seleccionar primera liga
+    if (data[0]) {
       select.value = data[0].id;
     }
 
   } catch (err) {
-    console.error("Error ligas:", err);
+
+    console.error("ERROR LIGAS:", err);
+
+    const select = document.getElementById("liga");
+    select.innerHTML = "<option>Error cargando ligas</option>";
   }
 }
 
