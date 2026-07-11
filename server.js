@@ -15,6 +15,12 @@ app.use(express.json());
 const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
 
 // ============================
+// ADMIN LOGIN (NIVEL 2)
+// ============================
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "futcat2026";
+
+// ============================
 // ADMIN PANEL
 // ============================
 app.get("/admin", (req, res) => {
@@ -33,7 +39,7 @@ function cleanKey(obj) {
 }
 
 // ============================
-// GOOGLE AUTH (FIX JWT SAFE)
+// GOOGLE AUTH
 // ============================
 function getGoogleAuth() {
   const raw = process.env.GOOGLE_CREDENTIALS;
@@ -54,6 +60,23 @@ function getGoogleAuth() {
     credentials: creds,
     scopes: ["https://www.googleapis.com/auth/spreadsheets"]
   });
+}
+
+// ============================
+// MIDDLEWARE LOGIN PROTECCIÓN
+// ============================
+function auth(req, res, next) {
+  const user = req.headers.user;
+  const pass = req.headers.pass;
+
+  if (user === ADMIN_USER && pass === ADMIN_PASS) {
+    next();
+  } else {
+    res.status(401).json({
+      ok: false,
+      error: "No autorizado"
+    });
+  }
 }
 
 // ============================
@@ -126,30 +149,13 @@ app.get("/clasificacion", async (req, res) => {
       }
     });
 
-    const result = Object.values(tabla)
-      .sort((a, b) => b.puntos - a.puntos)
-      .map((t, i) => ({
-        position: i + 1,
-        equipo: t.equipo,
-        puntos: t.puntos,
-        jugados: t.jugados,
-        ganados: t.ganados,
-        empatados: t.empatados,
-        perdidos: t.perdidos,
-        gf: t.gf,
-        gc: t.gc
-      }));
-
     res.json({
       ok: true,
-      data: result
+      data: Object.values(tabla)
     });
 
   } catch (err) {
-    res.status(500).json({
-      ok: false,
-      error: err.message
-    });
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
@@ -161,25 +167,20 @@ app.get("/partidos", async (req, res) => {
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
     const response = await axios.get(url);
 
-    const data = response.data.map(cleanKey);
-
     res.json({
       ok: true,
-      data
+      data: response.data.map(cleanKey)
     });
 
   } catch (err) {
-    res.status(500).json({
-      ok: false,
-      error: err.message
-    });
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
 // ============================
-// GUARDAR PARTIDO (NIVEL 1 FINAL)
+// GUARDAR PARTIDO (PROTEGIDO)
 // ============================
-app.post("/add-partido", async (req, res) => {
+app.post("/add-partido", auth, async (req, res) => {
   try {
     const {
       jornada,
@@ -193,7 +194,7 @@ app.post("/add-partido", async (req, res) => {
     if (!jornada || !liga || !local || !visitante) {
       return res.status(400).json({
         ok: false,
-        error: "Faltan datos obligatorios"
+        error: "Faltan datos"
       });
     }
 
@@ -203,12 +204,12 @@ app.post("/add-partido", async (req, res) => {
     if (isNaN(gl) || isNaN(gv)) {
       return res.status(400).json({
         ok: false,
-        error: "Goles no válidos"
+        error: "Goles inválidos"
       });
     }
 
-    const auth = getGoogleAuth();
-    const client = await auth.getClient();
+    const authGoogle = getGoogleAuth();
+    const client = await authGoogle.getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
 
     await sheets.spreadsheets.values.append({
