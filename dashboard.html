@@ -74,12 +74,6 @@
       text-align: center;
     }
 
-    .topbar {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
     #live {
       text-align: center;
       color: #00ff88;
@@ -95,20 +89,12 @@
 
 <div class="container">
 
-  <!-- 🌍 IDIOMA -->
-  <div class="topbar">
-    <select id="lang" onchange="changeLang()">
-      <option value="es">Español</option>
-      <option value="ca">Català</option>
-      <option value="en">English</option>
-    </select>
-
-    <select id="liga" onchange="loadData()"></select>
-  </div>
-
   <div id="live">🔴 LIVE</div>
 
-  <h3 id="t_classification"></h3>
+  <!-- LIGAS -->
+  <select id="liga" onchange="loadData()"></select>
+
+  <h3>📊 Clasificación</h3>
 
   <table>
     <thead>
@@ -125,7 +111,7 @@
     <tbody id="tabla"></tbody>
   </table>
 
-  <h3 id="t_matches"></h3>
+  <h3>⚽ Partidos</h3>
   <div id="partidos"></div>
 
 </div>
@@ -135,60 +121,15 @@
 const API = "https://fcf-headless.onrender.com";
 
 // ======================
-// TRADUCCIONES
-// ======================
-const TEXT = {
-  es: {
-    classification: "Clasificación",
-    matches: "Partidos"
-  },
-  ca: {
-    classification: "Classificació",
-    matches: "Partits"
-  },
-  en: {
-    classification: "Standings",
-    matches: "Matches"
-  }
-};
-
-// ======================
-// IDIOMA ACTIVO
-// ======================
-let LANG = localStorage.getItem("lang") || "es";
-
-// ======================
-// CAMBIO IDIOMA
-// ======================
-function changeLang() {
-  LANG = document.getElementById("lang").value;
-  localStorage.setItem("lang", LANG);
-  applyLang();
-}
-
-// ======================
-// APLICAR IDIOMA
-// ======================
-function applyLang() {
-  document.getElementById("t_classification").innerText =
-    TEXT[LANG].classification;
-
-  document.getElementById("t_matches").innerText =
-    TEXT[LANG].matches;
-
-  document.getElementById("lang").value = LANG;
-}
-
-// ======================
 // LIVE
 // ======================
 function updateLive() {
   document.getElementById("live").innerText =
-    "🔴 " + new Date().toLocaleTimeString();
+    "🔴 Última actualización: " + new Date().toLocaleTimeString();
 }
 
 // ======================
-// LIGAS DINÁMICAS
+// LIGAS (FIX CRÍTICO)
 // ======================
 async function loadLigas() {
 
@@ -199,12 +140,25 @@ async function loadLigas() {
 
   select.innerHTML = "";
 
-  json.data.forEach(l => {
+  const data = json.data || [];
+
+  data.forEach(l => {
+
     const opt = document.createElement("option");
+
+    // 🧠 FIX REAL
     opt.value = l.id;
+
+    // ❌ ESTO EVITA [object Object]
     opt.textContent = l.name;
+
     select.appendChild(opt);
   });
+
+  // seleccionar primera liga automáticamente
+  if (data.length > 0) {
+    select.value = data[0].id;
+  }
 }
 
 // ======================
@@ -258,7 +212,6 @@ async function loadData() {
 // INIT
 // ======================
 loadLigas();
-applyLang();
 loadData();
 updateLive();
 
