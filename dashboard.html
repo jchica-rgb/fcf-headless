@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>FutCat Dashboard</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f0f0f;
+      color: white;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+
+    select {
+      padding: 10px;
+      margin-bottom: 20px;
+      width: 100%;
+      border-radius: 6px;
+      border: none;
+    }
+
+    .card {
+      background: #1c1c1c;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+    }
+
+    .flex {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .team {
+      font-weight: bold;
+    }
+
+    .score {
+      color: #00ff88;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid #333;
+      text-align: center;
+    }
+
+    th {
+      background: #222;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>⚽ FutCat Dashboard PRO</h1>
+
+<div class="container">
+
+  <select id="liga" onchange="loadData()">
+    <option value="">Todas las ligas</option>
+    <option value="1">Lliga Elit</option>
+    <option value="2">Primera Catalana</option>
+    <option value="3">Segunda Catalana</option>
+  </select>
+
+  <h2>📊 Clasificación</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Equipo</th>
+        <th>P</th>
+        <th>J</th>
+        <th>G</th>
+        <th>E</th>
+        <th>P</th>
+      </tr>
+    </thead>
+    <tbody id="tabla"></tbody>
+  </table>
+
+  <h2>⚽ Partidos</h2>
+  <div id="partidos"></div>
+
+</div>
+
+<script>
+
+async function loadData() {
+
+  const liga = document.getElementById("liga").value;
+
+  // CLASIFICACIÓN
+  const res = await fetch("/clasificacion?liga=" + liga);
+  const json = await res.json();
+
+  let html = "";
+
+  json.data.forEach((t, i) => {
+    html += `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${t.equipo}</td>
+        <td>${t.puntos}</td>
+        <td>${t.jugados}</td>
+        <td>${t.ganados}</td>
+        <td>${t.empatados}</td>
+        <td>${t.perdidos}</td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("tabla").innerHTML = html;
+
+  // PARTIDOS
+  const res2 = await fetch("/partidos");
+  const json2 = await res2.json();
+
+  let html2 = "";
+
+  json2.data.forEach(p => {
+    html2 += `
+      <div class="card">
+        <div class="flex">
+          <span class="team">${p.local}</span>
+          <span class="score">${p.goles_local} - ${p.goles_visitante}</span>
+          <span class="team">${p.visitante}</span>
+        </div>
+        <small>Liga: ${p.liga} | Jornada: ${p.jornada}</small>
+      </div>
+    `;
+  });
+
+  document.getElementById("partidos").innerHTML = html2;
+}
+
+loadData();
+
+</script>
+
+</body>
+</html>
