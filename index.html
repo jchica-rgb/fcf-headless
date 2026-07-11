@@ -122,64 +122,71 @@ let lastStateByLiga = {};
 let lastUpdate = null;
 
 // ======================
-// INIT
+// INIT (FIX ARRANQUE)
 // ======================
 async function init() {
-  await loadLigas();
-}
-
-// ======================
-// LIGAS
-// ======================
-async function loadLigas() {
-
   try {
-
-    const res = await fetch(`${API}/ligas`);
-    const json = await res.json();
-
-    const data = json.data || [];
-
-    const select = document.getElementById("liga");
-    select.innerHTML = "";
-
-    if (!data.length) {
-      select.innerHTML = "<option>No hay ligas</option>";
-      return;
-    }
-
-    data.forEach(l => {
-
-      const opt = document.createElement("option");
-      opt.value = l.id;
-      opt.textContent = l.nombre || l.name || `Liga ${l.id}`;
-
-      select.appendChild(opt);
-    });
-
-    currentLiga = data[0].id;
-    select.value = currentLiga;
-
-    select.onchange = (e) => {
-      currentLiga = e.target.value;
-      loadData();
-    };
-
-    loadData();
-
-  } catch (err) {
-    console.error("ERROR LIGAS:", err);
+    await loadLigas();
+  } catch (e) {
+    console.error("ERROR INIT:", e);
+    document.getElementById("live").innerText = "❌ Error cargando sistema";
   }
 }
 
 // ======================
-// DATA (FIX DEFINITIVO: HASH ESTABLE REAL)
+// LIGAS (CON MEMORIA + FIX STARTUP)
+// ======================
+async function loadLigas() {
+
+  const res = await fetch(`${API}/ligas`);
+  const json = await res.json();
+
+  const data = json.data || [];
+
+  const select = document.getElementById("liga");
+  select.innerHTML = "";
+
+  if (!data.length) {
+    document.getElementById("live").innerText = "❌ No hay ligas";
+    return;
+  }
+
+  data.forEach(l => {
+    const opt = document.createElement("option");
+    opt.value = l.id;
+    opt.textContent = l.nombre || l.name || `Liga ${l.id}`;
+    select.appendChild(opt);
+  });
+
+  // 🔥 MEMORIA DE LIGA
+  const savedLiga = localStorage.getItem("tf_liga");
+
+  currentLiga =
+    savedLiga && data.some(l => l.id === savedLiga)
+      ? savedLiga
+      : data[0].id;
+
+  select.value = currentLiga;
+
+  select.onchange = (e) => {
+    currentLiga = e.target.value;
+    localStorage.setItem("tf_liga", currentLiga);
+    loadData();
+  };
+
+  await loadData();
+}
+
+// ======================
+// DATA (ROBUSTO + FIX HANG)
 // ======================
 async function loadData() {
 
   if (!currentLiga) return;
 
   try {
+
+    document.getElementById("live").innerText = "🟡 Cargando datos...";
 
     const [r1, r2] = await Promise.all([
       fetch(`${API}/clasificacion?liga=${currentLiga}`),
@@ -192,21 +199,13 @@ async function loadData() {
     const clasificacion = j1.data || [];
     const partidos = j2.data || [];
 
-    // 🔥 NORMALIZACIÓN (EVITA FALSOS CAMBIOS)
-    const normClas = clasificacion.map(t =>
-      `${t.equipo}|${t.puntos}|${t.jugados}|${t.ganados}|${t.empatados}|${t.perdidos}`
-    ).join("##");
+    const hash = JSON.stringify({
+      clasificacion,
+      partidos
+    });
 
-    const normPart = partidos.map(p =>
-      `${p.local}|${p.goles_local}|${p.goles_visitante}|${p.visitante}`
-    ).join("##");
-
-    const newHash = normClas + "||" + normPart;
-
-    const hasChanged = lastStateByLiga[currentLiga] !== newHash;
-
-    if (hasChanged) {
-      lastStateByLiga[currentLiga] = newHash;
+    if (lastStateByLiga[currentLiga] !== hash) {
+      lastStateByLiga[currentLiga] = hash;
 
       lastUpdate = new Date().toLocaleString("es-ES", {
         day: "2-digit",
@@ -223,6 +222,7 @@ async function loadData() {
 
   } catch (err) {
     console.error("ERROR LOAD DATA:", err);
+    document.getElementById("live").innerText = "❌ Error cargando datos";
   }
 }
 
@@ -278,7 +278,7 @@ function updateLive() {
   document.getElementById("live").innerText =
     lastUpdate
       ? "🔴 Última actualización: " + lastUpdate
-      : "🔴 Sin cambios detectados";
+      : "🟢 Sistema activo (sin cambios)";
 }
 
 // ======================
