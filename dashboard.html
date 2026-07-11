@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>FutCat Live</title>
+  <title>FutCat LIVE</title>
 
   <style>
     body {
@@ -12,12 +12,11 @@
     }
 
     header {
-      padding: 18px;
+      padding: 15px;
       text-align: center;
       background: #111;
       font-size: 20px;
       font-weight: bold;
-      border-bottom: 1px solid #222;
     }
 
     .container {
@@ -29,62 +28,40 @@
     select {
       width: 100%;
       padding: 10px;
-      border-radius: 8px;
+      margin-bottom: 15px;
       background: #1a1a1a;
       color: white;
       border: none;
-      margin-bottom: 20px;
     }
 
-    /* CLASIFICACIÓN */
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
       background: #111;
-      border-radius: 10px;
-      overflow: hidden;
     }
 
-    th {
-      background: #1c1c1c;
-      color: #00ff88;
-      padding: 10px;
-    }
-
-    td {
+    th, td {
       padding: 10px;
       text-align: center;
       border-bottom: 1px solid #222;
     }
 
-    /* PARTIDO */
-    .match {
-      background: #151515;
-      padding: 12px;
-      margin-bottom: 8px;
-      border-radius: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    th {
+      color: #00ff88;
     }
 
-    .team {
-      width: 40%;
-      font-weight: bold;
+    .match {
+      background: #151515;
+      padding: 10px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
     }
 
     .score {
-      width: 20%;
-      text-align: center;
       color: #00ff88;
-      font-size: 18px;
-    }
-
-    .meta {
-      font-size: 12px;
-      color: #888;
-      margin-bottom: 10px;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -125,11 +102,16 @@
 
 <script>
 
+const API = "https://fct-headless.onrender.com";
+
 async function loadData() {
 
   const liga = document.getElementById("liga").value;
 
-  const res = await fetch("/clasificacion?liga=" + liga);
+  // =====================
+  // CLASIFICACIÓN
+  // =====================
+  const res = await fetch(`${API}/clasificacion?liga=${liga}`);
   const json = await res.json();
 
   let html = "";
@@ -137,7 +119,7 @@ async function loadData() {
   json.data.forEach((t, i) => {
     html += `
       <tr>
-        <td>${i + 1}</td>
+        <td>${i+1}</td>
         <td>${t.equipo}</td>
         <td>${t.puntos}</td>
         <td>${t.jugados}</td>
@@ -150,7 +132,10 @@ async function loadData() {
 
   document.getElementById("tabla").innerHTML = html;
 
-  const res2 = await fetch("/partidos?liga=" + liga);
+  // =====================
+  // PARTIDOS
+  // =====================
+  const res2 = await fetch(`${API}/partidos?liga=${liga}`);
   const json2 = await res2.json();
 
   let html2 = "";
@@ -158,13 +143,9 @@ async function loadData() {
   json2.data.forEach(p => {
     html2 += `
       <div class="match">
-        <div class="team">${p.local}</div>
+        <div>${p.local}</div>
         <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-        <div class="team" style="text-align:right">${p.visitante}</div>
-      </div>
-
-      <div class="meta">
-        Jornada ${p.jornada} | Liga ${p.liga}
+        <div>${p.visitante}</div>
       </div>
     `;
   });
