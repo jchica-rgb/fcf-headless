@@ -25,13 +25,25 @@
       padding: 15px;
     }
 
+    /* ======================
+       SELECT FIX (CLAVE)
+    ====================== */
+
     select {
       width: 100%;
       padding: 10px;
       margin-bottom: 10px;
       background: #1a1a1a;
-      color: white;
-      border: none;
+      color: #ffffff;
+      border: 1px solid #333;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    /* 🔥 FIX OPCIONES INVISIBLES */
+    option {
+      background: #1a1a1a;
+      color: #ffffff;
     }
 
     table {
@@ -65,6 +77,7 @@
       margin-bottom: 8px;
       display: flex;
       justify-content: space-between;
+      border-radius: 6px;
     }
 
     .score {
@@ -89,8 +102,9 @@
 
 <div class="container">
 
-  <div id="live">🔴 Iniciando...</div>
+  <div id="live">🔴 LIVE</div>
 
+  <!-- LIGAS -->
   <select id="liga" onchange="loadData()"></select>
 
   <h3>📊 Clasificación</h3>
@@ -120,60 +134,52 @@
 const API = "https://fcf-headless.onrender.com";
 
 // ======================
-// STATE (LIVE REAL)
-// ======================
-let lastHash = "";
-let lastUpdate = null;
-
-// ======================
-// HASH FUNC
-// ======================
-function createHash(obj) {
-  return JSON.stringify(obj);
-}
-
-// ======================
-// LIVE DISPLAY
+// LIVE
 // ======================
 function updateLive() {
-
-  if (!lastUpdate) {
-    document.getElementById("live").innerText =
-      "🔴 Sin cambios todavía";
-    return;
-  }
-
   document.getElementById("live").innerText =
-    "🔴 Última actualización real: " +
-    lastUpdate.toLocaleDateString() + " " +
-    lastUpdate.toLocaleTimeString();
+    "🔴 Última actualización: " + new Date().toLocaleTimeString();
 }
 
 // ======================
-// LIGAS
+// LIGAS (FIX DEFINITIVO)
 // ======================
 async function loadLigas() {
 
-  const res = await fetch(`${API}/ligas`);
-  const json = await res.json();
+  try {
 
-  const select = document.getElementById("liga");
+    const res = await fetch(`${API}/ligas`);
+    const json = await res.json();
 
-  select.innerHTML = "";
+    const select = document.getElementById("liga");
 
-  (json.data || []).forEach(l => {
+    select.innerHTML = "";
 
-    const opt = document.createElement("option");
+    const data = json.data || [];
 
-    opt.value = l.id;
-    opt.textContent = l.name;
+    data.forEach(l => {
 
-    select.appendChild(opt);
-  });
+      const opt = document.createElement("option");
+
+      opt.value = l.id;
+
+      // 🔥 FIX IMPORTANTE (VISIBLE SIEMPRE)
+      opt.textContent = l.name;
+
+      select.appendChild(opt);
+    });
+
+    if (data.length > 0) {
+      select.value = data[0].id;
+    }
+
+  } catch (err) {
+    console.error("Error ligas:", err);
+  }
 }
 
 // ======================
-// LOAD DATA (LIVE LOGIC)
+// DATOS
 // ======================
 async function loadData() {
 
@@ -183,14 +189,6 @@ async function loadData() {
   const json = await res.json();
 
   const data = json.data || [];
-  const hash = createHash(data);
-
-  // 🔥 DETECTAR CAMBIO REAL
-  if (hash !== lastHash) {
-    lastHash = hash;
-    lastUpdate = new Date();
-  }
-
   const total = data.length;
 
   document.getElementById("tabla").innerHTML = data.map((t,i)=>{
@@ -225,8 +223,6 @@ async function loadData() {
         <div>${p.visitante}</div>
       </div>
     `).join("");
-
-  updateLive();
 }
 
 // ======================
@@ -234,8 +230,12 @@ async function loadData() {
 // ======================
 loadLigas();
 loadData();
+updateLive();
 
-setInterval(loadData, 15000);
+setInterval(() => {
+  loadData();
+  updateLive();
+}, 15000);
 
 </script>
 
