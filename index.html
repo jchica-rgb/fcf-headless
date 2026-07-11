@@ -93,7 +93,6 @@
   <select id="liga"></select>
 
   <h3>📊 Clasificación</h3>
-
   <table>
     <thead>
       <tr>
@@ -152,7 +151,6 @@ async function loadLigas() {
     data.forEach(l => {
 
       const opt = document.createElement("option");
-
       opt.value = l.id;
       opt.textContent = l.nombre || l.name || `Liga ${l.id}`;
 
@@ -175,7 +173,7 @@ async function loadLigas() {
 }
 
 // ======================
-// DATA (FIX DEFINITIVO CAMBIOS REALES)
+// DATA (FIX DEFINITIVO: HASH ESTABLE REAL)
 // ======================
 async function loadData() {
 
@@ -194,15 +192,22 @@ async function loadData() {
     const clasificacion = j1.data || [];
     const partidos = j2.data || [];
 
-    // 🔥 DETECCIÓN REAL DE CAMBIOS (SIN FALSOS UPDATES)
-    const hash = JSON.stringify({ clasificacion, partidos });
+    // 🔥 NORMALIZACIÓN (EVITA FALSOS CAMBIOS)
+    const normClas = clasificacion.map(t =>
+      `${t.equipo}|${t.puntos}|${t.jugados}|${t.ganados}|${t.empatados}|${t.perdidos}`
+    ).join("##");
 
-    const hasChanged = lastStateByLiga[currentLiga] !== hash;
+    const normPart = partidos.map(p =>
+      `${p.local}|${p.goles_local}|${p.goles_visitante}|${p.visitante}`
+    ).join("##");
+
+    const newHash = normClas + "||" + normPart;
+
+    const hasChanged = lastStateByLiga[currentLiga] !== newHash;
 
     if (hasChanged) {
-      lastStateByLiga[currentLiga] = hash;
+      lastStateByLiga[currentLiga] = newHash;
 
-      // 🔥 SOLO AQUÍ se actualiza la hora REAL
       lastUpdate = new Date().toLocaleString("es-ES", {
         day: "2-digit",
         month: "2-digit",
