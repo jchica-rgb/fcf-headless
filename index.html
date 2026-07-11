@@ -49,13 +49,9 @@
       border-bottom: 1px solid #222;
     }
 
-    th {
-      color: #00ff88;
-    }
+    th { color: #00ff88; }
 
-    tr:hover td {
-      background: #1a1a1a;
-    }
+    tr:hover td { background: #1a1a1a; }
 
     tr.green td { color: #00ff88 !important; font-weight: bold; }
     tr.yellow td { color: #ffd166 !important; }
@@ -134,7 +130,7 @@ async function init() {
 }
 
 // ======================
-// LIGAS (ROBUSTO)
+// LIGAS (ROBUSTO + FALLBACK)
 // ======================
 async function loadLigas() {
 
@@ -148,7 +144,7 @@ async function loadLigas() {
     const select = document.getElementById("liga");
     select.innerHTML = "";
 
-    if (!Array.isArray(data) || data.length === 0) {
+    if (!data.length) {
       select.innerHTML = "<option>No hay ligas</option>";
       return;
     }
@@ -156,14 +152,14 @@ async function loadLigas() {
     data.forEach(l => {
 
       const opt = document.createElement("option");
+      opt.value = l.id;
 
-      opt.value = l.id ?? "";
       opt.textContent = l.nombre || l.name || `Liga ${l.id}`;
 
       select.appendChild(opt);
     });
 
-    currentLiga = data[0]?.id || null;
+    currentLiga = data[0].id;
     select.value = currentLiga;
 
     select.onchange = (e) => {
@@ -179,7 +175,7 @@ async function loadLigas() {
 }
 
 // ======================
-// DATA (🔥 FIX REAL CAMBIOS)
+// DATA (VERSIÓN ESTABLE REAL)
 // ======================
 async function loadData() {
 
@@ -187,26 +183,31 @@ async function loadData() {
 
   try {
 
-    const [res1, res2] = await Promise.all([
+    const [r1, r2] = await Promise.all([
       fetch(`${API}/clasificacion?liga=${currentLiga}`),
       fetch(`${API}/partidos?liga=${currentLiga}`)
     ]);
 
-    const json1 = await res1.json();
-    const json2 = await res2.json();
+    const j1 = await r1.json();
+    const j2 = await r2.json();
 
-    const clasificacion = json1.data || [];
-    const partidos = json2.data || [];
+    const clasificacion = j1.data || [];
+    const partidos = j2.data || [];
 
-    // 🔥 DETECCIÓN REAL DE CAMBIOS (CLASIFICACIÓN + PARTIDOS)
-    const hash = JSON.stringify({
-      clasificacion,
-      partidos
-    });
+    // 🔥 IMPORTANTE: lastUpdate SOLO viene del backend (si existe)
+    if (j1.lastUpdate) {
+      lastUpdate = j1.lastUpdate;
+    }
+
+    const hash = JSON.stringify({ clasificacion, partidos });
 
     if (lastStateByLiga[currentLiga] !== hash) {
       lastStateByLiga[currentLiga] = hash;
-      lastUpdate = new Date();
+
+      // SOLO actualiza si hay cambio REAL
+      if (!j1.lastUpdate) {
+        lastUpdate = new Date().toLocaleString("es-ES");
+      }
     }
 
     renderTable(clasificacion);
@@ -263,13 +264,13 @@ function renderMatches(matches) {
 }
 
 // ======================
-// LIVE REAL STATUS
+// LIVE STATUS
 // ======================
 function updateLive() {
 
   document.getElementById("live").innerText =
     lastUpdate
-      ? "🔴 Última actualización real: " + lastUpdate.toLocaleTimeString()
+      ? "🔴 Última actualización: " + lastUpdate
       : "🔴 Sin cambios detectados";
 }
 
