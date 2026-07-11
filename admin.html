@@ -1,62 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>FutCat Admin LIVE</title>
+  <title>FutCat Admin</title>
 
   <style>
     body {
-      margin: 0;
-      font-family: Arial;
-      background: #0f0f0f;
-      color: white;
-      display: flex;
-      justify-content: center;
-      padding-top: 40px;
+      margin:0;
+      font-family:Arial;
+      background:#0f0f0f;
+      color:white;
+      display:flex;
+      justify-content:center;
+      padding-top:40px;
     }
 
     .box {
-      width: 420px;
-      background: #1a1a1a;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
-
-    h2 {
-      text-align: center;
-      margin-bottom: 15px;
+      width:420px;
+      background:#1a1a1a;
+      padding:20px;
+      border-radius:10px;
     }
 
     input, select {
-      width: 100%;
-      padding: 10px;
-      margin: 6px 0;
-      border: none;
-      border-radius: 6px;
-      background: #222;
-      color: white;
+      width:100%;
+      padding:10px;
+      margin:6px 0;
+      border:none;
+      background:#222;
+      color:white;
     }
 
     button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 10px;
-      background: #00aa00;
-      border: none;
-      color: white;
-      font-weight: bold;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #00cc00;
-    }
-
-    #msg {
-      text-align: center;
-      margin-top: 10px;
-      font-size: 14px;
+      width:100%;
+      padding:12px;
+      background:#00aa00;
+      border:none;
+      color:white;
+      font-weight:bold;
+      cursor:pointer;
     }
   </style>
 </head>
@@ -65,98 +46,53 @@
 
 <div class="box">
 
-  <h2>⚽ FutCat Admin PRO</h2>
+<h2>⚽ Admin FutCat</h2>
 
-  <input id="jornada" placeholder="Jornada">
+<input id="jornada" placeholder="Jornada">
 
-  <select id="liga">
-    <option value="">Selecciona liga</option>
-    <option value="1">Lliga Elit</option>
-    <option value="2">Primera Catalana</option>
-    <option value="3">Segunda Catalana</option>
-  </select>
+<select id="liga">
+  <option value="">Liga</option>
+  <option value="1">Lliga Elit</option>
+  <option value="2">Primera Catalana</option>
+  <option value="3">Segunda Catalana</option>
+</select>
 
-  <input id="local" placeholder="Equipo local">
-  <input id="visitante" placeholder="Equipo visitante">
+<input id="local" placeholder="Local">
+<input id="visitante" placeholder="Visitante">
+<input id="gl" placeholder="Goles local">
+<input id="gv" placeholder="Goles visitante">
 
-  <input id="gl" placeholder="Goles local">
-  <input id="gv" placeholder="Goles visitante">
+<button onclick="save()">Guardar</button>
 
-  <button onclick="save()">Guardar partido</button>
-
-  <div id="msg"></div>
+<p id="msg"></p>
 
 </div>
 
 <script>
 
-const API = "https://fct-headless.onrender.com";
+const API = "https://fcf-headless.onrender.com";
 
-let saving = false;
+async function save(){
 
-// ============================
-// GUARDAR PARTIDO
-// ============================
-async function save() {
+  const data = {
+    jornada: document.getElementById("jornada").value,
+    liga: document.getElementById("liga").value,
+    local: document.getElementById("local").value,
+    visitante: document.getElementById("visitante").value,
+    goles_local: document.getElementById("gl").value,
+    goles_visitante: document.getElementById("gv").value
+  };
 
-  if (saving) return;
-  saving = true;
+  const res = await fetch(`${API}/add-partido`,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(data)
+  });
 
-  const jornada = document.getElementById("jornada").value;
-  const liga = document.getElementById("liga").value;
-  const local = document.getElementById("local").value;
-  const visitante = document.getElementById("visitante").value;
-  const gl = document.getElementById("gl").value;
-  const gv = document.getElementById("gv").value;
+  const json = await res.json();
 
-  // =========================
-  // VALIDACIÓN
-  // =========================
-  if (!jornada || !liga || !local || !visitante || gl === "" || gv === "") {
-    document.getElementById("msg").innerHTML = "❌ Faltan datos";
-    saving = false;
-    return;
-  }
-
-  document.getElementById("msg").innerHTML = "⏳ Guardando...";
-
-  try {
-
-    const res = await fetch(`${API}/add-partido`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        jornada,
-        liga,
-        local,
-        visitante,
-        goles_local: gl,
-        goles_visitante: gv
-      })
-    });
-
-    const json = await res.json();
-
-    if (json.ok) {
-      document.getElementById("msg").innerHTML = "✅ Partido guardado";
-
-      document.getElementById("jornada").value = "";
-      document.getElementById("local").value = "";
-      document.getElementById("visitante").value = "";
-      document.getElementById("gl").value = "";
-      document.getElementById("gv").value = "";
-
-    } else {
-      document.getElementById("msg").innerHTML = "❌ Error: " + json.error;
-    }
-
-  } catch (err) {
-    document.getElementById("msg").innerHTML = "❌ Error de conexión";
-  }
-
-  saving = false;
+  document.getElementById("msg").innerText =
+    json.ok ? "OK guardado" : "Error";
 }
 
 </script>
