@@ -49,9 +49,13 @@
       border-bottom: 1px solid #222;
     }
 
-    th { color: #00ff88; }
+    th {
+      color: #00ff88;
+    }
 
-    tr:hover td { background: #1a1a1a; }
+    tr:hover td {
+      background: #1a1a1a;
+    }
 
     tr.green td { color: #00ff88 !important; font-weight: bold; }
     tr.yellow td { color: #ffd166 !important; }
@@ -130,7 +134,7 @@ async function init() {
 }
 
 // ======================
-// LIGAS (nombre real + fallback)
+// LIGAS (ROBUSTO)
 // ======================
 async function loadLigas() {
 
@@ -154,7 +158,6 @@ async function loadLigas() {
       const opt = document.createElement("option");
 
       opt.value = l.id ?? "";
-
       opt.textContent = l.nombre || l.name || `Liga ${l.id}`;
 
       select.appendChild(opt);
@@ -176,7 +179,7 @@ async function loadLigas() {
 }
 
 // ======================
-// DATA PRINCIPAL (CON LASTUPDATE BACKEND)
+// DATA (🔥 FIX REAL CAMBIOS)
 // ======================
 async function loadData() {
 
@@ -184,27 +187,31 @@ async function loadData() {
 
   try {
 
-    const res = await fetch(`${API}/clasificacion?liga=${currentLiga}`);
-    const json = await res.json();
+    const [res1, res2] = await Promise.all([
+      fetch(`${API}/clasificacion?liga=${currentLiga}`),
+      fetch(`${API}/partidos?liga=${currentLiga}`)
+    ]);
 
-    const data = json.data || [];
+    const json1 = await res1.json();
+    const json2 = await res2.json();
 
-    // 🔥 AQUÍ YA VIENE DEL BACKEND
-    lastUpdate = json.lastUpdate || null;
+    const clasificacion = json1.data || [];
+    const partidos = json2.data || [];
 
-    const hash = JSON.stringify(data);
+    // 🔥 DETECCIÓN REAL DE CAMBIOS (CLASIFICACIÓN + PARTIDOS)
+    const hash = JSON.stringify({
+      clasificacion,
+      partidos
+    });
 
     if (lastStateByLiga[currentLiga] !== hash) {
       lastStateByLiga[currentLiga] = hash;
+      lastUpdate = new Date();
     }
 
-    renderTable(data);
+    renderTable(clasificacion);
+    renderMatches(partidos);
     updateLive();
-
-    const res2 = await fetch(`${API}/partidos?liga=${currentLiga}`);
-    const json2 = await res2.json();
-
-    renderMatches(json2.data || []);
 
   } catch (err) {
     console.error("ERROR LOAD DATA:", err);
@@ -256,13 +263,13 @@ function renderMatches(matches) {
 }
 
 // ======================
-// LIVE (REAL BACKEND TIME)
+// LIVE REAL STATUS
 // ======================
 function updateLive() {
 
   document.getElementById("live").innerText =
     lastUpdate
-      ? "🔴 Última actualización: " + lastUpdate
+      ? "🔴 Última actualización real: " + lastUpdate.toLocaleTimeString()
       : "🔴 Sin cambios detectados";
 }
 
