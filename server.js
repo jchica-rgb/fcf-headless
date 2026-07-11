@@ -7,14 +7,14 @@ const { google } = require("googleapis");
 
 const app = express();
 
+// ============================
+// MIDDLEWARE
+// ============================
 app.use(cors());
 app.use(express.json());
 
-// ============================
-// SESIÓN
-// ============================
 app.use(session({
-  secret: "futcat-pro-2026",
+  secret: "futcat-production-2026",
   resave: false,
   saveUninitialized: false,
   cookie: { secure: false }
@@ -26,7 +26,7 @@ app.use(session({
 const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
 
 // ============================
-// ADMIN
+// ADMIN LOGIN
 // ============================
 const ADMIN = {
   user: "admin",
@@ -34,7 +34,45 @@ const ADMIN = {
 };
 
 // ============================
-// FRONT
+// CLEAN DATA
+// ============================
+function cleanKey(obj) {
+  const out = {};
+  Object.keys(obj).forEach(k => {
+    out[k.trim().toLowerCase()] = obj[k];
+  });
+  return out;
+}
+
+// ============================
+// GOOGLE AUTH
+// ============================
+function getGoogleAuth() {
+  const raw = process.env.GOOGLE_CREDENTIALS;
+  if (!raw) throw new Error("Missing GOOGLE_CREDENTIALS");
+
+  const creds = JSON.parse(raw);
+
+  if (creds.private_key) {
+    creds.private_key = creds.private_key.replace(/\\n/g, "\n");
+  }
+
+  return new google.auth.GoogleAuth({
+    credentials: creds,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"]
+  });
+}
+
+// ============================
+// AUTH MIDDLEWARE
+// ============================
+function checkAuth(req, res, next) {
+  if (req.session.auth) return next();
+  return res.redirect("/login");
+}
+
+// ============================
+// FRONT ROUTES
 // ============================
 app.get("/login", (req, res) => {
   res.send(`
@@ -62,14 +100,6 @@ app.post("/login", express.urlencoded({ extended: true }), (req, res) => {
   res.send("Login incorrecto");
 });
 
-function checkAuth(req, res, next) {
-  if (req.session.auth) return next();
-  return res.redirect("/login");
-}
-
-// ============================
-// PÁGINAS
-// ============================
 app.get("/admin", checkAuth, (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
@@ -79,40 +109,7 @@ app.get("/dashboard", (req, res) => {
 });
 
 // ============================
-// CLEAN DATA
-// ============================
-function cleanKey(obj) {
-  const cleaned = {};
-  Object.keys(obj).forEach(k => {
-    cleaned[k.trim().toLowerCase()] = obj[k];
-  });
-  return cleaned;
-}
-
-// ============================
-// GOOGLE AUTH
-// ============================
-function getGoogleAuth() {
-  const raw = process.env.GOOGLE_CREDENTIALS;
-
-  if (!raw) throw new Error("NO GOOGLE_CREDENTIALS");
-
-  const creds = JSON.parse(raw);
-
-  if (creds.private_key) {
-    creds.private_key = creds.private_key
-      .replace(/\\n/g, "\n")
-      .replace(/\r/g, "");
-  }
-
-  return new google.auth.GoogleAuth({
-    credentials: creds,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"]
-  });
-}
-
-// ============================
-// PARTIDOS (FILTRADO POR LIGA)
+// PARTIDOS
 // ============================
 app.get("/partidos", async (req, res) => {
   try {
@@ -126,7 +123,7 @@ app.get("/partidos", async (req, res) => {
       ...cleanKey(p)
     }));
 
-    if (liga && liga !== "") {
+    if (liga) {
       data = data.filter(p => String(p.liga) === String(liga));
     }
 
@@ -138,7 +135,7 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ============================
-// CLASIFICACIÓN (FILTRADA POR LIGA)
+// CLASIFICACIÓN
 // ============================
 app.get("/clasificacion", async (req, res) => {
   try {
@@ -149,7 +146,7 @@ app.get("/clasificacion", async (req, res) => {
 
     let partidos = response.data.map(cleanKey);
 
-    if (liga && liga !== "") {
+    if (liga) {
       partidos = partidos.filter(p => String(p.liga) === String(liga));
     }
 
@@ -205,10 +202,7 @@ app.get("/clasificacion", async (req, res) => {
       }
     });
 
-    res.json({
-      ok: true,
-      data: Object.values(tabla)
-    });
+    res.json({ ok: true, data: Object.values(tabla) });
 
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -225,14 +219,6 @@ app.post("/add-partido", checkAuth, async (req, res) => {
     const gl = Number(goles_local);
     const gv = Number(goles_visitante);
 
-    if (!jornada || !liga || !local || !visitante) {
-      return res.status(400).json({ ok: false, error: "Faltan datos" });
-    }
-
-    if (isNaN(gl) || isNaN(gv)) {
-      return res.status(400).json({ ok: false, error: "Goles inválidos" });
-    }
-
     const auth = getGoogleAuth();
     const client = await auth.getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
@@ -246,7 +232,7 @@ app.post("/add-partido", checkAuth, async (req, res) => {
       }
     });
 
-    res.json({ ok: true, message: "Partido guardado" });
+    res.json({ ok: true });
 
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -260,9 +246,6 @@ app.post("/edit-partido", checkAuth, async (req, res) => {
   try {
     const { row, jornada, liga, local, visitante, goles_local, goles_visitante } = req.body;
 
-    const gl = Number(goles_local);
-    const gv = Number(goles_visitante);
-
     const auth = getGoogleAuth();
     const client = await auth.getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
@@ -272,11 +255,11 @@ app.post("/edit-partido", checkAuth, async (req, res) => {
       range: `PARTIDOS!A${row}:G${row}`,
       valueInputOption: "RAW",
       requestBody: {
-        values: [[jornada, liga, local, visitante, gl, gv, "final"]]
+        values: [[jornada, liga, local, visitante, goles_local, goles_visitante, "final"]]
       }
     });
 
-    res.json({ ok: true, message: "Actualizado" });
+    res.json({ ok: true });
 
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -310,7 +293,7 @@ app.post("/delete-partido", checkAuth, async (req, res) => {
       }
     });
 
-    res.json({ ok: true, message: "Eliminado" });
+    res.json({ ok: true });
 
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -318,12 +301,10 @@ app.post("/delete-partido", checkAuth, async (req, res) => {
 });
 
 // ============================
-app.get("/test-api", (req, res) => {
-  res.json({ ok: true, status: "FUTCAT PRO RUNNING ⚽" });
-});
-
+// START SERVER
 // ============================
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
-  console.log("FUTCAT PRO RUNNING ⚽");
+  console.log("FUTCAT PRODUCTION RUNNING ⚽");
 });
