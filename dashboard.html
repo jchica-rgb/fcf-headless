@@ -26,30 +26,14 @@
       padding: 15px;
     }
 
-    /* ======================
-       🔥 SELECT FIX DEFINITIVO
-    ====================== */
-
     select {
       width: 100%;
       padding: 10px;
       margin-bottom: 10px;
-
-      background: #1a1a1a !important;
-      color: #ffffff !important;
-
+      background: #1a1a1a;
+      color: white;
       border: 1px solid #333;
       border-radius: 6px;
-
-      outline: none;
-
-      /* FIX DARK MODE NAVEGADOR */
-      color-scheme: dark;
-    }
-
-    select option {
-      background: #1a1a1a !important;
-      color: #ffffff !important;
     }
 
     table {
@@ -108,10 +92,9 @@
 
 <div class="container">
 
-  <div id="live">🔴 Inicializando...</div>
+  <div id="live">🔴 Iniciando sistema...</div>
 
-  <!-- LIGAS -->
-  <select id="liga" onchange="loadData()"></select>
+  <select id="liga"></select>
 
   <h3>📊 Clasificación</h3>
 
@@ -140,15 +123,21 @@
 const API = "https://fcf-headless.onrender.com";
 
 // ======================
-// LIVE
+// STATE GLOBAL (CLAVE)
 // ======================
-function updateLive() {
-  document.getElementById("live").innerText =
-    "🔴 Última actualización: " + new Date().toLocaleTimeString();
+let currentLiga = null;
+let lastStateByLiga = {};
+let lastUpdate = null;
+
+// ======================
+// INIT
+// ======================
+async function init() {
+  await loadLigas();
 }
 
 // ======================
-// LIGAS (FIX DEFINITIVO)
+// LIGAS (CONTROLADAS)
 // ======================
 async function loadLigas() {
 
@@ -157,60 +146,73 @@ async function loadLigas() {
     const res = await fetch(`${API}/ligas`);
     const json = await res.json();
 
-    console.log("LIGAS DEBUG:", json);
+    const data = json.data || [];
 
     const select = document.getElementById("liga");
-
     select.innerHTML = "";
-
-    const data = Array.isArray(json.data) ? json.data : [];
-
-    if (data.length === 0) {
-      select.innerHTML = "<option>No hay ligas</option>";
-      return;
-    }
 
     data.forEach(l => {
 
       const opt = document.createElement("option");
 
-      // 🔥 FIX ID
-      opt.value = l.id ?? "";
-
-      // 🔥 FIX NAME (EVITA undefined / object)
-      opt.textContent =
-        (typeof l.name === "string" && l.name.trim() !== "")
-          ? l.name
-          : "Liga sin nombre";
+      opt.value = l.id;
+      opt.textContent = l.name;
 
       select.appendChild(opt);
     });
 
-    // auto seleccionar primera liga
-    if (data[0]) {
-      select.value = data[0].id;
-    }
+    // default liga
+    currentLiga = data[0]?.id || null;
+    select.value = currentLiga;
+
+    // listener controlado
+    select.addEventListener("change", (e) => {
+      currentLiga = e.target.value;
+      loadData();
+    });
+
+    if (currentLiga) loadData();
 
   } catch (err) {
-
     console.error("ERROR LIGAS:", err);
-
-    const select = document.getElementById("liga");
-    select.innerHTML = "<option>Error cargando ligas</option>";
   }
 }
 
 // ======================
-// DATOS
+// DATA (CLASIFICACION + CAMBIOS)
 // ======================
 async function loadData() {
 
-  const liga = document.getElementById("liga").value;
+  if (!currentLiga) return;
 
-  const res = await fetch(`${API}/clasificacion?liga=${liga}`);
+  const res = await fetch(`${API}/clasificacion?liga=${currentLiga}`);
   const json = await res.json();
 
   const data = json.data || [];
+
+  // 🔥 DETECCIÓN DE CAMBIO REAL POR LIGA
+  const hash = JSON.stringify(data);
+
+  if (lastStateByLiga[currentLiga] !== hash) {
+    lastStateByLiga[currentLiga] = hash;
+    lastUpdate = new Date();
+  }
+
+  renderTable(data);
+  updateLive();
+
+  // partidos
+  const res2 = await fetch(`${API}/partidos?liga=${currentLiga}`);
+  const json2 = await res2.json();
+
+  renderMatches(json2.data || []);
+}
+
+// ======================
+// RENDER CLASIFICACION
+// ======================
+function renderTable(data) {
+
   const total = data.length;
 
   document.getElementById("tabla").innerHTML = data.map((t,i)=>{
@@ -233,12 +235,15 @@ async function loadData() {
       </tr>
     `;
   }).join("");
+}
 
-  const res2 = await fetch(`${API}/partidos?liga=${liga}`);
-  const json2 = await res2.json();
+// ======================
+// RENDER PARTIDOS
+// ======================
+function renderMatches(matches) {
 
   document.getElementById("partidos").innerHTML =
-    (json2.data || []).map(p=>`
+    matches.map(p=>`
       <div class="match">
         <div>${p.local}</div>
         <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
@@ -248,16 +253,27 @@ async function loadData() {
 }
 
 // ======================
-// INIT
+// LIVE STATUS REAL
 // ======================
-loadLigas();
-loadData();
-updateLive();
+function updateLive() {
 
+  document.getElementById("live").innerText =
+    lastUpdate
+      ? "🔴 Última actualización: " + lastUpdate.toLocaleTimeString()
+      : "🔴 Sin cambios detectados";
+}
+
+// ======================
+// AUTO REFRESH
+// ======================
 setInterval(() => {
   loadData();
-  updateLive();
 }, 15000);
+
+// ======================
+// START
+// ======================
+init();
 
 </script>
 
