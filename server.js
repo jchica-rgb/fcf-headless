@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const path = require("path");
+const session = require("express-session");
 const { google } = require("googleapis");
 
 const app = express();
@@ -10,14 +11,33 @@ app.use(cors());
 app.use(express.json());
 
 // ============================
+// SESIONES
+// ============================
+app.use(session({
+  secret: "futcat-pro-secret-2026",
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false }
+}));
+
+// ============================
 // CONFIG
 // ============================
 const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
 
 // ============================
-// PÁGINAS FRONT
+// USUARIO ADMIN
+// ============================
+const ADMIN = {
+  user: "admin",
+  pass: "futcat2026"
+};
+
+// ============================
+// PÁGINAS
 // ============================
 app.get("/admin", (req, res) => {
+  if (!req.session.auth) return res.redirect("/login");
   res.sendFile(path.join(__dirname, "admin.html"));
 });
 
@@ -26,7 +46,44 @@ app.get("/dashboard", (req, res) => {
 });
 
 // ============================
-// LIMPIEZA DE DATOS SHEETS
+// LOGIN
+// ============================
+app.get("/login", (req, res) => {
+  res.send(`
+    <html>
+      <body style="background:#111;color:white;display:flex;justify-content:center;align-items:center;height:100vh;font-family:Arial;">
+        <form method="POST" action="/login">
+          <h2>FutCat Login</h2>
+          <input name="user" placeholder="Usuario" style="padding:10px;margin:5px"><br>
+          <input name="pass" type="password" placeholder="Contraseña" style="padding:10px;margin:5px"><br>
+          <button style="padding:10px;width:100%">Entrar</button>
+        </form>
+      </body>
+    </html>
+  `);
+});
+
+app.post("/login", express.urlencoded({ extended: true }), (req, res) => {
+  const { user, pass } = req.body;
+
+  if (user === ADMIN.user && pass === ADMIN.pass) {
+    req.session.auth = true;
+    return res.redirect("/admin");
+  }
+
+  res.send("Login incorrecto");
+});
+
+// ============================
+// MIDDLEWARE SEGURIDAD
+// ============================
+function checkAuth(req, res, next) {
+  if (req.session.auth) return next();
+  return res.redirect("/login");
+}
+
+// ============================
+// CLEAN KEYS
 // ============================
 function cleanKey(obj) {
   const cleaned = {};
@@ -37,14 +94,12 @@ function cleanKey(obj) {
 }
 
 // ============================
-// GOOGLE AUTH (FIX DEFINITIVO)
+// GOOGLE AUTH FIX FINAL
 // ============================
 function getGoogleAuth() {
   const raw = process.env.GOOGLE_CREDENTIALS;
 
-  if (!raw) {
-    throw new Error("GOOGLE_CREDENTIALS no configurado en Render");
-  }
+  if (!raw) throw new Error("GOOGLE_CREDENTIALS no configurado");
 
   const creds = JSON.parse(raw);
 
@@ -65,18 +120,10 @@ function getGoogleAuth() {
 // ============================
 app.get("/clasificacion", async (req, res) => {
   try {
-    const liga = req.query.liga;
-
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
     const response = await axios.get(url);
 
-    let partidos = response.data.map(cleanKey);
-
-    if (liga) {
-      partidos = partidos.filter(p =>
-        String(p.liga).trim() === String(liga).trim()
-      );
-    }
+    const partidos = response.data.map(cleanKey);
 
     const tabla = {};
 
@@ -96,37 +143,37 @@ app.get("/clasificacion", async (req, res) => {
     };
 
     partidos.forEach(p => {
-      const local = p.local;
-      const visitante = p.visitante;
+      const l = p.local;
+      const v = p.visitante;
 
       const gl = Number(p.goles_local);
       const gv = Number(p.goles_visitante);
 
-      init(local);
-      init(visitante);
+      init(l);
+      init(v);
 
-      tabla[local].jugados++;
-      tabla[visitante].jugados++;
+      tabla[l].jugados++;
+      tabla[v].jugados++;
 
-      tabla[local].gf += gl;
-      tabla[local].gc += gv;
+      tabla[l].gf += gl;
+      tabla[l].gc += gv;
 
-      tabla[visitante].gf += gv;
-      tabla[visitante].gc += gl;
+      tabla[v].gf += gv;
+      tabla[v].gc += gl;
 
       if (gl > gv) {
-        tabla[local].ganados++;
-        tabla[local].puntos += 3;
-        tabla[visitante].perdidos++;
+        tabla[l].ganados++;
+        tabla[l].puntos += 3;
+        tabla[v].perdidos++;
       } else if (gl < gv) {
-        tabla[visitante].ganados++;
-        tabla[visitante].puntos += 3;
-        tabla[local].perdidos++;
+        tabla[v].ganados++;
+        tabla[v].puntos += 3;
+        tabla[l].perdidos++;
       } else {
-        tabla[local].empatados++;
-        tabla[visitante].empatados++;
-        tabla[local].puntos += 1;
-        tabla[visitante].puntos += 1;
+        tabla[l].empatados++;
+        tabla[v].empatados++;
+        tabla[l].puntos++;
+        tabla[v].puntos++;
       }
     });
 
@@ -136,38 +183,37 @@ app.get("/clasificacion", async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({
-      ok: false,
-      error: err.message
-    });
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
 // ============================
-// PARTIDOS
+// PARTIDOS (CON ID)
 // ============================
 app.get("/partidos", async (req, res) => {
   try {
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
     const response = await axios.get(url);
 
+    const data = response.data.map((p, i) => ({
+      id: i + 2,
+      ...cleanKey(p)
+    }));
+
     res.json({
       ok: true,
-      data: response.data.map(cleanKey)
+      data
     });
 
   } catch (err) {
-    res.status(500).json({
-      ok: false,
-      error: err.message
-    });
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
 // ============================
-// GUARDAR PARTIDO (PRO STABLE)
+// GUARDAR PARTIDO (PRO FINAL)
 // ============================
-app.post("/add-partido", async (req, res) => {
+app.post("/add-partido", checkAuth, async (req, res) => {
   try {
     const {
       jornada,
@@ -178,22 +224,15 @@ app.post("/add-partido", async (req, res) => {
       goles_visitante
     } = req.body;
 
-    // VALIDACIÓN
-    if (!jornada || !liga || !local || !visitante) {
-      return res.status(400).json({
-        ok: false,
-        error: "Faltan datos obligatorios"
-      });
-    }
-
     const gl = Number(goles_local);
     const gv = Number(goles_visitante);
 
+    if (!jornada || !liga || !local || !visitante) {
+      return res.status(400).json({ ok: false, error: "Faltan datos" });
+    }
+
     if (isNaN(gl) || isNaN(gv)) {
-      return res.status(400).json({
-        ok: false,
-        error: "Goles inválidos"
-      });
+      return res.status(400).json({ ok: false, error: "Goles inválidos" });
     }
 
     const auth = getGoogleAuth();
@@ -205,30 +244,48 @@ app.post("/add-partido", async (req, res) => {
       range: "PARTIDOS!A:G",
       valueInputOption: "RAW",
       requestBody: {
-        values: [[
-          jornada,
-          liga,
-          local,
-          visitante,
-          gl,
-          gv,
-          "final"
-        ]]
+        values: [[jornada, liga, local, visitante, gl, gv, "final"]]
       }
     });
 
-    res.json({
-      ok: true,
-      message: "Partido guardado correctamente"
-    });
+    res.json({ ok: true, message: "Partido guardado correctamente" });
 
   } catch (err) {
-    console.error("ERROR ADD PARTIDO:", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
-    res.status(500).json({
-      ok: false,
-      error: err.message
+// ============================
+// BORRAR PARTIDO
+// ============================
+app.post("/delete-partido", checkAuth, async (req, res) => {
+  try {
+    const { row } = req.body;
+
+    const auth = getGoogleAuth();
+    const client = await auth.getClient();
+    const sheets = google.sheets({ version: "v4", auth: client });
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: {
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId: 0,
+              dimension: "ROWS",
+              startIndex: row - 1,
+              endIndex: row
+            }
+          }
+        }]
+      }
     });
+
+    res.json({ ok: true, message: "Partido eliminado" });
+
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
@@ -236,15 +293,12 @@ app.post("/add-partido", async (req, res) => {
 // TEST
 // ============================
 app.get("/test-api", (req, res) => {
-  res.json({
-    ok: true,
-    status: "FUTCAT ENGINE RUNNING ⚽"
-  });
+  res.json({ ok: true, status: "FUTCAT PRO RUNNING ⚽" });
 });
 
 // ============================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("FUTCAT ENGINE RUNNING ⚽");
+  console.log("FUTCAT PRO RUNNING ⚽");
 });
