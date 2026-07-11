@@ -12,7 +12,7 @@
     }
 
     header {
-      padding: 20px;
+      padding: 18px;
       text-align: center;
       background: #111;
       font-size: 22px;
@@ -58,11 +58,19 @@
       border-bottom: 1px solid #222;
     }
 
-    /* PARTIDOS */
+    /* JORNADA */
+    .jornada {
+      margin-top: 25px;
+      margin-bottom: 10px;
+      color: #00ff88;
+      font-weight: bold;
+    }
+
+    /* PARTIDO */
     .match {
       background: #151515;
       padding: 12px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       border-radius: 10px;
       display: flex;
       justify-content: space-between;
@@ -84,7 +92,7 @@
     .meta {
       font-size: 12px;
       color: #888;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
     }
   </style>
 </head>
@@ -129,7 +137,9 @@ async function loadData() {
 
   const liga = document.getElementById("liga").value;
 
+  // =====================
   // CLASIFICACIÓN
+  // =====================
   const res = await fetch("/clasificacion?liga=" + liga);
   const json = await res.json();
 
@@ -151,31 +161,50 @@ async function loadData() {
 
   document.getElementById("tabla").innerHTML = html;
 
-  // PARTIDOS
+  // =====================
+  // PARTIDOS AGRUPADOS
+  // =====================
   const res2 = await fetch("/partidos");
   const json2 = await res2.json();
 
+  const partidos = json2.data;
+
   let html2 = "";
 
-  json2.data.forEach(p => {
-    html2 += `
-      <div class="match">
-        <div class="team">${p.local}</div>
-        <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-        <div class="team" style="text-align:right">${p.visitante}</div>
-      </div>
+  // agrupar por jornada
+  const grupos = {};
 
-      <div class="meta">
-        Liga ${p.liga} | Jornada ${p.jornada}
-      </div>
-    `;
+  partidos.forEach(p => {
+    const j = p.jornada || "Sin jornada";
+    if (!grupos[j]) grupos[j] = [];
+    grupos[j].push(p);
   });
+
+  Object.keys(grupos)
+    .sort((a, b) => a - b)
+    .forEach(jornada => {
+
+      html2 += `<div class="jornada">JORNADA ${jornada}</div>`;
+
+      grupos[jornada].forEach(p => {
+        html2 += `
+          <div class="match">
+            <div class="team">${p.local}</div>
+            <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
+            <div class="team" style="text-align:right">${p.visitante}</div>
+          </div>
+
+          <div class="meta">
+            Liga ${p.liga}
+          </div>
+        `;
+      });
+    });
 
   document.getElementById("partidos").innerHTML = html2;
 }
 
 loadData();
-
 setInterval(loadData, 15000);
 
 </script>
