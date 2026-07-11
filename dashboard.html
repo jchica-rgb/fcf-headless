@@ -1,82 +1,141 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>FutCat LIVE</title>
+  <title>TERRITORI FUTCAT LIVE</title>
 
   <style>
     body {
-      margin:0;
-      font-family:Arial;
-      background:#0a0a0a;
-      color:white;
+      margin: 0;
+      font-family: Arial;
+      background: #0a0a0a;
+      color: white;
     }
 
     header {
-      padding:15px;
-      text-align:center;
-      background:#111;
-      font-size:20px;
-      font-weight:bold;
+      padding: 16px;
+      text-align: center;
+      background: #111;
+      font-size: 22px;
+      font-weight: bold;
+      letter-spacing: 1px;
     }
 
     .container {
-      max-width:1000px;
-      margin:auto;
-      padding:15px;
+      max-width: 1000px;
+      margin: auto;
+      padding: 15px;
     }
 
     select {
-      width:100%;
-      padding:10px;
-      margin-bottom:15px;
-      background:#1a1a1a;
-      color:white;
-      border:none;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      background: #1a1a1a;
+      color: white;
+      border: none;
+      border-radius: 6px;
     }
 
+    /* =========================
+       TABLE STYLE
+    ========================== */
+
     table {
-      width:100%;
-      border-collapse:collapse;
-      background:#111;
-      margin-bottom:20px;
+      width: 100%;
+      border-collapse: collapse;
+      background: #111;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      overflow: hidden;
     }
 
     th, td {
-      padding:10px;
-      text-align:center;
-      border-bottom:1px solid #222;
+      padding: 10px;
+      text-align: center;
+      border-bottom: 1px solid #222;
     }
 
-    th { color:#00ff88; }
+    th {
+      color: #00ff88;
+    }
+
+    tr:hover td {
+      background: #1a1a1a;
+      transition: 0.2s;
+    }
+
+    /* 🥇 PODIUM */
+    tr:nth-child(1) td {
+      color: #ffd700 !important;
+      font-weight: bold;
+    }
+
+    tr:nth-child(2) td {
+      color: #c0c0c0 !important;
+    }
+
+    tr:nth-child(3) td {
+      color: #cd7f32 !important;
+    }
+
+    /* 🔴 DESCENSO */
+    tr:nth-child(n+7) td {
+      color: #ff4d4d !important;
+    }
+
+    /* =========================
+       PARTIDOS
+    ========================== */
 
     .match {
-      background:#151515;
-      padding:12px;
-      margin-bottom:8px;
-      display:flex;
-      justify-content:space-between;
+      background: #151515;
+      padding: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      border-radius: 8px;
+      border: 1px solid #1f1f1f;
+    }
+
+    .match:hover {
+      border: 1px solid #00ff88;
     }
 
     .score {
-      color:#00ff88;
-      font-weight:bold;
+      color: #00ff88;
+      font-weight: bold;
+      min-width: 80px;
+      text-align: center;
     }
+
   </style>
 </head>
 
 <body>
 
-<header>⚽ FUTCAT LIVE</header>
+<header>⚽ TERRITORI FUTCAT LIVE</header>
 
 <div class="container">
 
-  <select id="liga" onchange="loadData()"></select>
+  <select id="liga" onchange="loadData()">
+    <option value="">Todas las ligas</option>
+    <option value="1">Lliga Elit</option>
+    <option value="2">Primera Catalana</option>
+    <option value="3">Segunda Catalana</option>
+  </select>
 
   <h3>📊 Clasificación</h3>
+
   <table>
     <thead>
       <tr>
-        <th>#</th><th>Equipo</th><th>Pts</th><th>J</th><th>G</th><th>E</th><th>P</th>
+        <th>#</th>
+        <th>Equipo</th>
+        <th>Pts</th>
+        <th>J</th>
+        <th>G</th>
+        <th>E</th>
+        <th>P</th>
       </tr>
     </thead>
     <tbody id="tabla"></tbody>
@@ -91,38 +150,29 @@
 
 const API = "https://fcf-headless.onrender.com";
 
-// ======================
-// LIGAS DINÁMICAS
-// ======================
-async function loadLigas() {
-
-  const res = await fetch(`${API}/ligas`);
-  const json = await res.json();
-
-  const select = document.getElementById("liga");
-
-  select.innerHTML = `<option value="">Todas las ligas</option>`;
-
-  json.data.forEach(l => {
-    const opt = document.createElement("option");
-    opt.value = l;
-    opt.textContent = "Liga " + l;
-    select.appendChild(opt);
-  });
-}
-
-// ======================
+// =========================
 // LOAD DATA
-// ======================
+// =========================
 async function loadData() {
 
   const liga = document.getElementById("liga").value;
 
-  const res = await fetch(`${API}/clasificacion?liga=${liga}`);
-  const json = await res.json();
+  try {
 
-  document.getElementById("tabla").innerHTML =
-    json.data.map((t,i)=>`
+    // =====================
+    // CLASIFICACIÓN
+    // =====================
+    const res = await fetch(`${API}/clasificacion?liga=${liga}`);
+    const json = await res.json();
+
+    const tabla = document.getElementById("tabla");
+
+    if (!json.data) {
+      tabla.innerHTML = "<tr><td colspan='7'>Sin datos</td></tr>";
+      return;
+    }
+
+    tabla.innerHTML = json.data.map((t,i)=>`
       <tr>
         <td>${i+1}</td>
         <td>${t.equipo}</td>
@@ -134,24 +184,37 @@ async function loadData() {
       </tr>
     `).join("");
 
-  const res2 = await fetch(`${API}/partidos?liga=${liga}`);
-  const json2 = await res2.json();
+    // =====================
+    // PARTIDOS
+    // =====================
+    const res2 = await fetch(`${API}/partidos?liga=${liga}`);
+    const json2 = await res2.json();
 
-  document.getElementById("partidos").innerHTML =
-    json2.data.map(p=>`
+    const partidos = document.getElementById("partidos");
+
+    if (!json2.data) {
+      partidos.innerHTML = "<p>Sin partidos</p>";
+      return;
+    }
+
+    partidos.innerHTML = json2.data.map(p=>`
       <div class="match">
         <div>${p.local}</div>
         <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
         <div>${p.visitante}</div>
       </div>
     `).join("");
+
+  } catch (err) {
+    console.error(err);
+  }
 }
 
-// ======================
+// =========================
 // INIT
-// ======================
-loadLigas();
+// =========================
 loadData();
+setInterval(loadData, 15000);
 
 </script>
 
