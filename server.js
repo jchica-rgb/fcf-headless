@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 // ============================
-// SESIONES
+// SESIÓN
 // ============================
 app.use(session({
   secret: "futcat-pro-2026",
@@ -34,7 +34,7 @@ const ADMIN = {
 };
 
 // ============================
-// PÁGINAS
+// FRONT
 // ============================
 app.get("/login", (req, res) => {
   res.send(`
@@ -62,16 +62,13 @@ app.post("/login", express.urlencoded({ extended: true }), (req, res) => {
   res.send("Login incorrecto");
 });
 
-// ============================
-// PROTECCIÓN
-// ============================
 function checkAuth(req, res, next) {
   if (req.session.auth) return next();
   return res.redirect("/login");
 }
 
 // ============================
-// FRONT
+// PÁGINAS
 // ============================
 app.get("/admin", checkAuth, (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
@@ -93,7 +90,7 @@ function cleanKey(obj) {
 }
 
 // ============================
-// GOOGLE AUTH FIX
+// GOOGLE AUTH
 // ============================
 function getGoogleAuth() {
   const raw = process.env.GOOGLE_CREDENTIALS;
@@ -115,17 +112,23 @@ function getGoogleAuth() {
 }
 
 // ============================
-// PARTIDOS
+// PARTIDOS (FILTRADO POR LIGA)
 // ============================
 app.get("/partidos", async (req, res) => {
   try {
+    const liga = req.query.liga;
+
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
     const response = await axios.get(url);
 
-    const data = response.data.map((p, i) => ({
+    let data = response.data.map((p, i) => ({
       id: i + 2,
       ...cleanKey(p)
     }));
+
+    if (liga && liga !== "") {
+      data = data.filter(p => String(p.liga) === String(liga));
+    }
 
     res.json({ ok: true, data });
 
@@ -135,14 +138,20 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ============================
-// CLASIFICACIÓN
+// CLASIFICACIÓN (FILTRADA POR LIGA)
 // ============================
 app.get("/clasificacion", async (req, res) => {
   try {
+    const liga = req.query.liga;
+
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
     const response = await axios.get(url);
 
-    const partidos = response.data.map(cleanKey);
+    let partidos = response.data.map(cleanKey);
+
+    if (liga && liga !== "") {
+      partidos = partidos.filter(p => String(p.liga) === String(liga));
+    }
 
     const tabla = {};
 
@@ -207,71 +216,6 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 // ============================
-// ESTADÍSTICAS
-// ============================
-app.get("/estadisticas", async (req, res) => {
-  try {
-    const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
-    const response = await axios.get(url);
-
-    const partidos = response.data.map(cleanKey);
-
-    const stats = {};
-
-    const init = (t) => {
-      if (!stats[t]) {
-        stats[t] = {
-          equipo: t,
-          gf: 0,
-          gc: 0,
-          partidos: 0,
-          victorias: 0
-        };
-      }
-    };
-
-    partidos.forEach(p => {
-      const l = p.local;
-      const v = p.visitante;
-
-      const gl = Number(p.goles_local);
-      const gv = Number(p.goles_visitante);
-
-      init(l);
-      init(v);
-
-      stats[l].partidos++;
-      stats[v].partidos++;
-
-      stats[l].gf += gl;
-      stats[l].gc += gv;
-
-      stats[v].gf += gv;
-      stats[v].gc += gl;
-
-      if (gl > gv) stats[l].victorias++;
-      else if (gv > gl) stats[v].victorias++;
-    });
-
-    res.json({
-      ok: true,
-      data: Object.values(stats).map(t => ({
-        equipo: t.equipo,
-        gf: t.gf,
-        gc: t.gc,
-        diferencia: t.gf - t.gc,
-        victorias: t.victorias,
-        partidos: t.partidos,
-        winrate: t.partidos ? ((t.victorias / t.partidos) * 100).toFixed(1) : 0
-      }))
-    });
-
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ============================
 // GUARDAR PARTIDO
 // ============================
 app.post("/add-partido", checkAuth, async (req, res) => {
@@ -302,7 +246,7 @@ app.post("/add-partido", checkAuth, async (req, res) => {
       }
     });
 
-    res.json({ ok: true, message: "Partido guardado correctamente" });
+    res.json({ ok: true, message: "Partido guardado" });
 
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
