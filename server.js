@@ -1,163 +1,126 @@
 const express = require("express");
 const cors = require("cors");
-const axios = require("axios");
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
 // ======================
-// SHEETS IDS
+// CACHE GLOBAL (CLAVE)
 // ======================
-const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
+let cache = {
+  clasificacion: {},
+  partidos: {},
+  lastUpdate: null
+};
 
 // ======================
-// ROOT
+// SIMULACIÓN / CONECTOR SHEETS
+// 👉 aquí debes conectar tu Google Sheets real
 // ======================
-app.get("/", (req, res) => {
-  res.json({ ok: true, status: "FUTCAT SHEETS SYSTEM RUNNING ⚽" });
-});
+async function getClasificacionFromSheets(liga) {
+  // 🔥 AQUÍ VA TU LÓGICA REAL DE SHEETS
+  return [];
+}
+
+async function getPartidosFromSheets(liga) {
+  // 🔥 AQUÍ VA TU LÓGICA REAL DE SHEETS
+  return [];
+}
 
 // ======================
-// LIGAS (DINÁMICO)
+// HELPERS
+// ======================
+function stableStringify(obj) {
+  return JSON.stringify(obj);
+}
+
+// ======================
+// ENDPOINT LIGAS
 // ======================
 app.get("/ligas", async (req, res) => {
 
-  try {
+  const ligas = [
+    { id: "1", nombre: "Liga Elit" },
+    { id: "2", nombre: "Primera Catalana" },
+    { id: "3", nombre: "Segona Catalana" }
+  ];
 
-    const r = await axios.get(`https://opensheet.elk.sh/${SHEET_ID}/LIGAS`);
-
-    res.json({
-      ok: true,
-      data: r.data
-    });
-
-  } catch (err) {
-    res.status(500).json({ ok: false });
-  }
-
+  res.json({ data: ligas });
 });
 
 // ======================
-// EQUIPOS
-// ======================
-app.get("/equipos", async (req, res) => {
-
-  try {
-
-    const r = await axios.get(`https://opensheet.elk.sh/${SHEET_ID}/EQUIPOS`);
-
-    res.json({
-      ok: true,
-      data: r.data
-    });
-
-  } catch (err) {
-    res.status(500).json({ ok: false });
-  }
-
-});
-
-// ======================
-// PARTIDOS
-// ======================
-app.get("/partidos", async (req, res) => {
-
-  try {
-
-    const liga = req.query.liga;
-
-    let r = await axios.get(`https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`);
-
-    let data = r.data;
-
-    if (liga) {
-      data = data.filter(p => p.liga == liga);
-    }
-
-    res.json({ ok: true, data });
-
-  } catch (err) {
-    res.status(500).json({ ok: false });
-  }
-
-});
-
-// ======================
-// CLASIFICACION
+// ENDPOINT CLASIFICACION + PARTIDOS
 // ======================
 app.get("/clasificacion", async (req, res) => {
 
-  try {
+  const liga = req.query.liga;
 
-    const liga = req.query.liga;
-
-    const r = await axios.get(`https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`);
-    let partidos = r.data;
-
-    if (liga) {
-      partidos = partidos.filter(p => p.liga == liga);
-    }
-
-    const table = {};
-
-    const init = (team) => {
-      if (!table[team]) {
-        table[team] = {
-          equipo: team,
-          puntos: 0,
-          jugados: 0,
-          ganados: 0,
-          empatados: 0,
-          perdidos: 0
-        };
-      }
-    };
-
-    partidos.forEach(p => {
-
-      const l = p.local;
-      const v = p.visitante;
-
-      const gl = Number(p.goles_local);
-      const gv = Number(p.goles_visitante);
-
-      init(l);
-      init(v);
-
-      table[l].jugados++;
-      table[v].jugados++;
-
-      if (gl > gv) {
-        table[l].ganados++;
-        table[l].puntos += 3;
-        table[v].perdidos++;
-      } else if (gv > gl) {
-        table[v].ganados++;
-        table[v].puntos += 3;
-        table[l].perdidos++;
-      } else {
-        table[l].empatados++;
-        table[v].empatados++;
-        table[l].puntos++;
-        table[v].puntos++;
-      }
-    });
-
-    const result = Object.values(table).sort((a,b)=>b.puntos - a.puntos);
-
-    res.json({ ok: true, data: result });
-
-  } catch (err) {
-    res.status(500).json({ ok: false });
+  if (!liga) {
+    return res.json({ data: [], partidos: [], lastUpdate: cache.lastUpdate });
   }
 
+  // ======================
+  // OBTENER DATOS REALES
+  // ======================
+  const clasificacion = await getClasificacionFromSheets(liga);
+  const partidos = await getPartidosFromSheets(liga);
+
+  // ======================
+  // CLAVES ESTABLES
+  // ======================
+  const newClasKey = stableStringify(clasificacion);
+  const newPartKey = stableStringify(partidos);
+
+  const oldClasKey = cache.clasificacion[liga];
+  const oldPartKey = cache.partidos[liga];
+
+  let changed = false;
+
+  // ======================
+  // DETECCIÓN REAL DE CAMBIOS
+  // ======================
+  if (newClasKey !== oldClasKey || newPartKey !== oldPartKey) {
+    changed = true;
+
+    cache.clasificacion[liga] = newClasKey;
+    cache.partidos[liga] = newPartKey;
+
+    cache.lastUpdate = new Date().toLocaleString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  // ======================
+  // RESPUESTA
+  // ======================
+  res.json({
+    data: clasificacion,
+    partidos,
+    lastUpdate: cache.lastUpdate,
+    changed
+  });
 });
 
+// ======================
+// HEALTH CHECK
+// ======================
+app.get("/", (req, res) => {
+  res.json({
+    ok: true,
+    status: "FUTCAT BACKEND OK ⚽"
+  });
+});
+
+// ======================
+// START SERVER
 // ======================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("FUTCAT SHEETS SYSTEM RUNNING ⚽");
+  console.log("⚽ FUTCAT SERVER RUNNING ON PORT", PORT);
 });
