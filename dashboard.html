@@ -7,17 +7,18 @@
     body {
       margin: 0;
       font-family: Arial;
-      background: #0a0a0a;
+      background: radial-gradient(circle at top, #111, #000);
       color: white;
     }
 
     header {
       padding: 16px;
       text-align: center;
-      background: #111;
+      background: #0f0f0f;
       font-size: 22px;
       font-weight: bold;
       letter-spacing: 1px;
+      border-bottom: 1px solid #222;
     }
 
     .container {
@@ -26,37 +27,47 @@
       padding: 15px;
     }
 
+    /* ======================
+       SELECT LIGAS
+    ====================== */
+
     select {
       width: 100%;
       padding: 10px;
       margin-bottom: 15px;
-      background: #1a1a1a;
+      background: #151515;
       color: white;
-      border: none;
-      border-radius: 6px;
+      border: 1px solid #222;
+      border-radius: 8px;
     }
+
+    /* ======================
+       TABLE PRO
+    ====================== */
 
     table {
       width: 100%;
       border-collapse: collapse;
-      background: #111;
+      background: #0f0f0f;
       margin-bottom: 20px;
       border-radius: 10px;
       overflow: hidden;
     }
 
-    th, td {
-      padding: 10px;
-      text-align: center;
-      border-bottom: 1px solid #222;
-    }
-
     th {
       color: #00ff88;
+      padding: 12px;
+      background: #111;
+    }
+
+    td {
+      padding: 10px;
+      text-align: center;
+      border-bottom: 1px solid #1f1f1f;
     }
 
     tr:hover td {
-      background: #1a1a1a;
+      background: #161616;
     }
 
     /* 🟢 ASCENSO */
@@ -75,22 +86,58 @@
       color: #ff4d4d !important;
     }
 
+    /* 🏆 TOP 3 highlight */
+    tr:nth-child(1) td {
+      box-shadow: inset 0 0 10px rgba(255,215,0,0.1);
+    }
+
+    /* ======================
+       MATCH CARDS PRO
+    ====================== */
+
     .match {
-      background: #151515;
-      padding: 12px;
-      margin-bottom: 8px;
+      background: linear-gradient(145deg, #151515, #0c0c0c);
+      padding: 14px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      border: 1px solid #222;
       display: flex;
       justify-content: space-between;
-      border-radius: 8px;
-      border: 1px solid #1f1f1f;
+      align-items: center;
+      transition: 0.2s;
+    }
+
+    .match:hover {
+      transform: scale(1.01);
+      border-color: #00ff88;
+    }
+
+    .team {
+      width: 40%;
     }
 
     .score {
       color: #00ff88;
       font-weight: bold;
+      font-size: 18px;
       min-width: 80px;
       text-align: center;
     }
+
+    .live {
+      text-align: center;
+      color: #00ff88;
+      font-size: 12px;
+      margin-bottom: 10px;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.4; }
+      50% { opacity: 1; }
+      100% { opacity: 0.4; }
+    }
+
   </style>
 </head>
 
@@ -100,7 +147,8 @@
 
 <div class="container">
 
-  <!-- 🚨 SIN "TODAS LAS LIGAS" -->
+  <div class="live">🔴 LIVE DATA</div>
+
   <select id="liga" onchange="loadData()">
     <option value="1">Lliga Elit</option>
     <option value="2">Primera Catalana</option>
@@ -133,72 +181,52 @@
 
 const API = "https://fcf-headless.onrender.com";
 
-// ======================
-// CARGA DATOS
-// ======================
 async function loadData() {
 
   const liga = document.getElementById("liga").value;
 
-  try {
+  const res = await fetch(`${API}/clasificacion?liga=${liga}`);
+  const json = await res.json();
 
-    // =====================
-    // CLASIFICACIÓN
-    // =====================
-    const res = await fetch(`${API}/clasificacion?liga=${liga}`);
-    const json = await res.json();
+  const data = json.data || [];
+  const total = data.length;
 
-    const tabla = document.getElementById("tabla");
+  document.getElementById("tabla").innerHTML = data.map((t,i)=>{
 
-    const data = json.data || [];
-    const total = data.length;
+    let cls = "";
 
-    tabla.innerHTML = data.map((t, i) => {
+    if (i < total * 0.25) cls = "green";
+    else if (i > total * 0.75) cls = "red";
+    else cls = "yellow";
 
-      let rowClass = "";
+    return `
+      <tr class="${cls}">
+        <td>${i+1}</td>
+        <td>${t.equipo}</td>
+        <td>${t.puntos}</td>
+        <td>${t.jugados}</td>
+        <td>${t.ganados}</td>
+        <td>${t.empatados}</td>
+        <td>${t.perdidos}</td>
+      </tr>
+    `;
+  }).join("");
 
-      if (i < total * 0.25) rowClass = "green";
-      else if (i > total * 0.75) rowClass = "red";
-      else rowClass = "yellow";
+  const res2 = await fetch(`${API}/partidos?liga=${liga}`);
+  const json2 = await res2.json();
 
-      return `
-        <tr class="${rowClass}">
-          <td>${i + 1}</td>
-          <td>${t.equipo}</td>
-          <td>${t.puntos}</td>
-          <td>${t.jugados}</td>
-          <td>${t.ganados}</td>
-          <td>${t.empatados}</td>
-          <td>${t.perdidos}</td>
-        </tr>
-      `;
-    }).join("");
+  document.getElementById("partidos").innerHTML = (json2.data || []).map(p=>`
+    <div class="match">
+      <div class="team">${p.local}</div>
+      <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
+      <div class="team" style="text-align:right">${p.visitante}</div>
+    </div>
+  `).join("");
 
-    // =====================
-    // PARTIDOS
-    // =====================
-    const res2 = await fetch(`${API}/partidos?liga=${liga}`);
-    const json2 = await res2.json();
-
-    const partidos = document.getElementById("partidos");
-
-    partidos.innerHTML = (json2.data || []).map(p => `
-      <div class="match">
-        <div>${p.local}</div>
-        <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-        <div>${p.visitante}</div>
-      </div>
-    `).join("");
-
-  } catch (err) {
-    console.error(err);
-  }
 }
 
-// ======================
-// INIT
-// ======================
 loadData();
+setInterval(loadData, 15000);
 
 </script>
 
