@@ -55,9 +55,9 @@
       background: #151515;
       padding: 10px;
       margin-bottom: 8px;
+      border-radius: 6px;
       display: flex;
       justify-content: space-between;
-      border-radius: 6px;
     }
 
     .score {
@@ -66,7 +66,7 @@
     }
 
     .title {
-      margin-top: 25px;
+      margin-top: 20px;
       margin-bottom: 10px;
       color: #00ff88;
     }
@@ -87,6 +87,7 @@
   </select>
 
   <div class="title">📊 Clasificación</div>
+
   <table>
     <thead>
       <tr>
@@ -109,6 +110,9 @@
 
 <script>
 
+// =========================
+// API BACKEND
+// =========================
 const API = "https://fct-headless.onrender.com";
 
 // =========================
@@ -126,10 +130,12 @@ async function loadData() {
     const res = await fetch(`${API}/clasificacion?liga=${liga}`);
     const json = await res.json();
 
-    let html = "";
+    const tabla = document.getElementById("tabla");
 
-    json.data.forEach((t, i) => {
-      html += `
+    if (!json || !json.data || json.data.length === 0) {
+      tabla.innerHTML = "<tr><td colspan='7'>Sin datos</td></tr>";
+    } else {
+      tabla.innerHTML = json.data.map((t, i) => `
         <tr>
           <td>${i + 1}</td>
           <td>${t.equipo}</td>
@@ -139,10 +145,8 @@ async function loadData() {
           <td>${t.empatados}</td>
           <td>${t.perdidos}</td>
         </tr>
-      `;
-    });
-
-    document.getElementById("tabla").innerHTML = html;
+      `).join("");
+    }
 
     // =====================
     // PARTIDOS
@@ -150,22 +154,22 @@ async function loadData() {
     const res2 = await fetch(`${API}/partidos?liga=${liga}`);
     const json2 = await res2.json();
 
-    let html2 = "";
+    const partidos = document.getElementById("partidos");
 
-    json2.data.forEach(p => {
-      html2 += `
+    if (!json2 || !json2.data || json2.data.length === 0) {
+      partidos.innerHTML = "<p>Sin partidos</p>";
+    } else {
+      partidos.innerHTML = json2.data.map(p => `
         <div class="match">
           <div>${p.local}</div>
           <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
           <div>${p.visitante}</div>
         </div>
-      `;
-    });
-
-    document.getElementById("partidos").innerHTML = html2;
+      `).join("");
+    }
 
   } catch (err) {
-    console.error("Error cargando datos:", err);
+    console.error("ERROR DASHBOARD:", err);
   }
 }
 
