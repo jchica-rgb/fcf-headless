@@ -49,9 +49,13 @@
       border-bottom: 1px solid #222;
     }
 
-    th { color: #00ff88; }
+    th {
+      color: #00ff88;
+    }
 
-    tr:hover td { background: #1a1a1a; }
+    tr:hover td {
+      background: #1a1a1a;
+    }
 
     tr.green td { color: #00ff88 !important; font-weight: bold; }
     tr.yellow td { color: #ffd166 !important; }
@@ -88,11 +92,12 @@
 
 <div class="container">
 
-  <div id="live">🔴 Inicializando...</div>
+  <div id="live">🔴 Inicializando sistema...</div>
 
   <select id="liga"></select>
 
   <h3>📊 Clasificación</h3>
+
   <table>
     <thead>
       <tr>
@@ -115,9 +120,11 @@
 
 <script>
 
-const API = "https://fcf-headless.onrender.com"; 
-// 🔥 ESTA ES TU DIRECCIÓN REAL DEL BACKEND (NO TOCAR)
+const API = "https://fcf-headless.onrender.com";
 
+// ======================
+// STATE
+// ======================
 let currentLiga = null;
 let lastStateByLiga = {};
 let lastUpdate = null;
@@ -130,7 +137,7 @@ async function init() {
 }
 
 // ======================
-// LIGAS
+// LIGAS (FIX DEFINITIVO)
 // ======================
 async function loadLigas() {
 
@@ -139,17 +146,26 @@ async function loadLigas() {
     const res = await fetch(`${API}/ligas`);
     const json = await res.json();
 
+    console.log("LIGAS RAW:", json);
+
     const data = json.data || [];
 
     const select = document.getElementById("liga");
     select.innerHTML = "";
 
+    if (!Array.isArray(data) || data.length === 0) {
+      select.innerHTML = "<option>No hay ligas</option>";
+      return;
+    }
+
     data.forEach(l => {
 
       const opt = document.createElement("option");
 
-      opt.value = l.id;
-      opt.textContent = l.name;
+      opt.value = l.id ?? "";
+      opt.textContent = (l.name && l.name.trim() !== "")
+        ? l.name
+        : `Liga ${l.id}`;
 
       select.appendChild(opt);
     });
@@ -157,10 +173,10 @@ async function loadLigas() {
     currentLiga = data[0]?.id || null;
     select.value = currentLiga;
 
-    select.addEventListener("change", (e) => {
+    select.onchange = (e) => {
       currentLiga = e.target.value;
       loadData();
-    });
+    };
 
     loadData();
 
@@ -170,7 +186,7 @@ async function loadLigas() {
 }
 
 // ======================
-// DATA
+// DATA PRINCIPAL
 // ======================
 async function loadData() {
 
@@ -187,6 +203,8 @@ async function loadData() {
 
     if (lastStateByLiga[currentLiga] !== hash) {
       lastStateByLiga[currentLiga] = hash;
+
+      // 🔥 FECHA REAL SOLO SI CAMBIA DATA
       lastUpdate = new Date();
     }
 
@@ -204,7 +222,7 @@ async function loadData() {
 }
 
 // ======================
-// RENDER TABLE
+// TABLE
 // ======================
 function renderTable(data) {
 
@@ -248,15 +266,22 @@ function renderMatches(matches) {
 }
 
 // ======================
-// LIVE
+// LIVE STATUS REAL
 // ======================
 function updateLive() {
 
   document.getElementById("live").innerText =
     lastUpdate
-      ? "🔴 Última actualización: " + lastUpdate.toLocaleTimeString()
-      : "🔴 Sin cambios";
+      ? "🔴 Última actualización real: " + lastUpdate.toLocaleTimeString()
+      : "🔴 Sin cambios detectados";
 }
+
+// ======================
+// AUTO REFRESH
+// ======================
+setInterval(() => {
+  if (currentLiga) loadData();
+}, 15000);
 
 // ======================
 // START
