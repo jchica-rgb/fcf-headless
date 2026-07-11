@@ -4,72 +4,37 @@
   <title>FutCat LIVE</title>
 
   <style>
-    body {
-      margin: 0;
-      font-family: Arial;
-      background: #0a0a0a;
-      color: white;
-    }
+    body { margin:0; font-family:Arial; background:#0a0a0a; color:white; }
+    header { padding:15px; text-align:center; background:#111; font-size:20px; font-weight:bold; }
 
-    header {
-      padding: 15px;
-      text-align: center;
-      background: #111;
-      font-size: 20px;
-      font-weight: bold;
-    }
-
-    .container {
-      max-width: 900px;
-      margin: auto;
-      padding: 15px;
-    }
+    .container { max-width:900px; margin:auto; padding:15px; }
 
     select {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 15px;
-      background: #1a1a1a;
-      color: white;
-      border: none;
+      width:100%; padding:10px; margin-bottom:15px;
+      background:#1a1a1a; color:white; border:none;
     }
 
     table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 20px;
-      background: #111;
+      width:100%; border-collapse:collapse;
+      background:#111; margin-bottom:20px;
     }
 
     th, td {
-      padding: 10px;
-      text-align: center;
-      border-bottom: 1px solid #222;
+      padding:10px; text-align:center;
+      border-bottom:1px solid #222;
     }
 
-    th {
-      color: #00ff88;
-    }
+    th { color:#00ff88; }
 
     .match {
-      background: #151515;
-      padding: 10px;
-      margin-bottom: 8px;
-      border-radius: 6px;
-      display: flex;
-      justify-content: space-between;
+      background:#151515;
+      padding:10px;
+      margin-bottom:8px;
+      display:flex;
+      justify-content:space-between;
     }
 
-    .score {
-      color: #00ff88;
-      font-weight: bold;
-    }
-
-    .title {
-      margin-top: 20px;
-      margin-bottom: 10px;
-      color: #00ff88;
-    }
+    .score { color:#00ff88; font-weight:bold; }
   </style>
 </head>
 
@@ -86,38 +51,25 @@
     <option value="3">Segunda Catalana</option>
   </select>
 
-  <div class="title">📊 Clasificación</div>
-
+  <h3>📊 Clasificación</h3>
   <table>
     <thead>
       <tr>
-        <th>#</th>
-        <th>Equipo</th>
-        <th>Pts</th>
-        <th>J</th>
-        <th>G</th>
-        <th>E</th>
-        <th>P</th>
+        <th>#</th><th>Equipo</th><th>Pts</th><th>J</th><th>G</th><th>E</th><th>P</th>
       </tr>
     </thead>
     <tbody id="tabla"></tbody>
   </table>
 
-  <div class="title">⚽ Partidos</div>
+  <h3>⚽ Partidos</h3>
   <div id="partidos"></div>
 
 </div>
 
 <script>
 
-// =========================
-// API BACKEND
-// =========================
-const API = "https://fct-headless.onrender.com";
+const API = "https://fcf-headless.onrender.com";
 
-// =========================
-// CARGAR DATOS
-// =========================
 async function loadData() {
 
   const liga = document.getElementById("liga").value;
@@ -132,21 +84,22 @@ async function loadData() {
 
     const tabla = document.getElementById("tabla");
 
-    if (!json || !json.data || json.data.length === 0) {
+    if (!json.data) {
       tabla.innerHTML = "<tr><td colspan='7'>Sin datos</td></tr>";
-    } else {
-      tabla.innerHTML = json.data.map((t, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${t.equipo}</td>
-          <td>${t.puntos}</td>
-          <td>${t.jugados}</td>
-          <td>${t.ganados}</td>
-          <td>${t.empatados}</td>
-          <td>${t.perdidos}</td>
-        </tr>
-      `).join("");
+      return;
     }
+
+    tabla.innerHTML = json.data.map((t,i)=>`
+      <tr>
+        <td>${i+1}</td>
+        <td>${t.equipo}</td>
+        <td>${t.puntos}</td>
+        <td>${t.jugados}</td>
+        <td>${t.ganados}</td>
+        <td>${t.empatados}</td>
+        <td>${t.perdidos}</td>
+      </tr>
+    `).join("");
 
     // =====================
     // PARTIDOS
@@ -156,28 +109,26 @@ async function loadData() {
 
     const partidos = document.getElementById("partidos");
 
-    if (!json2 || !json2.data || json2.data.length === 0) {
-      partidos.innerHTML = "<p>Sin partidos</p>";
-    } else {
-      partidos.innerHTML = json2.data.map(p => `
-        <div class="match">
-          <div>${p.local}</div>
-          <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-          <div>${p.visitante}</div>
-        </div>
-      `).join("");
+    if (!json2.data) {
+      partidos.innerHTML = "Sin partidos";
+      return;
     }
 
-  } catch (err) {
-    console.error("ERROR DASHBOARD:", err);
+    partidos.innerHTML = json2.data.map(p=>`
+      <div class="match">
+        <div>${p.local}</div>
+        <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
+        <div>${p.visitante}</div>
+      </div>
+    `).join("");
+
+  } catch (e) {
+    console.error(e);
   }
 }
 
-// =========================
-// INIT
-// =========================
 loadData();
-setInterval(loadData, 15000);
+setInterval(loadData,15000);
 
 </script>
 
