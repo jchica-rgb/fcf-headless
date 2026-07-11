@@ -33,24 +33,17 @@ function cleanKey(obj) {
 }
 
 // ============================
-// GOOGLE AUTH (FIX FINAL JWT)
+// GOOGLE AUTH (FIX JWT SAFE)
 // ============================
 function getGoogleAuth() {
   const raw = process.env.GOOGLE_CREDENTIALS;
 
   if (!raw) {
-    throw new Error("❌ GOOGLE_CREDENTIALS no configurado en Render");
+    throw new Error("GOOGLE_CREDENTIALS no configurado");
   }
 
-  let creds;
+  const creds = JSON.parse(raw);
 
-  try {
-    creds = JSON.parse(raw);
-  } catch (e) {
-    throw new Error("❌ GOOGLE_CREDENTIALS JSON mal formado");
-  }
-
-  // 🔥 FIX CRÍTICO JWT
   if (creds.private_key) {
     creds.private_key = creds.private_key
       .replace(/\\n/g, "\n")
@@ -64,7 +57,7 @@ function getGoogleAuth() {
 }
 
 // ============================
-// CLASIFICACIÓN AUTOMÁTICA
+// CLASIFICACIÓN
 // ============================
 app.get("/clasificacion", async (req, res) => {
   try {
@@ -149,7 +142,6 @@ app.get("/clasificacion", async (req, res) => {
 
     res.json({
       ok: true,
-      source: "auto-engine",
       data: result
     });
 
@@ -185,7 +177,7 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ============================
-// GUARDAR PARTIDO (JORNADA MANUAL)
+// GUARDAR PARTIDO (NIVEL 1 FINAL)
 // ============================
 app.post("/add-partido", async (req, res) => {
   try {
@@ -197,6 +189,23 @@ app.post("/add-partido", async (req, res) => {
       goles_local,
       goles_visitante
     } = req.body;
+
+    if (!jornada || !liga || !local || !visitante) {
+      return res.status(400).json({
+        ok: false,
+        error: "Faltan datos obligatorios"
+      });
+    }
+
+    const gl = Number(goles_local);
+    const gv = Number(goles_visitante);
+
+    if (isNaN(gl) || isNaN(gv)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Goles no válidos"
+      });
+    }
 
     const auth = getGoogleAuth();
     const client = await auth.getClient();
@@ -212,8 +221,8 @@ app.post("/add-partido", async (req, res) => {
           liga,
           local,
           visitante,
-          goles_local,
-          goles_visitante,
+          gl,
+          gv,
           "final"
         ]]
       }
@@ -225,8 +234,6 @@ app.post("/add-partido", async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ ERROR ADD PARTIDO:", err);
-
     res.status(500).json({
       ok: false,
       error: err.message
