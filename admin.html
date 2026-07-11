@@ -8,8 +8,6 @@
       font-family: Arial;
       background: #111;
       color: white;
-
-      /* 🔥 CENTRADO TOTAL */
       display: flex;
       justify-content: center;
       align-items: center;
@@ -18,22 +16,18 @@
     }
 
     .box {
-      background: #222;
+      background: #1c1c1c;
       padding: 25px;
       border-radius: 12px;
-      width: 100%;
-      max-width: 420px;
-
+      width: 420px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
 
-    h1 {
+    h2 {
       text-align: center;
-      margin-bottom: 15px;
-      font-size: 22px;
     }
 
-    input {
+    select, input {
       width: 100%;
       padding: 10px;
       margin: 6px 0;
@@ -49,8 +43,8 @@
       color: white;
       border: none;
       cursor: pointer;
-      margin-top: 10px;
       font-weight: bold;
+      margin-top: 10px;
       border-radius: 6px;
     }
 
@@ -59,9 +53,9 @@
     }
 
     .msg {
+      text-align: center;
       margin-top: 10px;
       font-size: 14px;
-      text-align: center;
     }
   </style>
 </head>
@@ -70,12 +64,37 @@
 
 <div class="box">
 
-  <h1>⚽ FutCat Admin PRO</h1>
+  <h2>⚽ FutCat Admin PRO</h2>
 
-  <input id="jornada" placeholder="Jornada (1,2,3...)">
-  <input id="liga" placeholder="Liga (1,2,3...)">
-  <input id="local" placeholder="Equipo local">
-  <input id="visitante" placeholder="Equipo visitante">
+  <input id="jornada" placeholder="Jornada">
+
+  <!-- LIGA -->
+  <select id="liga">
+    <option value="">Selecciona liga</option>
+    <option value="1">Lliga Elit</option>
+    <option value="2">Primera Catalana</option>
+    <option value="3">Segunda Catalana</option>
+  </select>
+
+  <!-- EQUIPOS -->
+  <select id="local">
+    <option value="">Local</option>
+    <option>Barcelona</option>
+    <option>Espanyol</option>
+    <option>Girona</option>
+    <option>Real Madrid</option>
+    <option>Atletico</option>
+  </select>
+
+  <select id="visitante">
+    <option value="">Visitante</option>
+    <option>Barcelona</option>
+    <option>Espanyol</option>
+    <option>Girona</option>
+    <option>Real Madrid</option>
+    <option>Atletico</option>
+  </select>
+
   <input id="gl" placeholder="Goles local">
   <input id="gv" placeholder="Goles visitante">
 
@@ -86,51 +105,35 @@
 </div>
 
 <script>
+
 async function saveMatch() {
-  try {
 
-    const data = {
-      jornada: document.getElementById("jornada").value,
-      liga: document.getElementById("liga").value,
-      local: document.getElementById("local").value,
-      visitante: document.getElementById("visitante").value,
-      goles_local: document.getElementById("gl").value,
-      goles_visitante: document.getElementById("gv").value
-    };
+  const data = {
+    jornada: document.getElementById("jornada").value,
+    liga: document.getElementById("liga").value,
+    local: document.getElementById("local").value,
+    visitante: document.getElementById("visitante").value,
+    goles_local: document.getElementById("gl").value,
+    goles_visitante: document.getElementById("gv").value
+  };
 
-    const res = await fetch("/add-partido", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(data)
-    });
+  const res = await fetch("/add-partido", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  });
 
-    const text = await res.text();
+  const json = await res.json();
 
-    let json;
-    try {
-      json = JSON.parse(text);
-    } catch (e) {
-      document.getElementById("msg").innerHTML =
-        "❌ Error servidor: " + text;
-      return;
-    }
-
-    if (!res.ok || !json.ok) {
-      document.getElementById("msg").innerHTML =
-        "❌ Error: " + (json.error || "desconocido");
-      return;
-    }
-
-    document.getElementById("msg").innerHTML =
-      "✅ Partido guardado correctamente";
-
-  } catch (err) {
-    document.getElementById("msg").innerHTML =
-      "❌ Error: " + err.message;
+  if (!json.ok) {
+    document.getElementById("msg").innerHTML = "❌ " + json.error;
+  } else {
+    document.getElementById("msg").innerHTML = "✅ Partido guardado";
   }
 }
+
 </script>
 
 </body>
