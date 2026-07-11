@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>FutCat Pro Dashboard</title>
+  <title>FutCat PRO Dashboard</title>
 
   <style>
     body {
@@ -84,13 +84,14 @@
       font-size: 12px;
       color: #aaa;
       margin-top: 4px;
+      margin-bottom: 15px;
     }
   </style>
 </head>
 
 <body>
 
-<header>⚽ FutCat PRO Dashboard</header>
+<header>⚽ FutCat PRO Dashboard LIVE</header>
 
 <div class="container">
 
@@ -128,7 +129,9 @@ async function loadData() {
 
   const liga = document.getElementById("liga").value;
 
+  // =========================
   // CLASIFICACIÓN
+  // =========================
   const res = await fetch("/clasificacion?liga=" + liga);
   const json = await res.json();
 
@@ -150,7 +153,9 @@ async function loadData() {
 
   document.getElementById("tabla").innerHTML = html;
 
+  // =========================
   // PARTIDOS
+  // =========================
   const res2 = await fetch("/partidos");
   const json2 = await res2.json();
 
@@ -179,7 +184,14 @@ async function loadData() {
   document.getElementById("partidos").innerHTML = html2;
 }
 
+// =========================
+// INICIO + LIVE MODE
+// =========================
 loadData();
+
+setInterval(() => {
+  loadData();
+}, 15000);
 
 </script>
 
