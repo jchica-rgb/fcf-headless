@@ -1,75 +1,96 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>FutCat Dashboard</title>
+  <title>FutCat Pro Dashboard</title>
 
   <style>
     body {
-      font-family: Arial;
-      background: #0f0f0f;
-      color: white;
       margin: 0;
-      padding: 20px;
+      font-family: Arial;
+      background: #0b0b0b;
+      color: white;
     }
 
-    h1 {
+    header {
+      background: #111;
+      padding: 20px;
       text-align: center;
-      margin-bottom: 20px;
+      font-size: 22px;
+      font-weight: bold;
+      border-bottom: 1px solid #222;
     }
 
     .container {
-      max-width: 900px;
+      max-width: 1000px;
       margin: auto;
+      padding: 20px;
     }
 
     select {
+      width: 100%;
       padding: 10px;
       margin-bottom: 20px;
-      width: 100%;
-      border-radius: 6px;
-      border: none;
-    }
-
-    .card {
-      background: #1c1c1c;
-      padding: 12px;
-      margin-bottom: 10px;
       border-radius: 8px;
+      border: none;
+      background: #1a1a1a;
+      color: white;
     }
 
-    .flex {
+    /* CLASIFICACIÓN */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 40px;
+      background: #111;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: center;
+      border-bottom: 1px solid #222;
+    }
+
+    th {
+      background: #1c1c1c;
+      color: #00ff88;
+    }
+
+    /* PARTIDOS */
+    .match {
+      background: #151515;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 10px;
       display: flex;
       justify-content: space-between;
+      align-items: center;
     }
 
     .team {
+      width: 40%;
       font-weight: bold;
     }
 
     .score {
-      color: #00ff88;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    th, td {
-      padding: 8px;
-      border-bottom: 1px solid #333;
+      width: 20%;
       text-align: center;
+      color: #00ff88;
+      font-size: 18px;
     }
 
-    th {
-      background: #222;
+    .meta {
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 4px;
     }
   </style>
 </head>
 
 <body>
 
-<h1>⚽ FutCat Dashboard PRO</h1>
+<header>⚽ FutCat PRO Dashboard</header>
 
 <div class="container">
 
@@ -86,7 +107,7 @@
       <tr>
         <th>#</th>
         <th>Equipo</th>
-        <th>P</th>
+        <th>Pts</th>
         <th>J</th>
         <th>G</th>
         <th>E</th>
@@ -137,13 +158,20 @@ async function loadData() {
 
   json2.data.forEach(p => {
     html2 += `
-      <div class="card">
-        <div class="flex">
-          <span class="team">${p.local}</span>
-          <span class="score">${p.goles_local} - ${p.goles_visitante}</span>
-          <span class="team">${p.visitante}</span>
+      <div class="match">
+        <div class="team">${p.local}</div>
+
+        <div class="score">
+          ${p.goles_local} - ${p.goles_visitante}
         </div>
-        <small>Liga: ${p.liga} | Jornada: ${p.jornada}</small>
+
+        <div class="team" style="text-align:right">
+          ${p.visitante}
+        </div>
+      </div>
+
+      <div class="meta">
+        Liga ${p.liga} | Jornada ${p.jornada}
       </div>
     `;
   });
