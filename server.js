@@ -13,27 +13,44 @@ app.use(express.json());
 const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
 
 // ======================
-// ROOT TEST
+// ROOT
 // ======================
 app.get("/", (req, res) => {
   res.json({
     ok: true,
-    status: "FCF HEADLESS RUNNING ⚽"
+    status: "FCF HEADLESS ONLINE ⚽"
   });
 });
 
 // ======================
-// TEST API
+// TEST
 // ======================
 app.get("/test-api", (req, res) => {
-  res.json({
-    ok: true,
-    status: "API OK ⚽"
-  });
+  res.json({ ok: true });
 });
 
 // ======================
-// PARTIDOS (CON FILTRO LIGA)
+// LIGAS DINÁMICAS ⭐ NUEVO
+// ======================
+app.get("/ligas", async (req, res) => {
+  try {
+    const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
+    const r = await axios.get(url);
+
+    const ligas = [...new Set(r.data.map(p => p.liga))];
+
+    res.json({
+      ok: true,
+      data: ligas
+    });
+
+  } catch (err) {
+    res.status(500).json({ ok: false });
+  }
+});
+
+// ======================
+// PARTIDOS
 // ======================
 app.get("/partidos", async (req, res) => {
 
@@ -42,11 +59,10 @@ app.get("/partidos", async (req, res) => {
     const liga = req.query.liga;
 
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
-    const response = await axios.get(url);
+    const r = await axios.get(url);
 
-    let data = response.data;
+    let data = r.data;
 
-    // 🔥 FILTRO POR LIGA
     if (liga && liga !== "") {
       data = data.filter(p => String(p.liga) === String(liga));
     }
@@ -57,15 +73,12 @@ app.get("/partidos", async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({
-      ok: false,
-      error: err.message
-    });
+    res.status(500).json({ ok: false });
   }
 });
 
 // ======================
-// CLASIFICACIÓN (REAL)
+// CLASIFICACIÓN
 // ======================
 app.get("/clasificacion", async (req, res) => {
 
@@ -74,11 +87,10 @@ app.get("/clasificacion", async (req, res) => {
     const liga = req.query.liga;
 
     const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
-    const response = await axios.get(url);
+    const r = await axios.get(url);
 
-    let partidos = response.data;
+    let partidos = r.data;
 
-    // 🔥 FILTRO POR LIGA
     if (liga && liga !== "") {
       partidos = partidos.filter(p => String(p.liga) === String(liga));
     }
@@ -100,31 +112,31 @@ app.get("/clasificacion", async (req, res) => {
 
     partidos.forEach(p => {
 
-      const local = p.local;
-      const visitante = p.visitante;
+      const l = p.local;
+      const v = p.visitante;
 
       const gl = Number(p.goles_local);
       const gv = Number(p.goles_visitante);
 
-      init(local);
-      init(visitante);
+      init(l);
+      init(v);
 
-      table[local].jugados++;
-      table[visitante].jugados++;
+      table[l].jugados++;
+      table[v].jugados++;
 
       if (gl > gv) {
-        table[local].ganados++;
-        table[local].puntos += 3;
-        table[visitante].perdidos++;
+        table[l].ganados++;
+        table[l].puntos += 3;
+        table[v].perdidos++;
       } else if (gv > gl) {
-        table[visitante].ganados++;
-        table[visitante].puntos += 3;
-        table[local].perdidos++;
+        table[v].ganados++;
+        table[v].puntos += 3;
+        table[l].perdidos++;
       } else {
-        table[local].empatados++;
-        table[visitante].empatados++;
-        table[local].puntos++;
-        table[visitante].puntos++;
+        table[l].empatados++;
+        table[v].empatados++;
+        table[l].puntos++;
+        table[v].puntos++;
       }
     });
 
@@ -134,46 +146,15 @@ app.get("/clasificacion", async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({
-      ok: false,
-      error: err.message
-    });
+    res.status(500).json({ ok: false });
   }
 });
 
 // ======================
-// ADD PARTIDO (ADMIN)
-// ======================
-app.post("/add-partido", async (req, res) => {
-
-  try {
-
-    const { jornada, liga, local, visitante, goles_local, goles_visitante } = req.body;
-
-    const url = `https://opensheet.elk.sh/${SHEET_ID}/PARTIDOS`;
-
-    // ⚠️ ESTE ENDPOINT SOLO FUNCIONA SI TIENES WRITE (Sheets API o backend)
-    // Lo dejamos preparado para futura versión PRO
-
-    res.json({
-      ok: true,
-      msg: "Endpoint listo (requiere integración Google Sheets API para escritura)",
-      data: req.body
-    });
-
-  } catch (err) {
-    res.status(500).json({
-      ok: false,
-      error: err.message
-    });
-  }
-});
-
-// ======================
-// START SERVER
+// START
 // ======================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("FCF HEADLESS RUNNING ⚽ PORT:", PORT);
+  console.log("FCF HEADLESS RUNNING ⚽");
 });
