@@ -15,20 +15,18 @@ app.use(express.json());
 const SHEET_ID = "1TI0XHtFjFoC7NFbDBQ_2GdgrqxUAIOXP61eL55RPrC8";
 
 // ============================
-// ADMIN LOGIN (NIVEL 2)
-// ============================
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "futcat2026";
-
-// ============================
-// ADMIN PANEL
+// PÁGINAS FRONT
 // ============================
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
 
+app.get("/dashboard", (req, res) => {
+  res.sendFile(path.join(__dirname, "dashboard.html"));
+});
+
 // ============================
-// CLEAN KEYS
+// LIMPIEZA DE DATOS SHEETS
 // ============================
 function cleanKey(obj) {
   const cleaned = {};
@@ -39,13 +37,13 @@ function cleanKey(obj) {
 }
 
 // ============================
-// GOOGLE AUTH
+// GOOGLE AUTH (FIX DEFINITIVO)
 // ============================
 function getGoogleAuth() {
   const raw = process.env.GOOGLE_CREDENTIALS;
 
   if (!raw) {
-    throw new Error("GOOGLE_CREDENTIALS no configurado");
+    throw new Error("GOOGLE_CREDENTIALS no configurado en Render");
   }
 
   const creds = JSON.parse(raw);
@@ -60,23 +58,6 @@ function getGoogleAuth() {
     credentials: creds,
     scopes: ["https://www.googleapis.com/auth/spreadsheets"]
   });
-}
-
-// ============================
-// MIDDLEWARE LOGIN PROTECCIÓN
-// ============================
-function auth(req, res, next) {
-  const user = req.headers.user;
-  const pass = req.headers.pass;
-
-  if (user === ADMIN_USER && pass === ADMIN_PASS) {
-    next();
-  } else {
-    res.status(401).json({
-      ok: false,
-      error: "No autorizado"
-    });
-  }
 }
 
 // ============================
@@ -155,7 +136,10 @@ app.get("/clasificacion", async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
   }
 });
 
@@ -173,14 +157,17 @@ app.get("/partidos", async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
   }
 });
 
 // ============================
-// GUARDAR PARTIDO (PROTEGIDO)
+// GUARDAR PARTIDO (PRO STABLE)
 // ============================
-app.post("/add-partido", auth, async (req, res) => {
+app.post("/add-partido", async (req, res) => {
   try {
     const {
       jornada,
@@ -191,10 +178,11 @@ app.post("/add-partido", auth, async (req, res) => {
       goles_visitante
     } = req.body;
 
+    // VALIDACIÓN
     if (!jornada || !liga || !local || !visitante) {
       return res.status(400).json({
         ok: false,
-        error: "Faltan datos"
+        error: "Faltan datos obligatorios"
       });
     }
 
@@ -208,8 +196,8 @@ app.post("/add-partido", auth, async (req, res) => {
       });
     }
 
-    const authGoogle = getGoogleAuth();
-    const client = await authGoogle.getClient();
+    const auth = getGoogleAuth();
+    const client = await auth.getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
 
     await sheets.spreadsheets.values.append({
@@ -235,6 +223,8 @@ app.post("/add-partido", auth, async (req, res) => {
     });
 
   } catch (err) {
+    console.error("ERROR ADD PARTIDO:", err);
+
     res.status(500).json({
       ok: false,
       error: err.message
