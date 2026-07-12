@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>TERRITORI FUTCAT LIVE PRO</title>
+<title>FLASHSCORE PRO FUTCAT</title>
 
 <style>
 body {
@@ -26,25 +26,6 @@ header {
   padding: 15px;
 }
 
-#statusBar {
-  display: flex;
-  justify-content: space-between;
-  background: #111;
-  padding: 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  margin-bottom: 10px;
-}
-
-select {
-  width: 100%;
-  padding: 10px;
-  margin: 10px 0;
-  background: #1a1a1a;
-  color: white;
-  border: 1px solid #333;
-}
-
 table {
   width: 100%;
   border-collapse: collapse;
@@ -61,20 +42,11 @@ th {
   color: #00ff88;
 }
 
-/* 🔥 ZONAS REALES */
-.up td {
-  background: rgba(0,255,0,0.18) !important;
-}
+/* ZONAS */
+.up td { background: rgba(0,255,0,0.18) !important; }
+.down td { background: rgba(255,0,0,0.18) !important; }
+.mid td { background: rgba(255,255,255,0.05); }
 
-.down td {
-  background: rgba(255,0,0,0.18) !important;
-}
-
-.mid td {
-  background: rgba(255,255,255,0.05) !important;
-}
-
-/* PARTIDOS */
 .match {
   background: #151515;
   padding: 10px;
@@ -93,18 +65,13 @@ th {
 
 <body>
 
-<header>⚽ TERRITORI FUTCAT LIVE PRO</header>
+<header>⚽ FLASHSCORE PRO FUTCAT</header>
 
 <div class="container">
 
-<div id="statusBar">
-  <div id="lastChange">📡 Último cambio real: --</div>
-  <div id="lastRefresh">🕒 Último refresh: --</div>
-</div>
-
 <select id="liga"></select>
 
-<h3>📊 Clasificación</h3>
+<h3>Clasificación</h3>
 
 <table>
 <thead>
@@ -112,16 +79,16 @@ th {
   <th>#</th>
   <th>Equipo</th>
   <th>Puntos</th>
-  <th>Jugados</th>
-  <th>Ganados</th>
-  <th>Empatados</th>
-  <th>Perdidos</th>
+  <th>J</th>
+  <th>G</th>
+  <th>E</th>
+  <th>P</th>
 </tr>
 </thead>
 <tbody id="tabla"></tbody>
 </table>
 
-<h3>⚽ Partidos</h3>
+<h3>Partidos</h3>
 <div id="partidos"></div>
 
 </div>
@@ -132,47 +99,26 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 
-// estado anterior (solo flechas)
-let lastState = {};
-
-// ======================
-function formatTime(ts) {
-  if (!ts) return "--";
-  return new Date(ts).toLocaleString("es-ES", {
-    timeZone: "Europe/Madrid"
-  });
-}
-
 // ======================
 async function loadLigas() {
 
   const res = await fetch(API + "/ligas");
   const json = await res.json();
 
-  const select = document.getElementById("liga");
-  select.innerHTML = "";
+  const sel = document.getElementById("liga");
+  sel.innerHTML = "";
 
   json.data.forEach(l => {
     const opt = document.createElement("option");
     opt.value = l.id;
     opt.textContent = l.nombre;
-    select.appendChild(opt);
+    sel.appendChild(opt);
   });
 
-  const saved = localStorage.getItem("liga");
-  currentLiga = saved || json.data[0].id;
-  select.value = currentLiga;
+  currentLiga = json.data[0].id;
+  sel.value = currentLiga;
 
-  select.onchange = (e) => {
-    currentLiga = e.target.value;
-    localStorage.setItem("liga", currentLiga);
-
-    lastState = {};
-    document.getElementById("tabla").innerHTML = "";
-    document.getElementById("partidos").innerHTML = "";
-
-    loadData();
-  };
+  sel.onchange = () => loadData();
 
   loadData();
 }
@@ -190,11 +136,8 @@ async function loadData() {
 
   renderTable(clas.data);
   renderMatches(part.data);
-  updateStatus(clas.lastUpdate);
 }
 
-// ======================
-// 🔥 CLASIFICACION FINAL ESTABLE
 // ======================
 function renderTable(data) {
 
@@ -204,27 +147,19 @@ function renderTable(data) {
 
     let tr = document.getElementById("row-" + t.equipo);
 
-    const prev = lastState[t.equipo];
-
-    let arrow = "";
-    let cls = "";
-
-    // 📈📉 flechas SOLO si hay cambio
-    if (prev) {
-      if (t.puntos > prev.puntos) arrow = " 📈";
-      else if (t.puntos < prev.puntos) arrow = " 📉";
-    }
-
-    // 🔥 ZONAS POR POSICIÓN (REAL PRO)
-    if (i < 3) cls = "up";
-    else if (i >= data.length - 3) cls = "down";
-    else cls = "mid";
-
     if (!tr) {
       tr = document.createElement("tr");
       tr.id = "row-" + t.equipo;
       tbody.appendChild(tr);
     }
+
+    let arrow = "";
+    if (t.movement === "up") arrow = " 📈";
+    if (t.movement === "down") arrow = " 📉";
+
+    let cls = "mid";
+    if (i < 3) cls = "up";
+    else if (i >= data.length - 3) cls = "down";
 
     tr.className = cls;
 
@@ -237,14 +172,6 @@ function renderTable(data) {
       <td>${t.empatados}</td>
       <td>${t.perdidos}</td>
     `;
-
-    lastState[t.equipo] = t;
-  });
-
-  // mantener orden DOM
-  data.forEach(t => {
-    const row = document.getElementById("row-" + t.equipo);
-    if (row) tbody.appendChild(row);
   });
 }
 
@@ -261,7 +188,7 @@ function renderMatches(matches) {
 
     el.innerHTML = `
       <div>${p.local}</div>
-      <div class="score">${p.goles_local ?? 0} - ${p.goles_visitante ?? 0}</div>
+      <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
       <div>${p.visitante}</div>
     `;
 
@@ -270,25 +197,9 @@ function renderMatches(matches) {
 }
 
 // ======================
-function updateStatus(ts) {
-
-  const now = new Date().toLocaleString("es-ES", {
-    timeZone: "Europe/Madrid"
-  });
-
-  document.getElementById("lastChange").innerText =
-    "📡 Último cambio real: " + formatTime(ts);
-
-  document.getElementById("lastRefresh").innerText =
-    "🕒 Último refresh: " + now;
-}
-
-// ======================
-setInterval(() => {
-  if (currentLiga) loadData();
-}, 12000);
-
 loadLigas();
+
+setInterval(loadData, 10000);
 
 </script>
 
