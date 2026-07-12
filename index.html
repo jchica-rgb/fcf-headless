@@ -12,13 +12,13 @@ body {
   color: white;
 }
 
+/* HEADER */
 header {
   padding: 18px;
   text-align: center;
   background: linear-gradient(90deg, #111, #0a0a0a, #111);
   font-size: 22px;
   font-weight: bold;
-  letter-spacing: 1px;
   border-bottom: 1px solid rgba(0,255,136,0.15);
 }
 
@@ -67,17 +67,11 @@ th {
 }
 
 /* ZONES */
-.up td {
-  background: rgba(0,255,0,0.18) !important;
-}
-.down td {
-  background: rgba(255,0,0,0.18) !important;
-}
-.mid td {
-  background: rgba(255,255,255,0.04);
-}
+.up td { background: rgba(0,255,0,0.18) !important; }
+.down td { background: rgba(255,0,0,0.18) !important; }
+.mid td { background: rgba(255,255,255,0.04); }
 
-/* MATCHES ULTRA */
+/* MATCHES */
 .match {
   background: #151515;
   padding: 12px;
@@ -114,9 +108,7 @@ h3::after {
   background: linear-gradient(90deg, #00ff88, transparent);
 }
 
-/* =========================
-   🔥 ANIMACIONES PRO MOTION
-========================= */
+/* ANIMATION */
 @keyframes flashUp {
   0% { background: rgba(0,255,136,0.35); }
   100% { background: rgba(0,255,0,0.18); }
@@ -127,13 +119,8 @@ h3::after {
   100% { background: rgba(255,0,0,0.18); }
 }
 
-.flash-up td {
-  animation: flashUp 0.8s ease;
-}
-
-.flash-down td {
-  animation: flashDown 0.8s ease;
-}
+.flash-up td { animation: flashUp 0.8s ease; }
+.flash-down td { animation: flashDown 0.8s ease; }
 
 .arrow {
   font-size: 12px;
@@ -182,6 +169,14 @@ h3::after {
 const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
+let lastHash = null;
+
+// ======================
+function createHash(data) {
+  return data.map(d =>
+    `${d.equipo}-${d.puntos}-${d.jugados}`
+  ).join("|");
+}
 
 // ======================
 async function loadLigas() {
@@ -210,6 +205,8 @@ async function loadLigas() {
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
 
+    lastHash = null;
+
     loadData();
   };
 
@@ -226,6 +223,15 @@ async function loadData() {
 
   const clas = await c.json();
   const part = await p.json();
+
+  const newHash = createHash(clas.data);
+
+  if (newHash === lastHash) {
+    updateStatus(clas.lastUpdate);
+    return;
+  }
+
+  lastHash = newHash;
 
   renderTable(clas.data);
   renderMatches(part.data);
@@ -252,7 +258,6 @@ function renderTable(data) {
       tbody.appendChild(tr);
     }
 
-    // 🔥 ANIMACIÓN MOVIMIENTO
     let oldPos = tr.getAttribute("data-pos");
 
     if (oldPos !== null) {
@@ -286,7 +291,6 @@ function renderTable(data) {
     `;
   });
 
-  // limpiar animaciones
   setTimeout(() => {
     document.querySelectorAll(".flash-up, .flash-down")
       .forEach(el => {
