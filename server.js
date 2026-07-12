@@ -1,20 +1,18 @@
 const express = require("express");
 const cors = require("cors");
-const http = require("http");
-const { Server } = require("socket.io");
 const { google } = require("googleapis");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" }
-});
-
+// ======================
+// CONFIG
+// ======================
 const SHEET_ID = process.env.SHEET_ID || "";
 
+// ======================
+// SAFE JSON PARSE
 // ======================
 function safeJson(v) {
   try { return JSON.parse(v); } catch { return null; }
@@ -22,6 +20,9 @@ function safeJson(v) {
 
 const credentials = safeJson(process.env.GOOGLE_CREDENTIALS);
 
+// ======================
+// GOOGLE AUTH
+// ======================
 const auth = credentials
   ? new google.auth.GoogleAuth({
       credentials,
@@ -30,7 +31,21 @@ const auth = credentials
   : null;
 
 // ======================
+// NORMALIZE
+// ======================
+function normalize(v) {
+  return String(v || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+// ======================
+// READ SHEET
+// ======================
 async function getSheet(range) {
+  if (!auth || !SHEET_ID) return [];
+
   const client = await auth.getClient();
   const sheets = google.sheets({ version: "v4", auth: client });
 
@@ -43,20 +58,59 @@ async function getSheet(range) {
 }
 
 // ======================
-function normalize(v) {
-  return String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
-}
+// LIGAS
+// ======================
+app.get("/ligas", async (req, res) => {
+
+  const rows = await getSheet("LIGAS!A2:B");
+
+  res.json({
+    data: rows.map(r => ({
+      id: normalize(r[0]),
+      nombre: r[1]
+    }))
+  });
+});
 
 // ======================
-// CALCULAR CLASIFICACIÓN
-function buildClasificacion(rows, ligaId) {
+// PARTIDOS
+// ======================
+app.get("/partidos", async (req, res) => {
+
+  const ligaId = normalize(req.query.liga);
+
+  const rows = await getSheet("PARTIDOS!A2:F");
+
+  const data = rows
+    .filter(r => r && r.length >= 6)
+    .map(r => ({
+      liga: normalize(r[0]),
+      jornada: r[1],
+      local: (r[2] || "").trim(),
+      visitante: (r[3] || "").trim(),
+      goles_local: Number(r[4] || 0),
+      goles_visitante: Number(r[5] || 0)
+    }))
+    .filter(p => p.liga === ligaId);
+
+  res.json({ data });
+});
+
+// ======================
+// CLASIFICACION
+// ======================
+app.get("/clasificacion", async (req, res) => {
+
+  const ligaId = normalize(req.query.liga);
+
+  const rows = await getSheet("PARTIDOS!A2:F");
 
   const partidos = rows
     .filter(r => r && r.length >= 6)
     .map(r => ({
       liga: normalize(r[0]),
-      local: r[2],
-      visitante: r[3],
+      local: (r[2] || "").trim(),
+      visitante: (r[3] || "").trim(),
       gl: Number(r[4] || 0),
       gv: Number(r[5] || 0)
     }))
@@ -64,10 +118,10 @@ function buildClasificacion(rows, ligaId) {
 
   const tabla = {};
 
-  const init = (t) => {
-    if (!tabla[t]) {
-      tabla[t] = {
-        equipo: t,
+  const init = (team) => {
+    if (!tabla[team]) {
+      tabla[team] = {
+        equipo: team,
         puntos: 0,
         jugados: 0,
         ganados: 0,
@@ -107,41 +161,24 @@ function buildClasificacion(rows, ligaId) {
     b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
-  return result;
-}
-
-// ======================
-// LOOP LIVE (CORE)
-async function liveLoop() {
-
-  if (!auth) return;
-
-  const rows = await getSheet("PARTIDOS!A2:F");
-
-  const ligas = ["lliga-elit", "primera", "segona"]; // ejemplo
-
-  ligas.forEach(ligaId => {
-
-    const clasificacion = buildClasificacion(rows, ligaId);
-
-    io.emit("clasificacion", {
-      liga: ligaId,
-      data: clasificacion
-    });
+  res.json({
+    data: result,
+    lastUpdate: Date.now()
   });
-
-  io.emit("heartbeat", { time: Date.now() });
-}
-
-// cada 5 segundos
-setInterval(liveLoop, 5000);
-
-// ======================
-io.on("connection", (socket) => {
-  console.log("cliente conectado live");
 });
 
 // ======================
-server.listen(3000, () => {
-  console.log("LIVE SERVER RUNNING ⚽🔥");
+// HEALTH CHECK (IMPORTANTE RENDER)
+// ======================
+app.get("/", (req, res) => {
+  res.send("FUTCAT SERVER OK ⚽");
+});
+
+// ======================
+// START SERVER (IMPORTANTE)
+// ======================
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("FUTCAT SERVER RUNNING ⚽");
 });
