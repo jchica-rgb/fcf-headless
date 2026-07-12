@@ -26,31 +26,31 @@ header {
   padding: 15px;
 }
 
-select {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-  background: #1a1a1a;
-  color: white;
-  border: 1px solid #333;
-}
-
-/* ================= STATUS BAR ================= */
+/* ================= STATUS ================= */
 #statusBar {
   display: flex;
   justify-content: space-between;
   background: #111;
   padding: 10px;
-  margin-bottom: 10px;
   border-radius: 6px;
   font-size: 12px;
+  margin-bottom: 10px;
 }
 
 .badge {
   background: #222;
   padding: 6px 10px;
   border-radius: 5px;
-  color: #ccc;
+}
+
+/* ================= LIGAS ================= */
+select {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  background: #1a1a1a;
+  color: white;
+  border: 1px solid #333;
 }
 
 /* ================= TABLE ================= */
@@ -58,6 +58,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   background: #111;
+  margin-bottom: 20px;
 }
 
 th, td {
@@ -72,7 +73,21 @@ th {
 
 tr.updated {
   background: #1f3b2c !important;
-  transition: 0.5s;
+}
+
+/* ================= PARTIDOS ================= */
+.match {
+  background: #151515;
+  padding: 10px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  border-radius: 6px;
+}
+
+.score {
+  color: #00ff88;
+  font-weight: bold;
 }
 </style>
 </head>
@@ -83,16 +98,16 @@ tr.updated {
 
 <div class="container">
 
-<select id="liga"></select>
-
-<!-- ================= STATUS BAR ================= -->
+<!-- STATUS -->
 <div id="statusBar">
   <div id="lastChange">📡 Último cambio real: --</div>
   <div id="lastRefresh">🕒 Último refresh: --</div>
 </div>
 
-<h3>📊 Clasificación</h3>
+<!-- LIGAS (AHORA DEBAJO COMO PEDISTE) -->
+<select id="liga"></select>
 
+<h3>📊 Clasificación</h3>
 <table>
 <thead>
 <tr>
@@ -108,6 +123,9 @@ tr.updated {
 <tbody id="tabla"></tbody>
 </table>
 
+<h3>⚽ Partidos</h3>
+<div id="partidos"></div>
+
 </div>
 
 <script>
@@ -117,9 +135,7 @@ const API = "https://fcf-headless.onrender.com";
 let currentLiga = null;
 let lastData = null;
 
-// ======================
-// LIGAS
-// ======================
+// ================= LIGAS =================
 async function loadLigas() {
 
   const res = await fetch(API + "/ligas");
@@ -146,22 +162,23 @@ async function loadLigas() {
   loadData();
 }
 
-// ======================
-// DATA
-// ======================
+// ================= DATA =================
 async function loadData() {
 
-  const res = await fetch(API + "/clasificacion?liga=" + currentLiga);
-  const json = await res.json();
+  const [c, p] = await Promise.all([
+    fetch(API + "/clasificacion?liga=" + currentLiga),
+    fetch(API + "/partidos?liga=" + currentLiga)
+  ]);
 
-  renderTable(json.data);
+  const clas = await c.json();
+  const part = await p.json();
 
-  updateStatus(json.lastUpdate);
+  renderTable(clas.data);
+  renderMatches(part.data);
+  updateStatus(clas.lastUpdate);
 }
 
-// ======================
-// TABLE
-// ======================
+// ================= CLASIFICACION =================
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
@@ -194,14 +211,31 @@ function renderTable(data) {
   lastData = data;
 }
 
-// ======================
-// STATUS BAR UPDATE
-// ======================
+// ================= PARTIDOS =================
+function renderMatches(matches) {
+
+  const div = document.getElementById("partidos");
+  div.innerHTML = "";
+
+  matches.forEach(p => {
+
+    const el = document.createElement("div");
+    el.className = "match";
+
+    el.innerHTML = `
+      <div>${p.local}</div>
+      <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
+      <div>${p.visitante}</div>
+    `;
+
+    div.appendChild(el);
+  });
+}
+
+// ================= STATUS =================
 function updateStatus(lastChange) {
 
-  const now = new Date();
-
-  const formatted = now.toLocaleString("es-ES", {
+  const now = new Date().toLocaleString("es-ES", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -213,17 +247,15 @@ function updateStatus(lastChange) {
     "📡 Último cambio real: " + (lastChange || "--");
 
   document.getElementById("lastRefresh").innerText =
-    "🕒 Último refresh: " + formatted;
+    "🕒 Último refresh: " + now;
 }
 
-// ======================
-// AUTO REFRESH
-// ======================
+// ================= AUTO REFRESH =================
 setInterval(() => {
   if (currentLiga) loadData();
 }, 15000);
 
-// ======================
+// ================= INIT =================
 loadLigas();
 
 </script>
