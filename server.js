@@ -12,7 +12,7 @@ app.use(express.json());
 const SHEET_ID = process.env.SHEET_ID || "";
 
 // ======================
-// SAFE JSON
+// SAFE JSON PARSE
 // ======================
 function safeJson(v) {
   try {
@@ -64,7 +64,7 @@ async function getSheet(range) {
 }
 
 // ======================
-// CACHE CAMBIOS REALES
+// CACHE ESTABLE
 // ======================
 let lastKeyByLiga = {};
 let lastUpdate = null;
@@ -108,7 +108,7 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ======================
-// CLASIFICACIÓN (FIX DEFINITIVO)
+// CLASIFICACIÓN (100% ESTABLE)
 // ======================
 app.get("/clasificacion", async (req, res) => {
 
@@ -153,11 +153,13 @@ app.get("/clasificacion", async (req, res) => {
       tabla[p.local].ganados++;
       tabla[p.visitante].perdidos++;
       tabla[p.local].puntos += 3;
-    } else if (p.gl < p.gv) {
+    } 
+    else if (p.gl < p.gv) {
       tabla[p.visitante].ganados++;
       tabla[p.local].perdidos++;
       tabla[p.visitante].puntos += 3;
-    } else {
+    } 
+    else {
       tabla[p.local].empatados++;
       tabla[p.visitante].empatados++;
       tabla[p.local].puntos++;
@@ -165,20 +167,23 @@ app.get("/clasificacion", async (req, res) => {
     }
   });
 
+  // ======================
+  // ORDEN FIJO (CLAVE)
+  // ======================
   const result = Object.values(tabla)
     .sort((a, b) => {
       if (b.puntos !== a.puntos) return b.puntos - a.puntos;
+      if (b.ganados !== a.ganados) return b.ganados - a.ganados;
       return a.equipo.localeCompare(b.equipo);
     });
 
   // ======================
-  // HASH 100% ESTABLE
+  // HASH 100% DETERMINISTA
   // ======================
   const key = result
     .map(r =>
       `${r.equipo}|${r.puntos}|${r.jugados}|${r.ganados}|${r.empatados}|${r.perdidos}`
     )
-    .sort()
     .join("#");
 
   // ======================
@@ -207,7 +212,7 @@ app.get("/clasificacion", async (req, res) => {
 app.get("/", (req, res) => {
   res.json({
     ok: true,
-    status: "FUTCAT STABLE SYSTEM ⚽"
+    status: "FUTCAT ULTRA STABLE ⚽"
   });
 });
 
