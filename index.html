@@ -61,9 +61,16 @@ th {
   color: #00ff88;
 }
 
-.up { background: rgba(0,255,0,0.12); }
-.down { background: rgba(255,0,0,0.12); }
+/* 🔥 ESTADOS VISUALES ESTABLES */
+.up {
+  background: rgba(0,255,0,0.12);
+}
 
+.down {
+  background: rgba(255,0,0,0.12);
+}
+
+/* PARTIDOS */
 .match {
   background: #151515;
   padding: 10px;
@@ -109,8 +116,9 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 
-// 🔥 STATE CORRECTO (FIX REAL)
-let lastState = new Map();
+// 🔥 DOBLE ESTADO (CLAVE FINAL)
+let previousState = new Map();
+let currentState = new Map();
 
 // ======================
 function formatTime(ts) {
@@ -144,8 +152,9 @@ async function loadLigas() {
     currentLiga = e.target.value;
     localStorage.setItem("liga", currentLiga);
 
-    // 🔥 reset limpio por liga
-    lastState = new Map();
+    previousState.clear();
+    currentState.clear();
+
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
 
@@ -172,24 +181,24 @@ async function loadData() {
 }
 
 // ======================
-// CLASIFICACION (FIX FINAL REAL)
+// 🔥 CLASIFICACIÓN FINAL ESTABLE
 // ======================
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
 
-  const newState = new Map();
-
   data.forEach((t, i) => {
 
     let tr = document.getElementById("row-" + t.equipo);
 
-    const prev = lastState.get(t.equipo);
+    const prev = previousState.get(t.equipo);
 
     let arrow = "";
     let cls = "";
 
-    // 🔥 COMPARACION REAL
+    // ======================
+    // 🔥 COMPARACIÓN REAL
+    // ======================
     if (prev) {
       if (t.puntos > prev.puntos) {
         arrow = " 📈";
@@ -218,13 +227,18 @@ function renderTable(data) {
       <td>${t.perdidos}</td>
     `;
 
-    newState.set(t.equipo, t);
+    currentState.set(t.equipo, t);
   });
 
-  // 🔥 actualizar estado SIN romper referencia
-  lastState = newState;
+  // ======================
+  // 🔥 SWAP DE ESTADOS (CLAVE)
+  // ======================
+  previousState = new Map(currentState);
+  currentState = new Map();
 
-  // 🔥 mantener orden correcto
+  // ======================
+  // 🔥 ORDEN ESTABLE DOM
+  // ======================
   data.forEach(t => {
     const row = document.getElementById("row-" + t.equipo);
     if (row) tbody.appendChild(row);
