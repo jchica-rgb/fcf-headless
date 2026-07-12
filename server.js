@@ -1,10 +1,17 @@
 const express = require("express");
 const cors = require("cors");
+const http = require("http");
+const { Server } = require("socket.io");
 const { google } = require("googleapis");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: "*" }
+});
 
 const SHEET_ID = process.env.SHEET_ID || "";
 
@@ -23,17 +30,7 @@ const auth = credentials
   : null;
 
 // ======================
-function normalize(v) {
-  return String(v || "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-}
-
-// ======================
 async function getSheet(range) {
-  if (!auth || !SHEET_ID) return [];
-
   const client = await auth.getClient();
   const sheets = google.sheets({ version: "v4", auth: client });
 
@@ -46,56 +43,20 @@ async function getSheet(range) {
 }
 
 // ======================
-app.get("/ligas", async (req, res) => {
-
-  const rows = await getSheet("LIGAS!A2:B");
-
-  res.json({
-    data: rows.map(r => ({
-      id: normalize(r[0]),
-      nombre: r[1]
-    }))
-  });
-});
+function normalize(v) {
+  return String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
 
 // ======================
-app.get("/partidos", async (req, res) => {
-
-  const ligaId = normalize(req.query.liga);
-
-  const rows = await getSheet("PARTIDOS!A2:F");
-
-  const data = rows
-    .filter(r => r && r.length >= 6)
-    .map(r => ({
-      liga: normalize(r[0]),
-      local: normalize(r[2]),
-      visitante: normalize(r[3]),
-      goles_local: Number(r[4] || 0),
-      goles_visitante: Number(r[5] || 0)
-    }))
-    .filter(p => p.liga === ligaId);
-
-  res.json({ data });
-});
-
-// ======================
-// 🔥 CLASIFICACIÓN FLASHCORE FIX REAL
-// ======================
-const historyByLiga = {};
-
-app.get("/clasificacion", async (req, res) => {
-
-  const ligaId = normalize(req.query.liga);
-
-  const rows = await getSheet("PARTIDOS!A2:F");
+// CALCULAR CLASIFICACIÓN
+function buildClasificacion(rows, ligaId) {
 
   const partidos = rows
     .filter(r => r && r.length >= 6)
     .map(r => ({
       liga: normalize(r[0]),
-      local: normalize(r[2]),
-      visitante: normalize(r[3]),
+      local: r[2],
+      visitante: r[3],
       gl: Number(r[4] || 0),
       gv: Number(r[5] || 0)
     }))
@@ -146,43 +107,41 @@ app.get("/clasificacion", async (req, res) => {
     b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
-  // ======================
-  // 🔥 MOVIMIENTO REAL CORRECTO
-  const prev = historyByLiga[ligaId] || {};
+  return result;
+}
 
-  const indexMapPrev = prev.indexMap || {};
+// ======================
+// LOOP LIVE (CORE)
+async function liveLoop() {
 
-  result = result.map((t, i) => {
+  if (!auth) return;
 
-    let movement = "same";
+  const rows = await getSheet("PARTIDOS!A2:F");
 
-    if (indexMapPrev[t.equipo] !== undefined) {
-      if (i < indexMapPrev[t.equipo]) movement = "up";
-      else if (i > indexMapPrev[t.equipo]) movement = "down";
-    }
+  const ligas = ["lliga-elit", "primera", "segona"]; // ejemplo
 
-    return {
-      ...t,
-      pos: i + 1,
-      movement
-    };
+  ligas.forEach(ligaId => {
+
+    const clasificacion = buildClasificacion(rows, ligaId);
+
+    io.emit("clasificacion", {
+      liga: ligaId,
+      data: clasificacion
+    });
   });
 
-  // ======================
-  // SNAPSHOT CORRECTO
-  historyByLiga[ligaId] = {
-    indexMap: Object.fromEntries(
-      result.map((t, i) => [t.equipo, i])
-    )
-  };
+  io.emit("heartbeat", { time: Date.now() });
+}
 
-  res.json({
-    data: result,
-    lastUpdate: Date.now()
-  });
+// cada 5 segundos
+setInterval(liveLoop, 5000);
+
+// ======================
+io.on("connection", (socket) => {
+  console.log("cliente conectado live");
 });
 
 // ======================
-app.listen(process.env.PORT || 3000, () => {
-  console.log("FLASHCORE PRO RUNNING ⚽");
+server.listen(3000, () => {
+  console.log("LIVE SERVER RUNNING ⚽🔥");
 });
