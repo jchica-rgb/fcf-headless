@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>FLASHCORE PRO FUTCAT</title>
+<title>Territori FUTCAT Live</title>
 
 <style>
 body {
@@ -66,43 +66,45 @@ th {
 .down td { background: rgba(255,0,0,0.18) !important; }
 .mid td { background: rgba(255,255,255,0.05); }
 
+/* ⚽ PARTIDOS LIMPIO */
 .match {
   background: #151515;
   padding: 10px;
   margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   border-radius: 6px;
 }
 
+/* 🔥 FIX CENTRADO RESULTADO */
 .score {
   color: #00ff88;
   font-weight: bold;
-}
-
-/* 🔥 UI EXTRA (SOLO AÑADIDO) */
-h3 {
-  margin-top: 20px;
-  margin-bottom: 10px;
-  font-size: 18px;
+  min-width: 80px;
+  text-align: center;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  justify-content: center;
 }
 
-h3::after {
-  content: "";
+/* columnas partidos */
+.match div {
   flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, #00ff88, transparent);
-  margin-left: 10px;
+}
+
+.match div:first-child {
+  text-align: left;
+}
+
+.match div:last-child {
+  text-align: right;
 }
 </style>
 </head>
 
 <body>
 
-<header>⚽ FLASHCORE PRO FUTCAT</header>
+<header>⚽ Territori FUTCAT Live</header>
 
 <div class="container">
 
@@ -142,8 +144,6 @@ const API = "https://fcf-headless.onrender.com";
 let currentLiga = null;
 
 // ======================
-// LIGAS (FIX PERSISTENTE)
-// ======================
 async function loadLigas() {
 
   const res = await fetch(API + "/ligas");
@@ -159,17 +159,13 @@ async function loadLigas() {
     sel.appendChild(opt);
   });
 
-  // 🔥 FIX: mantener liga seleccionada
   const saved = localStorage.getItem("liga");
-
   currentLiga = saved || json.data[0].id;
   sel.value = currentLiga;
 
-  // 🔥 guardar selección correctamente
   sel.onchange = (e) => {
 
     currentLiga = e.target.value;
-    localStorage.setItem("liga", currentLiga);
 
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
@@ -197,8 +193,6 @@ async function loadData() {
   updateStatus(clas.lastUpdate);
 }
 
-// ======================
-// CLASIFICACIÓN
 // ======================
 function renderTable(data) {
 
@@ -237,8 +231,6 @@ function renderTable(data) {
 }
 
 // ======================
-// PARTIDOS (UI RESTAURADA)
-// ======================
 function renderMatches(matches) {
 
   const div = document.getElementById("partidos");
@@ -250,9 +242,9 @@ function renderMatches(matches) {
     el.className = "match";
 
     el.innerHTML = `
-      <div>⚽ ${p.local}</div>
+      <div>${p.local}</div>
       <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-      <div>${p.visitante} ⚽</div>
+      <div>${p.visitante}</div>
     `;
 
     div.appendChild(el);
