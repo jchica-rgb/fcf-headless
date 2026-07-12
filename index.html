@@ -27,7 +27,7 @@ header {
 }
 
 /* ======================
-   STATUS BAR
+   STATUS
 ====================== */
 
 #statusBar {
@@ -41,7 +41,7 @@ header {
 }
 
 /* ======================
-   SELECT LIGA
+   SELECT
 ====================== */
 
 select {
@@ -54,7 +54,7 @@ select {
 }
 
 /* ======================
-   LAYOUT PRINCIPAL
+   LAYOUT (FIX DEFINITIVO)
 ====================== */
 
 .layout {
@@ -63,33 +63,22 @@ select {
 
   max-width: 1200px;
   margin: 0 auto;
+
   padding: 0 20px;
 
-  /* 🔥 FIX IMPORTANTE */
   align-items: stretch;
-  min-height: 75vh;
+  box-sizing: border-box;
 }
 
+/* 🔥 FIX CLAVE: NO PORCENTAJES */
 .left, .right {
+  flex: 1;
   display: flex;
   flex-direction: column;
-
-  /* 🔥 FIX CRÍTICO NUEVO */
-  min-height: 75vh;
-}
-
-/* IZQUIERDA */
-.left {
-  width: 42%;
-}
-
-/* DERECHA */
-.right {
-  width: 58%;
 }
 
 /* ======================
-   DIVIDER
+   DIVIDER CENTRADO PERFECTO
 ====================== */
 
 .divider {
@@ -106,7 +95,6 @@ select {
   );
 
   box-shadow: 0 0 12px #00ff88;
-  border-radius: 3px;
 }
 
 /* ======================
@@ -184,12 +172,6 @@ th {
 @media (max-width: 900px) {
   .layout {
     flex-direction: column;
-    min-height: auto;
-  }
-
-  .left, .right {
-    width: 100%;
-    min-height: auto;
   }
 
   .divider {
