@@ -51,6 +51,7 @@ table {
   background: #111;
 }
 
+/* 🔥 FIX REAL HEADER */
 th, td {
   padding: 10px;
   text-align: center;
@@ -59,9 +60,10 @@ th, td {
 
 th {
   color: #00ff88;
+  font-weight: bold;
 }
 
-/* 🔥 estados visuales */
+/* 🔥 ESTADOS VISUALES */
 .up td {
   background: rgba(0,255,0,0.18) !important;
 }
@@ -127,11 +129,13 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 
-// 🔥 ESTADO ACTUAL (desde backend)
+// 🔥 ESTADO ACTUAL
 let lastState = new Map();
 
-// 🔥 ESTADO VISUAL PERSISTENTE (CLAVE REAL)
-let visualState = JSON.parse(localStorage.getItem("visualState") || "{}");
+// 🔥 ESTADO VISUAL PERSISTENTE (F5 SAFE)
+let visualState = new Map(
+  Object.entries(JSON.parse(localStorage.getItem("visualState") || "{}"))
+);
 
 // ======================
 function formatTime(ts) {
@@ -166,8 +170,7 @@ async function loadLigas() {
     localStorage.setItem("liga", currentLiga);
 
     lastState.clear();
-    visualState = {};
-
+    visualState = new Map();
     localStorage.removeItem("visualState");
 
     document.getElementById("tabla").innerHTML = "";
@@ -196,7 +199,7 @@ async function loadData() {
 }
 
 // ======================
-// 🔥 CLASIFICACION FINAL PERSISTENTE
+// 🔥 RENDER FINAL ESTABLE
 // ======================
 function renderTable(data) {
 
@@ -209,11 +212,10 @@ function renderTable(data) {
     let tr = document.getElementById("row-" + t.equipo);
 
     const prev = lastState.get(t.equipo);
+    const oldVisual = visualState.get(t.equipo);
 
     let arrow = "";
     let cls = "";
-
-    const prevVisual = visualState[t.equipo];
 
     // 🔥 comparación real
     if (prev) {
@@ -223,9 +225,9 @@ function renderTable(data) {
       } else if (t.puntos < prev.puntos) {
         arrow = " 📉";
         cls = "down";
-      } else if (prevVisual) {
-        arrow = prevVisual.arrow;
-        cls = prevVisual.cls;
+      } else if (oldVisual) {
+        arrow = oldVisual.arrow || "";
+        cls = oldVisual.cls || "";
       }
     }
 
@@ -248,14 +250,14 @@ function renderTable(data) {
     `;
 
     lastState.set(t.equipo, t);
-
     newVisual[t.equipo] = { arrow, cls };
   });
 
-  visualState = newVisual;
-  localStorage.setItem("visualState", JSON.stringify(visualState));
+  // 🔥 persistencia real F5
+  visualState = new Map(Object.entries(newVisual));
+  localStorage.setItem("visualState", JSON.stringify(newVisual));
 
-  // mantener orden
+  // 🔥 orden estable
   data.forEach(t => {
     const row = document.getElementById("row-" + t.equipo);
     if (row) tbody.appendChild(row);
