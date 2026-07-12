@@ -43,7 +43,7 @@ header {
   border-radius: 5px;
 }
 
-/* SELECT */
+/* SELECT LIGAS */
 select {
   width: 100%;
   padding: 10px;
@@ -136,7 +136,7 @@ let currentLiga = null;
 let lastData = null;
 
 // ======================
-// FORMATEO FECHA ESPAÑA
+// FORMATEO FECHA
 // ======================
 function formatTime(ts) {
   if (!ts) return "--";
@@ -152,7 +152,7 @@ function formatTime(ts) {
 }
 
 // ======================
-// LIGAS (PERSISTENCIA)
+// LIGAS (PERSISTENCIA REAL)
 // ======================
 async function loadLigas() {
 
@@ -169,6 +169,7 @@ async function loadLigas() {
     select.appendChild(opt);
   });
 
+  // persistencia
   const saved = localStorage.getItem("liga");
 
   currentLiga = saved || json.data[0].id;
@@ -202,7 +203,7 @@ async function loadData() {
 }
 
 // ======================
-// TABLE
+// CLASIFICACION
 // ======================
 function renderTable(data) {
 
@@ -237,7 +238,7 @@ function renderTable(data) {
 }
 
 // ======================
-// PARTIDOS
+// PARTIDOS (FIX IMPORTANTE)
 // ======================
 function renderMatches(matches) {
 
@@ -250,9 +251,9 @@ function renderMatches(matches) {
     el.className = "match";
 
     el.innerHTML = `
-      <div>${p.local}</div>
-      <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-      <div>${p.visitante}</div>
+      <div>${p.local || ""}</div>
+      <div class="score">${p.goles_local ?? 0} - ${p.goles_visitante ?? 0}</div>
+      <div>${p.visitante || ""}</div>
     `;
 
     div.appendChild(el);
@@ -260,7 +261,7 @@ function renderMatches(matches) {
 }
 
 // ======================
-// STATUS FINAL
+// STATUS BAR
 // ======================
 function updateStatus(lastChange) {
 
