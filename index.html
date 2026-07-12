@@ -61,16 +61,9 @@ th {
   color: #00ff88;
 }
 
-/* FLECHAS */
-.up {
-  background: rgba(0,255,0,0.12);
-}
+.up { background: rgba(0,255,0,0.12); }
+.down { background: rgba(255,0,0,0.12); }
 
-.down {
-  background: rgba(255,0,0,0.12);
-}
-
-/* PARTIDOS */
 .match {
   background: #151515;
   padding: 10px;
@@ -116,7 +109,7 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 
-// 🔥 ESTADO REAL PERSISTENTE
+// 🔥 STATE CORRECTO (FIX REAL)
 let lastState = new Map();
 
 // ======================
@@ -151,8 +144,8 @@ async function loadLigas() {
     currentLiga = e.target.value;
     localStorage.setItem("liga", currentLiga);
 
-    // 🔥 reset limpio SOLO al cambiar liga
-    lastState.clear();
+    // 🔥 reset limpio por liga
+    lastState = new Map();
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
 
@@ -179,7 +172,7 @@ async function loadData() {
 }
 
 // ======================
-// CLASIFICACIÓN (ESTABLE + FLECHAS FIJAS)
+// CLASIFICACION (FIX FINAL REAL)
 // ======================
 function renderTable(data) {
 
@@ -196,7 +189,7 @@ function renderTable(data) {
     let arrow = "";
     let cls = "";
 
-    // 🔥 comparación REAL
+    // 🔥 COMPARACION REAL
     if (prev) {
       if (t.puntos > prev.puntos) {
         arrow = " 📈";
@@ -228,9 +221,10 @@ function renderTable(data) {
     newState.set(t.equipo, t);
   });
 
+  // 🔥 actualizar estado SIN romper referencia
   lastState = newState;
 
-  // 🔥 mantener orden correcto SIEMPRE
+  // 🔥 mantener orden correcto
   data.forEach(t => {
     const row = document.getElementById("row-" + t.equipo);
     if (row) tbody.appendChild(row);
@@ -272,8 +266,6 @@ function updateStatus(ts) {
     "🕒 Último refresh: " + now;
 }
 
-// ======================
-// LIVE LOOP
 // ======================
 setInterval(() => {
   if (currentLiga) loadData();
