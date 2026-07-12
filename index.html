@@ -77,9 +77,6 @@ th {
   border-radius: 8px;
 }
 
-.match div:first-child { text-align: left; }
-.match div:last-child { text-align: right; }
-
 .score {
   color: #00ff88;
   font-weight: bold;
@@ -107,7 +104,6 @@ th {
 <select id="liga"></select>
 
 <h3>📊 Clasificación</h3>
-
 <table>
 <thead>
 <tr>
@@ -137,6 +133,8 @@ const API = "https://fcf-headless.onrender.com";
 const socket = io(API);
 
 let currentLiga = null;
+
+// 🔥 ESTADO GLOBAL (POSICIONES)
 let lastState = new Map();
 
 // ======================
@@ -175,7 +173,7 @@ async function loadLigas() {
 }
 
 // ======================
-// REST (inicio)
+// REST INIT
 async function loadData() {
 
   const [c, p] = await Promise.all([
@@ -193,28 +191,25 @@ async function loadData() {
 }
 
 // ======================
-// SOCKET LIVE (FIX CLAVE)
+// SOCKET LIVE (SIN ORDEN AQUÍ)
 socket.on("clasificacion", (msg) => {
 
   if (msg.liga !== currentLiga) return;
 
-  // 🔥 FIX CRÍTICO: ordenar SIEMPRE aquí
-  const sorted = [...msg.data].sort((a, b) =>
-    b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
-  );
-
-  renderTable(sorted);
+  renderTable(msg.data);
   updateStatus(msg.time);
 });
 
 // ======================
-// CLASIFICACIÓN (ESTABLE)
+// CLASIFICACIÓN (ORDEN ÚNICO AQUÍ 🔥)
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
 
+  // 🔥 ÚNICO ORDEN OFICIAL
   data = [...data].sort((a, b) =>
-    b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
+    Number(b.puntos) - Number(a.puntos) ||
+    a.equipo.localeCompare(b.equipo)
   );
 
   const newState = new Map();
@@ -225,6 +220,7 @@ function renderTable(data) {
 
     const prev = lastState.get(t.equipo);
 
+    // 🔥 FLECHAS ESTABLES
     let arrow = "";
     if (prev) {
       if (prev.pos > i) arrow = " 📈";
