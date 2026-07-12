@@ -26,6 +26,7 @@ header {
   padding: 15px;
 }
 
+/* STATUS */
 #statusBar {
   display: flex;
   justify-content: space-between;
@@ -36,6 +37,7 @@ header {
   margin-bottom: 10px;
 }
 
+/* SELECT */
 select {
   width: 100%;
   padding: 10px;
@@ -45,6 +47,7 @@ select {
   border: 1px solid #333;
 }
 
+/* TABLE */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -62,6 +65,7 @@ th {
   color: #00ff88;
 }
 
+/* FLECHAS */
 .up {
   background: rgba(0,255,0,0.12);
 }
@@ -70,6 +74,7 @@ th {
   background: rgba(255,0,0,0.12);
 }
 
+/* MATCHES */
 .match {
   background: #151515;
   padding: 10px;
@@ -101,17 +106,6 @@ th {
 
 <h3>📊 Clasificación</h3>
 <table>
-<thead>
-<tr>
-  <th>#</th>
-  <th>Equipo</th>
-  <th>Pts</th>
-  <th>J</th>
-  <th>G</th>
-  <th>E</th>
-  <th>P</th>
-</tr>
-</thead>
 <tbody id="tabla"></tbody>
 </table>
 
@@ -125,8 +119,6 @@ th {
 const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
-
-// 🔥 estado separado por liga (CLAVE FIX)
 let stateByLiga = {};
 
 // ======================
@@ -167,17 +159,17 @@ async function loadLigas() {
   currentLiga = saved || json.data[0].id;
   select.value = currentLiga;
 
-  select.addEventListener("change", e => {
+  select.onchange = (e) => {
     currentLiga = e.target.value;
     localStorage.setItem("liga", currentLiga);
     loadData();
-  });
+  };
 
   loadData();
 }
 
 // ======================
-// DATA
+// LOAD DATA
 // ======================
 async function loadData() {
 
@@ -189,15 +181,15 @@ async function loadData() {
   const clas = await c.json();
   const part = await p.json();
 
-  updateTable(clas.data);
-  updateMatches(part.data);
+  renderTable(clas.data);
+  renderMatches(part.data);
   updateStatus(clas.lastUpdate);
 }
 
 // ======================
-// CLASIFICACIÓN (FIX FINAL)
+// TABLE PRO (FLECHAS ESTABLES)
 // ======================
-function updateTable(data) {
+function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
 
@@ -224,8 +216,6 @@ function updateTable(data) {
       } else if (t.puntos < prev.puntos) {
         arrow = " 📉";
         cls = "down";
-      } else {
-        cls = tr?.dataset?.state || "";
       }
     }
 
@@ -235,7 +225,6 @@ function updateTable(data) {
       tbody.appendChild(tr);
     }
 
-    tr.dataset.state = cls;
     tr.className = cls;
 
     tr.innerHTML = `
@@ -253,7 +242,7 @@ function updateTable(data) {
 
   stateByLiga[currentLiga] = newMap;
 
-  // 🔥 ordenar DOM SIEMPRE
+  // 🔥 mantener orden correcto
   data.forEach(t => {
     const row = document.getElementById("row-" + t.equipo);
     if (row) tbody.appendChild(row);
@@ -263,57 +252,44 @@ function updateTable(data) {
 // ======================
 // PARTIDOS
 // ======================
-function updateMatches(matches) {
+function renderMatches(matches) {
 
   const div = document.getElementById("partidos");
-  const active = new Set();
+  div.innerHTML = "";
 
   matches.forEach(p => {
 
-    const id = p.local + "-" + p.visitante;
-    active.add(id);
-
-    let el = document.getElementById("m-" + id);
-
-    if (!el) {
-      el = document.createElement("div");
-      el.className = "match";
-      el.id = "m-" + id;
-      div.appendChild(el);
-    }
+    const el = document.createElement("div");
+    el.className = "match";
 
     el.innerHTML = `
-      <div>${p.local || ""}</div>
+      <div>${p.local}</div>
       <div class="score">${p.goles_local ?? 0} - ${p.goles_visitante ?? 0}</div>
-      <div>${p.visitante || ""}</div>
+      <div>${p.visitante}</div>
     `;
-  });
 
-  document.querySelectorAll(".match").forEach(m => {
-    if (!active.has(m.id.replace("m-", ""))) {
-      m.remove();
-    }
+    div.appendChild(el);
   });
 }
 
 // ======================
 // STATUS
 // ======================
-function updateStatus(lastChange) {
+function updateStatus(ts) {
 
   const now = new Date().toLocaleString("es-ES", {
     timeZone: "Europe/Madrid"
   });
 
   document.getElementById("lastChange").innerText =
-    "📡 Último cambio real: " + formatTime(lastChange);
+    "📡 Último cambio real: " + formatTime(ts);
 
   document.getElementById("lastRefresh").innerText =
     "🕒 Último refresh: " + now;
 }
 
 // ======================
-// LOOP LIVE
+// LIVE LOOP
 // ======================
 setInterval(() => {
   if (currentLiga) loadData();
