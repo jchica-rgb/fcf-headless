@@ -45,9 +45,6 @@ select {
   border: 1px solid #333;
 }
 
-/* ========================= */
-/* TABLA CLASIFICACIÓN */
-/* ========================= */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -69,9 +66,6 @@ th {
 .down td { background: rgba(255,0,0,0.18) !important; }
 .mid td { background: rgba(255,255,255,0.05); }
 
-/* ========================= */
-/* PARTIDOS (FIX CENTRADO REAL) */
-/* ========================= */
 .match {
   background: #151515;
   padding: 10px;
@@ -83,13 +77,8 @@ th {
   border-left: 3px solid rgba(0,255,136,0.35);
 }
 
-.match div:first-child {
-  text-align: left;
-}
-
-.match div:last-child {
-  text-align: right;
-}
+.match div:first-child { text-align: left; }
+.match div:last-child { text-align: right; }
 
 .score {
   color: #00ff88;
@@ -98,12 +87,10 @@ th {
   justify-self: center;
 }
 
-/* TITULOS */
 h3 {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 20px;
 }
 
 h3::after {
@@ -129,6 +116,7 @@ h3::after {
 <select id="liga"></select>
 
 <h3>📊 Clasificación</h3>
+
 <table>
 <thead>
 <tr>
@@ -206,9 +194,15 @@ async function loadData() {
 }
 
 // ======================
+// 🔥 FIX CLAVE AQUÍ
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
+
+  // 💥 ORDEN FORZADO FRONTEND
+  data.sort((a, b) =>
+    b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
+  );
 
   data.forEach((t, i) => {
 
