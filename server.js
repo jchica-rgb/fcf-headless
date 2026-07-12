@@ -12,7 +12,7 @@ app.use(express.json());
 const SHEET_ID = process.env.SHEET_ID || "";
 
 // ======================
-// SAFE JSON PARSE
+// SAFE JSON
 // ======================
 function safeJson(v) {
   try {
@@ -42,12 +42,6 @@ function normalize(v) {
 }
 
 // ======================
-// CACHE REAL POR LIGA
-// ======================
-let lastKeyByLiga = {};
-let lastUpdate = null;
-
-// ======================
 // SHEETS
 // ======================
 async function getSheet(range) {
@@ -68,6 +62,12 @@ async function getSheet(range) {
     return [];
   }
 }
+
+// ======================
+// CACHE CAMBIOS REALES
+// ======================
+let lastKeyByLiga = {};
+let lastUpdate = null;
 
 // ======================
 // LIGAS
@@ -108,7 +108,7 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ======================
-// CLASIFICACIÓN (AUTOMÁTICA + FIX REAL)
+// CLASIFICACIÓN (FIX DEFINITIVO)
 // ======================
 app.get("/clasificacion", async (req, res) => {
 
@@ -153,13 +153,11 @@ app.get("/clasificacion", async (req, res) => {
       tabla[p.local].ganados++;
       tabla[p.visitante].perdidos++;
       tabla[p.local].puntos += 3;
-    } 
-    else if (p.gl < p.gv) {
+    } else if (p.gl < p.gv) {
       tabla[p.visitante].ganados++;
       tabla[p.local].perdidos++;
       tabla[p.visitante].puntos += 3;
-    } 
-    else {
+    } else {
       tabla[p.local].empatados++;
       tabla[p.visitante].empatados++;
       tabla[p.local].puntos++;
@@ -168,27 +166,27 @@ app.get("/clasificacion", async (req, res) => {
   });
 
   const result = Object.values(tabla)
-    .sort((a, b) => b.puntos - a.puntos);
+    .sort((a, b) => {
+      if (b.puntos !== a.puntos) return b.puntos - a.puntos;
+      return a.equipo.localeCompare(b.equipo);
+    });
 
   // ======================
-  // HASH ESTABLE (FIX IMPORTANTE)
+  // HASH 100% ESTABLE
   // ======================
-  const stableKey = JSON.stringify(
-    result.map(r => ({
-      equipo: r.equipo,
-      puntos: r.puntos,
-      jugados: r.jugados,
-      ganados: r.ganados,
-      empatados: r.empatados,
-      perdidos: r.perdidos
-    }))
-  );
+  const key = result
+    .map(r =>
+      `${r.equipo}|${r.puntos}|${r.jugados}|${r.ganados}|${r.empatados}|${r.perdidos}`
+    )
+    .sort()
+    .join("#");
 
   // ======================
-  // UPDATE SOLO SI CAMBIA
+  // SOLO CAMBIA SI ES REAL
   // ======================
-  if (lastKeyByLiga[ligaId] !== stableKey) {
-    lastKeyByLiga[ligaId] = stableKey;
+  if (lastKeyByLiga[ligaId] !== key) {
+
+    lastKeyByLiga[ligaId] = key;
 
     lastUpdate = new Date().toLocaleString("es-ES", {
       day: "2-digit",
@@ -205,8 +203,6 @@ app.get("/clasificacion", async (req, res) => {
   });
 });
 
-// ======================
-// HEALTH
 // ======================
 app.get("/", (req, res) => {
   res.json({
