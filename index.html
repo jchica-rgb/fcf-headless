@@ -71,9 +71,12 @@ th {
   color: #00ff88;
 }
 
-tr.updated {
+tr.updated-up {
   background: #1f3b2c !important;
-  transition: 0.4s;
+}
+
+tr.updated-down {
+  background: #3b1f1f !important;
 }
 
 /* MATCHES */
@@ -136,9 +139,9 @@ const API = "https://fcf-headless.onrender.com";
 let currentLiga = null;
 let lastData = new Map();
 
-/* =====================
-   FORMATO FECHA
-===================== */
+// ======================
+// FORMATO FECHA
+// ======================
 function formatTime(ts) {
   if (!ts) return "--";
 
@@ -152,9 +155,9 @@ function formatTime(ts) {
   });
 }
 
-/* =====================
-   LIGAS (PERSISTENCIA)
-===================== */
+// ======================
+// LIGAS
+// ======================
 async function loadLigas() {
 
   const res = await fetch(API + "/ligas");
@@ -183,9 +186,9 @@ async function loadLigas() {
   loadData();
 }
 
-/* =====================
-   LOAD DATA LIVE
-===================== */
+// ======================
+// DATA
+// ======================
 async function loadData() {
 
   const [c, p] = await Promise.all([
@@ -201,19 +204,31 @@ async function loadData() {
   updateStatus(clas.lastUpdate);
 }
 
-/* =====================
-   TABLE LIVE UPDATE
-===================== */
+// ======================
+// TABLE + FLECHAS
+// ======================
 function updateTable(data) {
 
   const tbody = document.getElementById("tabla");
 
   data.forEach((t, i) => {
 
+    const prev = lastData.get(t.equipo);
+
     let tr = document.getElementById("row-" + t.equipo);
 
-    const prev = lastData.get(t.equipo);
-    const changed = !prev || prev.puntos !== t.puntos;
+    let arrow = "";
+    let className = "";
+
+    if (prev) {
+      if (t.puntos > prev.puntos) {
+        arrow = " 📈";
+        className = "updated-up";
+      } else if (t.puntos < prev.puntos) {
+        arrow = " 📉";
+        className = "updated-down";
+      }
+    }
 
     if (!tr) {
       tr = document.createElement("tr");
@@ -221,9 +236,11 @@ function updateTable(data) {
       tbody.appendChild(tr);
     }
 
+    tr.className = className;
+
     tr.innerHTML = `
       <td>${i + 1}</td>
-      <td>${t.equipo}</td>
+      <td>${t.equipo}${arrow}</td>
       <td>${t.puntos}</td>
       <td>${t.jugados}</td>
       <td>${t.ganados}</td>
@@ -231,18 +248,13 @@ function updateTable(data) {
       <td>${t.perdidos}</td>
     `;
 
-    if (changed) {
-      tr.classList.add("updated");
-      setTimeout(() => tr.classList.remove("updated"), 600);
-    }
-
     lastData.set(t.equipo, t);
   });
 }
 
-/* =====================
-   PARTIDOS LIVE
-===================== */
+// ======================
+// PARTIDOS
+// ======================
 function updateMatches(matches) {
 
   const div = document.getElementById("partidos");
@@ -276,9 +288,9 @@ function updateMatches(matches) {
   });
 }
 
-/* =====================
-   STATUS BAR
-===================== */
+// ======================
+// STATUS
+// ======================
 function updateStatus(lastChange) {
 
   const now = new Date().toLocaleString("es-ES", {
@@ -292,14 +304,14 @@ function updateStatus(lastChange) {
     "🕒 Último refresh: " + now;
 }
 
-/* =====================
-   LIVE LOOP
-===================== */
+// ======================
+// LIVE LOOP
+// ======================
 setInterval(() => {
   if (currentLiga) loadData();
 }, 12000);
 
-/* INIT */
+// INIT
 loadLigas();
 
 </script>
