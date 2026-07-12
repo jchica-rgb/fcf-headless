@@ -75,7 +75,6 @@ th {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   border-radius: 8px;
-  border-left: 3px solid rgba(0,255,136,0.35);
 }
 
 .match div:first-child { text-align: left; }
@@ -84,7 +83,6 @@ th {
 .score {
   color: #00ff88;
   font-weight: bold;
-  text-align: center;
 }
 
 /* FLECHAS */
@@ -109,6 +107,7 @@ th {
 <select id="liga"></select>
 
 <h3>📊 Clasificación</h3>
+
 <table>
 <thead>
 <tr>
@@ -129,9 +128,7 @@ th {
 
 </div>
 
-<!-- ===================== -->
-<!-- SOCKET.IO -->
-<!-- ===================== -->
+<!-- SOCKET -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
 <script>
@@ -143,7 +140,7 @@ let currentLiga = null;
 let lastState = new Map();
 
 // ======================
-// LIGAS (REST normal, no cambia)
+// LIGAS
 async function loadLigas() {
 
   const res = await fetch(API + "/ligas");
@@ -178,7 +175,7 @@ async function loadLigas() {
 }
 
 // ======================
-// PARTIDOS (REST igual)
+// REST fallback
 async function loadData() {
 
   const [c, p] = await Promise.all([
@@ -196,7 +193,7 @@ async function loadData() {
 }
 
 // ======================
-// SOCKET LIVE (NUEVO)
+// LIVE SOCKET
 socket.on("clasificacion", (msg) => {
 
   if (msg.liga !== currentLiga) return;
@@ -206,7 +203,7 @@ socket.on("clasificacion", (msg) => {
 });
 
 // ======================
-// CLASIFICACIÓN
+// CLASIFICACIÓN (FLECHAS FIJAS)
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
@@ -223,14 +220,14 @@ function renderTable(data) {
 
     const prev = lastState.get(t.equipo);
 
+    // 🔥 FIX DEFINITIVO FLECHAS
     let arrow = "";
-    let cls = "mid";
-
     if (prev) {
       if (prev.pos > i) arrow = " 📈";
       else if (prev.pos < i) arrow = " 📉";
     }
 
+    let cls = "mid";
     if (i < 3) cls = "up";
     else if (i >= data.length - 3) cls = "down";
 
@@ -295,7 +292,6 @@ function updateStatus(ts) {
 }
 
 // ======================
-// INIT
 loadLigas();
 setInterval(loadData, 10000);
 
