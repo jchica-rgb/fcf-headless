@@ -37,13 +37,6 @@ header {
   margin-bottom: 10px;
 }
 
-.badge {
-  background: #222;
-  padding: 6px 10px;
-  border-radius: 5px;
-}
-
-/* SELECT */
 select {
   width: 100%;
   padding: 10px;
@@ -71,12 +64,13 @@ th {
   color: #00ff88;
 }
 
-tr.updated-up {
-  background: #1f3b2c !important;
+/* FLECHAS */
+.up {
+  background: rgba(0, 255, 0, 0.12);
 }
 
-tr.updated-down {
-  background: #3b1f1f !important;
+.down {
+  background: rgba(255, 0, 0, 0.12);
 }
 
 /* MATCHES */
@@ -102,13 +96,11 @@ tr.updated-down {
 
 <div class="container">
 
-<!-- STATUS -->
 <div id="statusBar">
   <div id="lastChange">📡 Último cambio real: --</div>
   <div id="lastRefresh">🕒 Último refresh: --</div>
 </div>
 
-<!-- LIGAS -->
 <select id="liga"></select>
 
 <h3>📊 Clasificación</h3>
@@ -140,7 +132,7 @@ let currentLiga = null;
 let lastData = new Map();
 
 // ======================
-// FORMATO FECHA
+// FECHA
 // ======================
 function formatTime(ts) {
   if (!ts) return "--";
@@ -156,7 +148,7 @@ function formatTime(ts) {
 }
 
 // ======================
-// LIGAS
+// LIGAS (PERSISTENCIA)
 // ======================
 async function loadLigas() {
 
@@ -205,17 +197,20 @@ async function loadData() {
 }
 
 // ======================
-// TABLE + FLECHAS
+// TABLE (FIX FINAL ESTABLE)
 // ======================
 function updateTable(data) {
 
   const tbody = document.getElementById("tabla");
 
+  const newMap = new Map();
+
+  // 🔥 PRIMERO RENDER
   data.forEach((t, i) => {
 
-    const prev = lastData.get(t.equipo);
-
     let tr = document.getElementById("row-" + t.equipo);
+
+    const prev = lastData.get(t.equipo);
 
     let arrow = "";
     let className = "";
@@ -223,10 +218,12 @@ function updateTable(data) {
     if (prev) {
       if (t.puntos > prev.puntos) {
         arrow = " 📈";
-        className = "updated-up";
+        className = "up";
       } else if (t.puntos < prev.puntos) {
         arrow = " 📉";
-        className = "updated-down";
+        className = "down";
+      } else {
+        className = tr?.dataset?.state || "";
       }
     }
 
@@ -236,6 +233,7 @@ function updateTable(data) {
       tbody.appendChild(tr);
     }
 
+    tr.dataset.state = className;
     tr.className = className;
 
     tr.innerHTML = `
@@ -248,7 +246,15 @@ function updateTable(data) {
       <td>${t.perdidos}</td>
     `;
 
-    lastData.set(t.equipo, t);
+    newMap.set(t.equipo, t);
+  });
+
+  lastData = newMap;
+
+  // 🔥 REORDENAR DOM (CLAVE)
+  data.forEach(t => {
+    const row = document.getElementById("row-" + t.equipo);
+    if (row) tbody.appendChild(row);
   });
 }
 
@@ -305,7 +311,7 @@ function updateStatus(lastChange) {
 }
 
 // ======================
-// LIVE LOOP
+// LOOP LIVE
 // ======================
 setInterval(() => {
   if (currentLiga) loadData();
