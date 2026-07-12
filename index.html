@@ -61,23 +61,34 @@ th {
   color: #00ff88;
 }
 
-/* ZONAS */
-.up td { background: rgba(0,255,0,0.18) !important; }
-.down td { background: rgba(255,0,0,0.18) !important; }
-.mid td { background: rgba(255,255,255,0.05); }
+/* 💚 ZONAS PRO (RESTAURADO COMO LO TENÍAS) */
+.up td {
+  background: rgba(0,255,0,0.18) !important;
+  box-shadow: inset 0 0 8px rgba(0,255,136,0.15);
+}
 
-/* ⚽ PARTIDOS LIMPIO */
+.down td {
+  background: rgba(255,0,0,0.18) !important;
+  box-shadow: inset 0 0 8px rgba(255,0,0,0.12);
+}
+
+.mid td {
+  background: rgba(255,255,255,0.04);
+}
+
+/* ⚽ PARTIDOS */
 .match {
   background: #151515;
   padding: 10px;
   margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
   border-radius: 6px;
+
+  /* 💚 RESTAURADO LOOK PRO */
+  border-left: 3px solid rgba(0,255,136,0.35);
 }
 
-/* 🔥 FIX CENTRADO RESULTADO */
 .score {
   color: #00ff88;
   font-weight: bold;
@@ -85,19 +96,29 @@ th {
   text-align: center;
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
-/* columnas partidos */
-.match div {
+/* 🔥 TITULOS PRO */
+h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+h3::after {
+  content: "";
   flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, #00ff88, transparent);
 }
 
-.match div:first-child {
-  text-align: left;
-}
-
-.match div:last-child {
-  text-align: right;
+/* flechas */
+.arrow {
+  font-size: 12px;
+  margin-left: 5px;
 }
 </style>
 </head>
@@ -159,13 +180,16 @@ async function loadLigas() {
     sel.appendChild(opt);
   });
 
+  // 🔥 mantener liga seleccionada
   const saved = localStorage.getItem("liga");
+
   currentLiga = saved || json.data[0].id;
   sel.value = currentLiga;
 
   sel.onchange = (e) => {
 
     currentLiga = e.target.value;
+    localStorage.setItem("liga", currentLiga);
 
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
@@ -194,6 +218,8 @@ async function loadData() {
 }
 
 // ======================
+// CLASIFICACIÓN
+// ======================
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
@@ -209,8 +235,8 @@ function renderTable(data) {
     }
 
     let arrow = "";
-    if (t.movement === "up") arrow = " 📈";
-    else if (t.movement === "down") arrow = " 📉";
+    if (t.movement === "up") arrow = " <span class='arrow'>📈</span>";
+    else if (t.movement === "down") arrow = " <span class='arrow'>📉</span>";
 
     let cls = "mid";
     if (i < 3) cls = "up";
@@ -230,6 +256,8 @@ function renderTable(data) {
   });
 }
 
+// ======================
+// PARTIDOS
 // ======================
 function renderMatches(matches) {
 
