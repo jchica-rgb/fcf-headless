@@ -79,6 +79,24 @@ th {
   color: #00ff88;
   font-weight: bold;
 }
+
+/* 🔥 UI EXTRA (SOLO AÑADIDO) */
+h3 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+h3::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, #00ff88, transparent);
+  margin-left: 10px;
+}
 </style>
 </head>
 
@@ -95,7 +113,7 @@ th {
 
 <select id="liga"></select>
 
-<h3>Clasificación</h3>
+<h3>📊 Clasificación</h3>
 
 <table>
 <thead>
@@ -112,7 +130,7 @@ th {
 <tbody id="tabla"></tbody>
 </table>
 
-<h3>Partidos</h3>
+<h3>⚽ Partidos</h3>
 <div id="partidos"></div>
 
 </div>
@@ -124,7 +142,7 @@ const API = "https://fcf-headless.onrender.com";
 let currentLiga = null;
 
 // ======================
-// INIT LIGAS
+// LIGAS (FIX PERSISTENTE)
 // ======================
 async function loadLigas() {
 
@@ -141,13 +159,17 @@ async function loadLigas() {
     sel.appendChild(opt);
   });
 
-  currentLiga = json.data[0].id;
+  // 🔥 FIX: mantener liga seleccionada
+  const saved = localStorage.getItem("liga");
+
+  currentLiga = saved || json.data[0].id;
   sel.value = currentLiga;
 
-  // 🔥 FIX DEFINITIVO CAMBIO DE LIGA
+  // 🔥 guardar selección correctamente
   sel.onchange = (e) => {
 
     currentLiga = e.target.value;
+    localStorage.setItem("liga", currentLiga);
 
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
@@ -158,8 +180,6 @@ async function loadLigas() {
   loadData();
 }
 
-// ======================
-// LOAD DATA
 // ======================
 async function loadData() {
 
@@ -178,7 +198,7 @@ async function loadData() {
 }
 
 // ======================
-// RENDER CLASIFICACION
+// CLASIFICACIÓN
 // ======================
 function renderTable(data) {
 
@@ -194,12 +214,10 @@ function renderTable(data) {
       tbody.appendChild(tr);
     }
 
-    // 🔥 flechas reales desde backend
     let arrow = "";
     if (t.movement === "up") arrow = " 📈";
     else if (t.movement === "down") arrow = " 📉";
 
-    // 🔥 zonas reales por posición
     let cls = "mid";
     if (i < 3) cls = "up";
     else if (i >= data.length - 3) cls = "down";
@@ -219,7 +237,7 @@ function renderTable(data) {
 }
 
 // ======================
-// PARTIDOS
+// PARTIDOS (UI RESTAURADA)
 // ======================
 function renderMatches(matches) {
 
@@ -232,17 +250,15 @@ function renderMatches(matches) {
     el.className = "match";
 
     el.innerHTML = `
-      <div>${p.local}</div>
+      <div>⚽ ${p.local}</div>
       <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-      <div>${p.visitante}</div>
+      <div>${p.visitante} ⚽</div>
     `;
 
     div.appendChild(el);
   });
 }
 
-// ======================
-// STATUS
 // ======================
 function updateStatus(ts) {
 
@@ -257,8 +273,6 @@ function updateStatus(ts) {
     "🕒 Último refresh: " + now;
 }
 
-// ======================
-// START
 // ======================
 loadLigas();
 setInterval(loadData, 10000);
