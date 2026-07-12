@@ -61,26 +61,38 @@ th {
   color: #00ff88;
 }
 
-/* ZONAS */
+/* ZONAS (NO TOCADO) */
 .up td { background: rgba(0,255,0,0.18) !important; }
 .down td { background: rgba(255,0,0,0.18) !important; }
 .mid td { background: rgba(255,255,255,0.05); }
 
+/* PARTIDOS — FIX SOLO VISUAL SIN ROMPER NADA */
 .match {
   background: #151515;
   padding: 10px;
   margin-bottom: 8px;
-  display: flex;
-  justify-content: space-between;
+
+  /* 🔥 FIX SOLO VISUAL PARA EVITAR DESCENTRADO EN TODAS LAS LIGAS */
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 120px minmax(0,1fr);
+  align-items: center;
+
   border-radius: 6px;
+  border-left: 3px solid rgba(0,255,136,0.35);
 }
+
+.match div:first-child { text-align: left; }
+.match div:last-child { text-align: right; }
 
 .score {
   color: #00ff88;
   font-weight: bold;
+  text-align: center;
+  justify-self: center;
+  white-space: nowrap;
 }
 
-/* 🔥 UI TITLES */
+/* TITULOS (NO TOCADO) */
 h3 {
   display: flex;
   align-items: center;
@@ -159,6 +171,7 @@ async function loadLigas() {
 
   sel.onchange = (e) => {
     currentLiga = e.target.value;
+    localStorage.setItem("liga", currentLiga);
 
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
@@ -187,13 +200,13 @@ async function loadData() {
 }
 
 // ======================
-// 🔥 FIX MINIMO SOLO AQUÍ
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
 
-  // ✔ CLAVE: asegurar orden en cada refresh
-  data.sort((a, b) =>
+  /* 🔥 FIX MINIMO SIN CAMBIAR TU LOGICA:
+     aseguramos orden SOLO en render (no backend, no estructura) */
+  data = [...data].sort((a, b) =>
     b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
@@ -228,7 +241,8 @@ function renderTable(data) {
     `;
   });
 
-  // ✔ FIX CRÍTICO: reordenar DOM siempre
+  /* 🔥 FIX CRÍTICO SIN CAMBIAR LÓGICA:
+     reorden DOM SOLO para evitar desalineación entre ligas */
   data.forEach(t => {
     const row = document.getElementById("row-" + t.equipo);
     if (row) tbody.appendChild(row);
