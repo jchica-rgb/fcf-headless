@@ -12,7 +12,7 @@ app.use(express.json());
 const SHEET_ID = process.env.SHEET_ID || "";
 
 // ======================
-// SAFE JSON
+// SAFE PARSE
 // ======================
 function safeJson(v) {
   try {
@@ -23,7 +23,7 @@ function safeJson(v) {
 }
 
 // ======================
-// AUTH GOOGLE
+// GOOGLE AUTH
 // ======================
 const credentials = safeJson(process.env.GOOGLE_CREDENTIALS);
 
@@ -57,31 +57,39 @@ async function getSheet(range) {
     });
 
     return res.data.values || [];
-  } catch (err) {
-    console.error("SHEETS ERROR:", err.message);
+  } catch (e) {
+    console.error("SHEETS ERROR:", e.message);
     return [];
   }
 }
 
-//
 // ======================
-// LIGAS (HOJA LIGAS)
+// LIGAS (DESDE SHEETS)
+// Hoja: LIGAS
+// A = id
+// B = nombre
 // ======================
 app.get("/ligas", async (req, res) => {
 
   const rows = await getSheet("LIGAS!A2:B");
 
-  const ligas = rows.map(r => ({
+  const data = rows.map(r => ({
     id: r[0],
     nombre: r[1]
   }));
 
-  res.json({ data: ligas });
+  res.json({ data });
 });
 
-//
 // ======================
-// PARTIDOS (HOJA REAL)
+// PARTIDOS (DESDE SHEETS)
+// Hoja: PARTIDOS
+// A liga
+// B jornada
+// C local
+// D visitante
+// E goles_local
+// F goles_visitante
 // ======================
 app.get("/partidos", async (req, res) => {
 
@@ -89,7 +97,7 @@ app.get("/partidos", async (req, res) => {
 
   const rows = await getSheet("PARTIDOS!A2:F");
 
-  const partidos = rows.map(r => ({
+  const data = rows.map(r => ({
     liga: normalize(r[0]),
     jornada: r[1],
     local: r[2],
@@ -98,14 +106,13 @@ app.get("/partidos", async (req, res) => {
     goles_visitante: Number(r[5] || 0)
   }));
 
-  const filtered = partidos.filter(p => p.liga === ligaId);
+  const filtered = data.filter(p => p.liga === ligaId);
 
   res.json({ data: filtered });
 });
 
-//
 // ======================
-// CLASIFICACIÓN (CALCULADA)
+// CLASIFICACIÓN (AUTOMÁTICA)
 // ======================
 app.get("/clasificacion", async (req, res) => {
 
@@ -125,7 +132,7 @@ app.get("/clasificacion", async (req, res) => {
 
   const tabla = {};
 
-  const init = (team) => {
+  function init(team) {
     if (!tabla[team]) {
       tabla[team] = {
         equipo: team,
@@ -136,7 +143,7 @@ app.get("/clasificacion", async (req, res) => {
         perdidos: 0
       };
     }
-  };
+  }
 
   filtered.forEach(p => {
 
@@ -150,13 +157,15 @@ app.get("/clasificacion", async (req, res) => {
       tabla[p.local].ganados++;
       tabla[p.visitante].perdidos++;
       tabla[p.local].puntos += 3;
-    } 
-    else if (p.gl < p.gv) {
+    }
+
+    if (p.gl < p.gv) {
       tabla[p.visitante].ganados++;
       tabla[p.local].perdidos++;
       tabla[p.visitante].puntos += 3;
-    } 
-    else {
+    }
+
+    if (p.gl === p.gv) {
       tabla[p.local].empatados++;
       tabla[p.visitante].empatados++;
       tabla[p.local].puntos++;
@@ -164,26 +173,22 @@ app.get("/clasificacion", async (req, res) => {
     }
   });
 
-  const result = Object.values(tabla)
-    .sort((a, b) => b.puntos - a.puntos);
+  const result = Object.values(tabla).sort((a, b) => b.puntos - a.puntos);
 
   res.json({ data: result });
 });
 
-//
-// ======================
-// HEALTH
 // ======================
 app.get("/", (req, res) => {
   res.json({
     ok: true,
-    status: "FUTCAT LIVE SYSTEM ⚽"
+    status: "FUTCAT RUNNING ⚽"
   });
 });
 
-//
 // ======================
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
   console.log("SERVER RUNNING ON", PORT);
 });
