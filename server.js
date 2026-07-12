@@ -46,14 +46,10 @@ async function getSheet(range) {
 }
 
 // ======================
-// 🔥 MEMORIA REAL BACKEND (CLAVE PRO)
-let previousTableByLiga = {};
-let lastUpdateByLiga = {};
-
-// ======================
 // LIGAS
 // ======================
 app.get("/ligas", async (req, res) => {
+
   const rows = await getSheet("LIGAS!A2:B");
 
   res.json({
@@ -65,7 +61,8 @@ app.get("/ligas", async (req, res) => {
 });
 
 // ======================
-// PARTIDOS (IGUAL)
+// PARTIDOS
+// ======================
 app.get("/partidos", async (req, res) => {
 
   const ligaId = normalize(req.query.liga);
@@ -77,8 +74,8 @@ app.get("/partidos", async (req, res) => {
       liga: normalize(r[0]),
       local: r[2],
       visitante: r[3],
-      gl: Number(r[4] || 0),
-      gv: Number(r[5] || 0)
+      goles_local: Number(r[4] || 0),
+      goles_visitante: Number(r[5] || 0)
     }))
     .filter(p => p.liga === ligaId);
 
@@ -86,7 +83,7 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ======================
-// 🔥 CLASIFICACION PRO (CON HISTORIAL REAL)
+// CLASIFICACION (ESTABLE + SIMPLE + COMPATIBLE)
 // ======================
 app.get("/clasificacion", async (req, res) => {
 
@@ -146,53 +143,17 @@ app.get("/clasificacion", async (req, res) => {
 
   let result = Object.values(tabla);
 
-  // 🔥 ORDEN
   result.sort((a, b) =>
     b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
-  // ======================
-  // 🔥 CALCULAR POSICIONES
-  // ======================
-  const prev = previousTableByLiga[ligaId] || {};
-
-  result = result.map((team, index) => {
-
-    const prevTeam = prev[team.equipo];
-
-    let cambio = "stable";
-
-    if (prevTeam) {
-      if (index < prevTeam.posicion) cambio = "up";
-      else if (index > prevTeam.posicion) cambio = "down";
-    }
-
-    return {
-      ...team,
-      posicion: index + 1,
-      prevPosicion: prevTeam ? prevTeam.posicion : index + 1,
-      cambio
-    };
-  });
-
-  // ======================
-  // guardar estado
-  const snapshot = {};
-  result.forEach(t => {
-    snapshot[t.equipo] = t;
-  });
-
-  previousTableByLiga[ligaId] = snapshot;
-
-  lastUpdateByLiga[ligaId] = Date.now();
-
   res.json({
     data: result,
-    lastUpdate: lastUpdateByLiga[ligaId]
+    lastUpdate: Date.now()
   });
 });
 
 // ======================
 app.listen(process.env.PORT || 3000, () => {
-  console.log("FUTCAT PRO BACKEND RUNNING ⚽");
+  console.log("FUTCAT PRO RUNNING ⚽");
 });
