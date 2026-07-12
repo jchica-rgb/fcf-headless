@@ -61,9 +61,16 @@ th {
   color: #00ff88;
 }
 
-.up { background: rgba(0,255,0,0.12); }
-.down { background: rgba(255,0,0,0.12); }
+/* FLECHAS */
+.up {
+  background: rgba(0,255,0,0.12);
+}
 
+.down {
+  background: rgba(255,0,0,0.12);
+}
+
+/* PARTIDOS */
 .match {
   background: #151515;
   padding: 10px;
@@ -108,11 +115,11 @@ th {
 const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
+
+// 🔥 ESTADO REAL PERSISTENTE
 let lastState = new Map();
 
-// ----------------------
-// FECHA
-// ----------------------
+// ======================
 function formatTime(ts) {
   if (!ts) return "--";
   return new Date(ts).toLocaleString("es-ES", {
@@ -120,9 +127,7 @@ function formatTime(ts) {
   });
 }
 
-// ----------------------
-// LIGAS
-// ----------------------
+// ======================
 async function loadLigas() {
 
   const res = await fetch(API + "/ligas");
@@ -146,6 +151,7 @@ async function loadLigas() {
     currentLiga = e.target.value;
     localStorage.setItem("liga", currentLiga);
 
+    // 🔥 reset limpio SOLO al cambiar liga
     lastState.clear();
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
@@ -156,9 +162,7 @@ async function loadLigas() {
   loadData();
 }
 
-// ----------------------
-// DATA
-// ----------------------
+// ======================
 async function loadData() {
 
   const [c, p] = await Promise.all([
@@ -174,34 +178,38 @@ async function loadData() {
   updateStatus(clas.lastUpdate);
 }
 
-// ----------------------
-// CLASIFICACION (SIN DUPLICADOS + FLECHAS ESTABLES)
-// ----------------------
+// ======================
+// CLASIFICACIÓN (ESTABLE + FLECHAS FIJAS)
+// ======================
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
 
-  const used = new Set();
+  const newState = new Map();
 
   data.forEach((t, i) => {
 
-    const id = "row-" + t.equipo;
-
-    let tr = document.getElementById(id);
+    let tr = document.getElementById("row-" + t.equipo);
 
     const prev = lastState.get(t.equipo);
 
     let arrow = "";
     let cls = "";
 
+    // 🔥 comparación REAL
     if (prev) {
-      if (t.puntos > prev.puntos) arrow = " 📈";
-      else if (t.puntos < prev.puntos) arrow = " 📉";
+      if (t.puntos > prev.puntos) {
+        arrow = " 📈";
+        cls = "up";
+      } else if (t.puntos < prev.puntos) {
+        arrow = " 📉";
+        cls = "down";
+      }
     }
 
     if (!tr) {
       tr = document.createElement("tr");
-      tr.id = id;
+      tr.id = "row-" + t.equipo;
       tbody.appendChild(tr);
     }
 
@@ -217,42 +225,28 @@ function renderTable(data) {
       <td>${t.perdidos}</td>
     `;
 
-    used.add(id);
-    lastState.set(t.equipo, t);
+    newState.set(t.equipo, t);
   });
 
-  // eliminar sobrantes (evita duplicados fantasma)
-  document.querySelectorAll("#tabla tr").forEach(tr => {
-    if (!used.has(tr.id)) tr.remove();
-  });
+  lastState = newState;
 
-  // reorden correcto
+  // 🔥 mantener orden correcto SIEMPRE
   data.forEach(t => {
     const row = document.getElementById("row-" + t.equipo);
     if (row) tbody.appendChild(row);
   });
 }
 
-// ----------------------
-// PARTIDOS
-// ----------------------
+// ======================
 function renderMatches(matches) {
 
   const div = document.getElementById("partidos");
-  const used = new Set();
+  div.innerHTML = "";
 
   matches.forEach(p => {
 
-    const id = "m-" + p.local + "-" + p.visitante;
-
-    let el = document.getElementById(id);
-
-    if (!el) {
-      el = document.createElement("div");
-      el.className = "match";
-      el.id = id;
-      div.appendChild(el);
-    }
+    const el = document.createElement("div");
+    el.className = "match";
 
     el.innerHTML = `
       <div>${p.local}</div>
@@ -260,17 +254,11 @@ function renderMatches(matches) {
       <div>${p.visitante}</div>
     `;
 
-    used.add(id);
-  });
-
-  document.querySelectorAll(".match").forEach(m => {
-    if (!used.has(m.id)) m.remove();
+    div.appendChild(el);
   });
 }
 
-// ----------------------
-// STATUS
-// ----------------------
+// ======================
 function updateStatus(ts) {
 
   const now = new Date().toLocaleString("es-ES", {
@@ -284,11 +272,14 @@ function updateStatus(ts) {
     "🕒 Último refresh: " + now;
 }
 
-// ----------------------
+// ======================
+// LIVE LOOP
+// ======================
 setInterval(() => {
   if (currentLiga) loadData();
 }, 12000);
 
+// INIT
 loadLigas();
 
 </script>
