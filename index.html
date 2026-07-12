@@ -61,7 +61,6 @@ th {
   color: #00ff88;
 }
 
-/* estados */
 .up { background: rgba(0,255,0,0.12); }
 .down { background: rgba(255,0,0,0.12); }
 
@@ -109,11 +108,11 @@ th {
 const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
-
-// 🔥 ESTADO SIMPLE Y ESTABLE
 let lastState = new Map();
 
-// ======================
+// ----------------------
+// FECHA
+// ----------------------
 function formatTime(ts) {
   if (!ts) return "--";
   return new Date(ts).toLocaleString("es-ES", {
@@ -121,7 +120,9 @@ function formatTime(ts) {
   });
 }
 
-// ======================
+// ----------------------
+// LIGAS
+// ----------------------
 async function loadLigas() {
 
   const res = await fetch(API + "/ligas");
@@ -145,14 +146,19 @@ async function loadLigas() {
     currentLiga = e.target.value;
     localStorage.setItem("liga", currentLiga);
 
-    lastState.clear(); // 🔥 reset limpio SOLO al cambiar liga
+    lastState.clear();
+    document.getElementById("tabla").innerHTML = "";
+    document.getElementById("partidos").innerHTML = "";
+
     loadData();
   };
 
   loadData();
 }
 
-// ======================
+// ----------------------
+// DATA
+// ----------------------
 async function loadData() {
 
   const [c, p] = await Promise.all([
@@ -168,16 +174,20 @@ async function loadData() {
   updateStatus(clas.lastUpdate);
 }
 
-// ======================
-// CLASIFICACION ESTABLE + FLECHAS
-// ======================
+// ----------------------
+// CLASIFICACION (SIN DUPLICADOS + FLECHAS ESTABLES)
+// ----------------------
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
 
+  const used = new Set();
+
   data.forEach((t, i) => {
 
-    let tr = document.getElementById("row-" + t.equipo);
+    const id = "row-" + t.equipo;
+
+    let tr = document.getElementById(id);
 
     const prev = lastState.get(t.equipo);
 
@@ -185,18 +195,13 @@ function renderTable(data) {
     let cls = "";
 
     if (prev) {
-      if (t.puntos > prev.puntos) {
-        arrow = " 📈";
-        cls = "up";
-      } else if (t.puntos < prev.puntos) {
-        arrow = " 📉";
-        cls = "down";
-      }
+      if (t.puntos > prev.puntos) arrow = " 📈";
+      else if (t.puntos < prev.puntos) arrow = " 📉";
     }
 
     if (!tr) {
       tr = document.createElement("tr");
-      tr.id = "row-" + t.equipo;
+      tr.id = id;
       tbody.appendChild(tr);
     }
 
@@ -212,26 +217,42 @@ function renderTable(data) {
       <td>${t.perdidos}</td>
     `;
 
+    used.add(id);
     lastState.set(t.equipo, t);
   });
 
-  // 🔥 mantener orden real SIEMPRE
+  // eliminar sobrantes (evita duplicados fantasma)
+  document.querySelectorAll("#tabla tr").forEach(tr => {
+    if (!used.has(tr.id)) tr.remove();
+  });
+
+  // reorden correcto
   data.forEach(t => {
     const row = document.getElementById("row-" + t.equipo);
     if (row) tbody.appendChild(row);
   });
 }
 
-// ======================
+// ----------------------
+// PARTIDOS
+// ----------------------
 function renderMatches(matches) {
 
   const div = document.getElementById("partidos");
-  div.innerHTML = "";
+  const used = new Set();
 
   matches.forEach(p => {
 
-    const el = document.createElement("div");
-    el.className = "match";
+    const id = "m-" + p.local + "-" + p.visitante;
+
+    let el = document.getElementById(id);
+
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "match";
+      el.id = id;
+      div.appendChild(el);
+    }
 
     el.innerHTML = `
       <div>${p.local}</div>
@@ -239,11 +260,17 @@ function renderMatches(matches) {
       <div>${p.visitante}</div>
     `;
 
-    div.appendChild(el);
+    used.add(id);
+  });
+
+  document.querySelectorAll(".match").forEach(m => {
+    if (!used.has(m.id)) m.remove();
   });
 }
 
-// ======================
+// ----------------------
+// STATUS
+// ----------------------
 function updateStatus(ts) {
 
   const now = new Date().toLocaleString("es-ES", {
@@ -257,12 +284,11 @@ function updateStatus(ts) {
     "🕒 Último refresh: " + now;
 }
 
-// ======================
+// ----------------------
 setInterval(() => {
   if (currentLiga) loadData();
 }, 12000);
 
-// INIT
 loadLigas();
 
 </script>
