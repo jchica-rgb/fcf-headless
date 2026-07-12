@@ -12,18 +12,13 @@ body {
   color: white;
 }
 
+/* HEADER */
 header {
   padding: 18px;
   text-align: center;
   background: #111;
   font-size: 22px;
   font-weight: bold;
-}
-
-.container {
-  max-width: 1000px;
-  margin: auto;
-  padding: 15px;
 }
 
 /* STATUS */
@@ -34,44 +29,70 @@ header {
   padding: 10px;
   border-radius: 6px;
   font-size: 12px;
-  margin-bottom: 10px;
+  margin: 10px;
 }
 
 /* SELECT */
 select {
-  width: 100%;
+  width: calc(100% - 20px);
+  margin: 10px;
   padding: 10px;
-  margin: 10px 0;
   background: #1a1a1a;
   color: white;
   border: 1px solid #333;
 }
 
-/* TABLE BASE */
+/* 🧠 LAYOUT PRINCIPAL */
+.layout {
+  display: flex;
+  gap: 20px;
+  padding: 10px;
+  max-width: 1200px;
+  margin: auto;
+}
+
+/* IZQUIERDA (PARTIDOS) */
+.left {
+  width: 42%;
+}
+
+/* DERECHA (CLASIFICACIÓN) */
+.right {
+  width: 58%;
+}
+
+/* 🌟 DIVISOR VERDE DEGRADADO */
+.divider {
+  width: 3px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    #00ff88,
+    #00ff88,
+    transparent
+  );
+  box-shadow: 0 0 12px #00ff88;
+  border-radius: 3px;
+}
+
+/* TABLE */
 table {
   width: 100%;
   border-collapse: collapse;
   background: #111;
-  border-left: 2px solid rgba(0,255,136,0.35);
-  border-right: 2px solid rgba(0,255,136,0.35);
 }
 
 th, td {
   padding: 10px;
   text-align: center;
   border-bottom: 1px solid #222;
-}
-
-/* 🟢 COLUMN LINES (ESTADIO EFFECT) */
-th, td {
-  border-right: 1px solid rgba(0,255,136,0.25);
+  border-right: 1px solid rgba(0,255,136,0.2);
 }
 
 th:last-child, td:last-child {
   border-right: none;
 }
 
-/* HEADER COLOR */
 th {
   color: #00ff88;
 }
@@ -96,11 +117,10 @@ th {
   background: #151515;
   padding: 12px;
   margin-bottom: 8px;
+  border-radius: 8px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  border-radius: 8px;
-  border-left: 2px solid rgba(0,255,136,0.2);
 }
 
 .score {
@@ -108,10 +128,17 @@ th {
   font-weight: bold;
 }
 
-/* ARROWS */
-.arrow {
-  font-size: 12px;
-  margin-left: 5px;
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .layout {
+    flex-direction: column;
+  }
+  .divider {
+    display: none;
+  }
+  .left, .right {
+    width: 100%;
+  }
 }
 </style>
 </head>
@@ -120,38 +147,45 @@ th {
 
 <header>⚽ Territori FUTCAT LIVE</header>
 
-<div class="container">
-
-<!-- STATUS -->
 <div id="statusBar">
   <div id="lastChange">📡 Último cambio: --</div>
   <div id="lastRefresh">🕒 Último refresh: --</div>
 </div>
 
-<!-- LIGA -->
 <select id="liga"></select>
 
-<!-- CLASSIFICATION -->
-<h3>📊 Clasificación</h3>
+<!-- 🧠 NUEVO LAYOUT -->
+<div class="layout">
 
-<table>
-<thead>
-<tr>
-  <th>Pos</th>
-  <th>Equipo</th>
-  <th>Puntos</th>
-  <th>J</th>
-  <th>G</th>
-  <th>E</th>
-  <th>P</th>
-</tr>
-</thead>
-<tbody id="tabla"></tbody>
-</table>
+  <!-- PARTIDOS -->
+  <div class="left">
+    <h3>⚽ Partidos</h3>
+    <div id="partidos"></div>
+  </div>
 
-<!-- MATCHES -->
-<h3>⚽ Partidos</h3>
-<div id="partidos"></div>
+  <!-- DIVISOR -->
+  <div class="divider"></div>
+
+  <!-- CLASIFICACIÓN -->
+  <div class="right">
+    <h3>📊 Clasificación</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Pos</th>
+          <th>Equipo</th>
+          <th>Puntos</th>
+          <th>J</th>
+          <th>G</th>
+          <th>E</th>
+          <th>P</th>
+        </tr>
+      </thead>
+      <tbody id="tabla"></tbody>
+    </table>
+
+  </div>
 
 </div>
 
@@ -167,7 +201,7 @@ let currentLiga = null;
 let lastState = new Map();
 
 // ======================
-// RENDER CLASIFICACIÓN
+// CLASIFICACIÓN
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
@@ -196,7 +230,6 @@ function renderTable(data) {
     else if (i >= sorted.length - 3) cls = "down";
 
     const tr = document.createElement("tr");
-
     tr.className = cls;
 
     tr.innerHTML = `
@@ -218,7 +251,7 @@ function renderTable(data) {
 }
 
 // ======================
-// MATCHES
+// PARTIDOS
 function renderMatches(matches) {
 
   const div = document.getElementById("partidos");
@@ -255,7 +288,7 @@ function updateStatus(ts) {
 }
 
 // ======================
-// REST
+// LOAD DATA
 async function loadData() {
 
   const [c, p] = await Promise.all([
@@ -273,7 +306,7 @@ async function loadData() {
 }
 
 // ======================
-// SOCKET LIVE
+// SOCKET
 socket.on("clasificacion", (msg) => {
 
   if (msg.liga !== currentLiga) return;
@@ -317,7 +350,7 @@ async function loadLigas() {
   loadData();
 }
 
-// ======================
+// INIT
 loadLigas();
 setInterval(loadData, 10000);
 
