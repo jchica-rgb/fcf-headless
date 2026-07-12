@@ -11,8 +11,11 @@ app.use(express.json());
 // ======================
 const SHEET_ID = process.env.SHEET_ID || "";
 
+// 🔥 ESTADO PARA FLECHAS (NO ROMPE NADA)
+let lastTable = [];
+
 // ======================
-// SAFE JSON PARSE
+// SAFE JSON
 // ======================
 function safeJson(v) {
   try { return JSON.parse(v); } catch { return null; }
@@ -21,7 +24,7 @@ function safeJson(v) {
 const credentials = safeJson(process.env.GOOGLE_CREDENTIALS);
 
 // ======================
-// GOOGLE AUTH
+// AUTH GOOGLE
 // ======================
 const auth = credentials
   ? new google.auth.GoogleAuth({
@@ -41,7 +44,7 @@ function normalize(v) {
 }
 
 // ======================
-// READ SHEET
+// GET SHEET
 // ======================
 async function getSheet(range) {
   if (!auth || !SHEET_ID) return [];
@@ -97,7 +100,7 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ======================
-// CLASIFICACION
+// CLASIFICACION (🔥 CON FLECHAS OK)
 // ======================
 app.get("/clasificacion", async (req, res) => {
 
@@ -126,7 +129,8 @@ app.get("/clasificacion", async (req, res) => {
         jugados: 0,
         ganados: 0,
         empatados: 0,
-        perdidos: 0
+        perdidos: 0,
+        movement: null
       };
     }
   };
@@ -157,9 +161,35 @@ app.get("/clasificacion", async (req, res) => {
 
   let result = Object.values(tabla);
 
+  // 🔥 ORDEN FIJO
   result.sort((a, b) =>
     b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
+
+  // ======================
+  // 🔥 FLECHAS (COMPARACIÓN ENTRE REFRESHES)
+  // ======================
+  const prevIndex = new Map();
+
+  lastTable.forEach((t, i) => {
+    prevIndex.set(t.equipo, i);
+  });
+
+  result.forEach((t, i) => {
+
+    const old = prevIndex.get(t.equipo);
+
+    if (old !== undefined) {
+      if (old > i) t.movement = "up";
+      else if (old < i) t.movement = "down";
+      else t.movement = null;
+    } else {
+      t.movement = null;
+    }
+  });
+
+  // actualizar estado global
+  lastTable = result.map(t => ({ ...t }));
 
   res.json({
     data: result,
@@ -168,14 +198,14 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 // ======================
-// HEALTH CHECK (IMPORTANTE RENDER)
+// HEALTH CHECK
 // ======================
 app.get("/", (req, res) => {
   res.send("FUTCAT SERVER OK ⚽");
 });
 
 // ======================
-// START SERVER (IMPORTANTE)
+// START
 // ======================
 const PORT = process.env.PORT || 3000;
 
