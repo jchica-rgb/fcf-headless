@@ -12,7 +12,7 @@ app.use(express.json());
 const SHEET_ID = process.env.SHEET_ID || "";
 
 // ======================
-// SAFE PARSE
+// SAFE JSON PARSE
 // ======================
 function safeJson(v) {
   try {
@@ -42,7 +42,13 @@ function normalize(v) {
 }
 
 // ======================
-// READ SHEET
+// CACHE REAL POR LIGA
+// ======================
+let lastKeyByLiga = {};
+let lastUpdate = null;
+
+// ======================
+// SHEETS
 // ======================
 async function getSheet(range) {
   try {
@@ -64,10 +70,7 @@ async function getSheet(range) {
 }
 
 // ======================
-// LIGAS (DESDE SHEETS)
-// Hoja: LIGAS
-// A = id
-// B = nombre
+// LIGAS
 // ======================
 app.get("/ligas", async (req, res) => {
 
@@ -82,14 +85,7 @@ app.get("/ligas", async (req, res) => {
 });
 
 // ======================
-// PARTIDOS (DESDE SHEETS)
-// Hoja: PARTIDOS
-// A liga
-// B jornada
-// C local
-// D visitante
-// E goles_local
-// F goles_visitante
+// PARTIDOS
 // ======================
 app.get("/partidos", async (req, res) => {
 
@@ -112,7 +108,7 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ======================
-// CLASIFICACIÓN (AUTOMÁTICA)
+// CLASIFICACIÓN (AUTOMÁTICA + FIX REAL)
 // ======================
 app.get("/clasificacion", async (req, res) => {
 
@@ -132,7 +128,7 @@ app.get("/clasificacion", async (req, res) => {
 
   const tabla = {};
 
-  function init(team) {
+  const init = (team) => {
     if (!tabla[team]) {
       tabla[team] = {
         equipo: team,
@@ -143,7 +139,7 @@ app.get("/clasificacion", async (req, res) => {
         perdidos: 0
       };
     }
-  }
+  };
 
   filtered.forEach(p => {
 
@@ -157,15 +153,13 @@ app.get("/clasificacion", async (req, res) => {
       tabla[p.local].ganados++;
       tabla[p.visitante].perdidos++;
       tabla[p.local].puntos += 3;
-    }
-
-    if (p.gl < p.gv) {
+    } 
+    else if (p.gl < p.gv) {
       tabla[p.visitante].ganados++;
       tabla[p.local].perdidos++;
       tabla[p.visitante].puntos += 3;
-    }
-
-    if (p.gl === p.gv) {
+    } 
+    else {
       tabla[p.local].empatados++;
       tabla[p.visitante].empatados++;
       tabla[p.local].puntos++;
@@ -173,16 +167,51 @@ app.get("/clasificacion", async (req, res) => {
     }
   });
 
-  const result = Object.values(tabla).sort((a, b) => b.puntos - a.puntos);
+  const result = Object.values(tabla)
+    .sort((a, b) => b.puntos - a.puntos);
 
-  res.json({ data: result });
+  // ======================
+  // HASH ESTABLE (FIX IMPORTANTE)
+  // ======================
+  const stableKey = JSON.stringify(
+    result.map(r => ({
+      equipo: r.equipo,
+      puntos: r.puntos,
+      jugados: r.jugados,
+      ganados: r.ganados,
+      empatados: r.empatados,
+      perdidos: r.perdidos
+    }))
+  );
+
+  // ======================
+  // UPDATE SOLO SI CAMBIA
+  // ======================
+  if (lastKeyByLiga[ligaId] !== stableKey) {
+    lastKeyByLiga[ligaId] = stableKey;
+
+    lastUpdate = new Date().toLocaleString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  res.json({
+    data: result,
+    lastUpdate
+  });
 });
 
+// ======================
+// HEALTH
 // ======================
 app.get("/", (req, res) => {
   res.json({
     ok: true,
-    status: "FUTCAT RUNNING ⚽"
+    status: "FUTCAT STABLE SYSTEM ⚽"
   });
 });
 
