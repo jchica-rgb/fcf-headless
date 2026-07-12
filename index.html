@@ -59,10 +59,9 @@ th, td {
 
 th {
   color: #00ff88;
-  font-weight: bold;
 }
 
-/* 🔥 estados visuales */
+/* 🔥 ZONAS REALES */
 .up td {
   background: rgba(0,255,0,0.18) !important;
 }
@@ -71,6 +70,11 @@ th {
   background: rgba(255,0,0,0.18) !important;
 }
 
+.mid td {
+  background: rgba(255,255,255,0.05) !important;
+}
+
+/* PARTIDOS */
 .match {
   background: #151515;
   padding: 10px;
@@ -128,11 +132,8 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 
-// 🔥 ESTADO ACTUAL (runtime)
+// estado anterior (solo flechas)
 let lastState = {};
-
-// 🔥 HISTORIAL REAL (PERSISTENTE F5)
-let historyState = JSON.parse(localStorage.getItem("historyState") || "{}");
 
 // ======================
 function formatTime(ts) {
@@ -167,9 +168,6 @@ async function loadLigas() {
     localStorage.setItem("liga", currentLiga);
 
     lastState = {};
-    historyState = {};
-    localStorage.removeItem("historyState");
-
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
 
@@ -196,32 +194,31 @@ async function loadData() {
 }
 
 // ======================
-// 🔥 RENDER FINAL PRO REAL (F5 SAFE)
+// 🔥 CLASIFICACION FINAL ESTABLE
+// ======================
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
-
-  const newHistory = {};
 
   data.forEach((t, i) => {
 
     let tr = document.getElementById("row-" + t.equipo);
 
-    const prev = historyState[t.equipo];
+    const prev = lastState[t.equipo];
 
     let arrow = "";
     let cls = "";
 
-    // 🔥 comparación REAL persistente
+    // 📈📉 flechas SOLO si hay cambio
     if (prev) {
-      if (t.puntos > prev.puntos) {
-        arrow = " 📈";
-        cls = "up";
-      } else if (t.puntos < prev.puntos) {
-        arrow = " 📉";
-        cls = "down";
-      }
+      if (t.puntos > prev.puntos) arrow = " 📈";
+      else if (t.puntos < prev.puntos) arrow = " 📉";
     }
+
+    // 🔥 ZONAS POR POSICIÓN (REAL PRO)
+    if (i < 3) cls = "up";
+    else if (i >= data.length - 3) cls = "down";
+    else cls = "mid";
 
     if (!tr) {
       tr = document.createElement("tr");
@@ -241,17 +238,14 @@ function renderTable(data) {
       <td>${t.perdidos}</td>
     `;
 
-    // runtime
     lastState[t.equipo] = t;
-
-    // persistente
-    newHistory[t.equipo] = {
-      puntos: t.puntos
-    };
   });
 
-  historyState = newHistory;
-  localStorage.setItem("historyState", JSON.stringify(newHistory));
+  // mantener orden DOM
+  data.forEach(t => {
+    const row = document.getElementById("row-" + t.equipo);
+    if (row) tbody.appendChild(row);
+  });
 }
 
 // ======================
