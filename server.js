@@ -7,41 +7,65 @@ app.use(cors());
 app.use(express.json());
 
 // ======================
+// CONFIG
+// ======================
 const SHEET_ID = process.env.SHEET_ID || "";
 
+// ======================
+// SAFE JSON
+// ======================
 function safeJson(v) {
-  try { return JSON.parse(v); } catch { return null; }
+  try {
+    return JSON.parse(v);
+  } catch {
+    return null;
+  }
 }
 
-const auth = new google.auth.GoogleAuth({
-  credentials: safeJson(process.env.GOOGLE_CREDENTIALS),
-  scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-});
+// ======================
+// AUTH GOOGLE
+// ======================
+const credentials = safeJson(process.env.GOOGLE_CREDENTIALS);
+
+const auth = credentials
+  ? new google.auth.GoogleAuth({
+      credentials,
+      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+    })
+  : null;
 
 // ======================
-// HELPERS
+// NORMALIZE
 // ======================
 function normalize(v) {
   return String(v || "").trim().toLowerCase();
 }
 
 // ======================
-// SHEETS
+// READ SHEET
 // ======================
 async function getSheet(range) {
-  const client = await auth.getClient();
-  const sheets = google.sheets({ version: "v4", auth: client });
+  try {
+    if (!auth || !SHEET_ID) return [];
 
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
-    range
-  });
+    const client = await auth.getClient();
+    const sheets = google.sheets({ version: "v4", auth: client });
 
-  return res.data.values || [];
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range
+    });
+
+    return res.data.values || [];
+  } catch (err) {
+    console.error("SHEETS ERROR:", err.message);
+    return [];
+  }
 }
 
+//
 // ======================
-// LIGAS (DESDE SHEETS)
+// LIGAS (HOJA LIGAS)
 // ======================
 app.get("/ligas", async (req, res) => {
 
@@ -55,8 +79,9 @@ app.get("/ligas", async (req, res) => {
   res.json({ data: ligas });
 });
 
+//
 // ======================
-// PARTIDOS (FUENTE REAL)
+// PARTIDOS (HOJA REAL)
 // ======================
 app.get("/partidos", async (req, res) => {
 
@@ -78,8 +103,9 @@ app.get("/partidos", async (req, res) => {
   res.json({ data: filtered });
 });
 
+//
 // ======================
-// CLASIFICACIÓN (AUTOMÁTICA 🔥)
+// CLASIFICACIÓN (CALCULADA)
 // ======================
 app.get("/clasificacion", async (req, res) => {
 
@@ -97,9 +123,9 @@ app.get("/clasificacion", async (req, res) => {
 
   const filtered = partidos.filter(p => p.liga === ligaId);
 
-  let tabla = {};
+  const tabla = {};
 
-  function add(team) {
+  const init = (team) => {
     if (!tabla[team]) {
       tabla[team] = {
         equipo: team,
@@ -110,12 +136,12 @@ app.get("/clasificacion", async (req, res) => {
         perdidos: 0
       };
     }
-  }
+  };
 
   filtered.forEach(p => {
 
-    add(p.local);
-    add(p.visitante);
+    init(p.local);
+    init(p.visitante);
 
     tabla[p.local].jugados++;
     tabla[p.visitante].jugados++;
@@ -124,15 +150,13 @@ app.get("/clasificacion", async (req, res) => {
       tabla[p.local].ganados++;
       tabla[p.visitante].perdidos++;
       tabla[p.local].puntos += 3;
-    }
-
-    if (p.gl < p.gv) {
+    } 
+    else if (p.gl < p.gv) {
       tabla[p.visitante].ganados++;
       tabla[p.local].perdidos++;
       tabla[p.visitante].puntos += 3;
-    }
-
-    if (p.gl === p.gv) {
+    } 
+    else {
       tabla[p.local].empatados++;
       tabla[p.visitante].empatados++;
       tabla[p.local].puntos++;
@@ -146,11 +170,20 @@ app.get("/clasificacion", async (req, res) => {
   res.json({ data: result });
 });
 
+//
+// ======================
+// HEALTH
 // ======================
 app.get("/", (req, res) => {
-  res.json({ ok: true, status: "FUTCAT 2.0 LIVE ⚽" });
+  res.json({
+    ok: true,
+    status: "FUTCAT LIVE SYSTEM ⚽"
+  });
 });
 
+//
 // ======================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("RUNNING", PORT));
+app.listen(PORT, () => {
+  console.log("SERVER RUNNING ON", PORT);
+});
