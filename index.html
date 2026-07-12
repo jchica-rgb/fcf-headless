@@ -15,7 +15,7 @@ body {
 header {
   padding: 18px;
   text-align: center;
-  background: linear-gradient(90deg, #111, #0a0a0a, #111);
+  background: #111;
   font-size: 22px;
   font-weight: bold;
 }
@@ -61,12 +61,12 @@ th {
   color: #00ff88;
 }
 
-/* ZONAS */
+/* ZONES */
 .up td { background: rgba(0,255,0,0.18) !important; }
 .down td { background: rgba(255,0,0,0.18) !important; }
 .mid td { background: rgba(255,255,255,0.04); }
 
-/* PARTIDOS */
+/* MATCHES */
 .match {
   background: #151515;
   padding: 12px;
@@ -85,7 +85,7 @@ th {
   font-weight: bold;
 }
 
-/* FLECHAS */
+/* ARROWS */
 .arrow {
   font-size: 12px;
   margin-left: 5px;
@@ -175,7 +175,7 @@ async function loadLigas() {
 }
 
 // ======================
-// REST fallback
+// REST (inicio)
 async function loadData() {
 
   const [c, p] = await Promise.all([
@@ -193,17 +193,22 @@ async function loadData() {
 }
 
 // ======================
-// LIVE SOCKET
+// SOCKET LIVE (FIX CLAVE)
 socket.on("clasificacion", (msg) => {
 
   if (msg.liga !== currentLiga) return;
 
-  renderTable(msg.data);
+  // 🔥 FIX CRÍTICO: ordenar SIEMPRE aquí
+  const sorted = [...msg.data].sort((a, b) =>
+    b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
+  );
+
+  renderTable(sorted);
   updateStatus(msg.time);
 });
 
 // ======================
-// CLASIFICACIÓN (FLECHAS FIJAS)
+// CLASIFICACIÓN (ESTABLE)
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
@@ -220,7 +225,6 @@ function renderTable(data) {
 
     const prev = lastState.get(t.equipo);
 
-    // 🔥 FIX DEFINITIVO FLECHAS
     let arrow = "";
     if (prev) {
       if (prev.pos > i) arrow = " 📈";
