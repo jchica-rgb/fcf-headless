@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Territori FUTCAT Live</title>
+<title>Territori FUTCAT LIVE</title>
 
 <style>
 body {
@@ -12,24 +12,20 @@ body {
   color: white;
 }
 
-/* HEADER */
 header {
   padding: 18px;
   text-align: center;
   background: linear-gradient(90deg, #111, #0a0a0a, #111);
   font-size: 22px;
   font-weight: bold;
-  border-bottom: 1px solid rgba(0,255,136,0.15);
 }
 
-/* CONTAINER */
 .container {
   max-width: 1000px;
   margin: auto;
   padding: 15px;
 }
 
-/* STATUS */
 #statusBar {
   display: flex;
   justify-content: space-between;
@@ -40,7 +36,6 @@ header {
   margin-bottom: 10px;
 }
 
-/* SELECT */
 select {
   width: 100%;
   padding: 10px;
@@ -50,7 +45,6 @@ select {
   border: 1px solid #333;
 }
 
-/* TABLE */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -67,12 +61,12 @@ th {
   color: #00ff88;
 }
 
-/* ZONES */
+/* ZONAS */
 .up td { background: rgba(0,255,0,0.18) !important; }
 .down td { background: rgba(255,0,0,0.18) !important; }
 .mid td { background: rgba(255,255,255,0.04); }
 
-/* MATCHES */
+/* PARTIDOS */
 .match {
   background: #151515;
   padding: 12px;
@@ -91,43 +85,9 @@ th {
   color: #00ff88;
   font-weight: bold;
   text-align: center;
-  justify-self: center;
-  min-width: 80px;
 }
 
-/* TITLES */
-h3 {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-h3::after {
-  content: "";
-  flex: 1;
-  height: 2px;
-  background: linear-gradient(90deg, #00ff88, transparent);
-}
-
-/* =========================
-   GOD MODE ANIMATIONS
-========================= */
-tr {
-  transition: transform 0.35s ease, background 0.35s ease;
-}
-
-.flash-move {
-  transform: scale(1.01);
-}
-
-.flash-up td {
-  background: rgba(0,255,136,0.28) !important;
-}
-
-.flash-down td {
-  background: rgba(255,80,80,0.25) !important;
-}
-
+/* FLECHAS */
 .arrow {
   font-size: 12px;
   margin-left: 5px;
@@ -137,19 +97,18 @@ tr {
 
 <body>
 
-<header>⚽ Territori FUTCAT Live</header>
+<header>⚽ Territori FUTCAT LIVE</header>
 
 <div class="container">
 
 <div id="statusBar">
-  <div id="lastChange">📡 Último cambio real: --</div>
+  <div id="lastChange">📡 Último cambio: --</div>
   <div id="lastRefresh">🕒 Último refresh: --</div>
 </div>
 
 <select id="liga"></select>
 
 <h3>📊 Clasificación</h3>
-
 <table>
 <thead>
 <tr>
@@ -170,36 +129,45 @@ tr {
 
 </div>
 
+<!-- ===================== -->
+<!-- SOCKET.IO -->
+<!-- ===================== -->
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
 <script>
 
 const API = "https://fcf-headless.onrender.com";
+const socket = io(API);
 
 let currentLiga = null;
+let lastState = new Map();
 
 // ======================
+// LIGAS (REST normal, no cambia)
 async function loadLigas() {
 
   const res = await fetch(API + "/ligas");
   const json = await res.json();
 
-  const sel = document.getElementById("liga");
-  sel.innerHTML = "";
+  const select = document.getElementById("liga");
+  select.innerHTML = "";
 
   json.data.forEach(l => {
     const opt = document.createElement("option");
     opt.value = l.id;
     opt.textContent = l.nombre;
-    sel.appendChild(opt);
+    select.appendChild(opt);
   });
 
   const saved = localStorage.getItem("liga");
   currentLiga = saved || json.data[0].id;
-  sel.value = currentLiga;
+  select.value = currentLiga;
 
-  sel.onchange = (e) => {
+  select.onchange = (e) => {
     currentLiga = e.target.value;
     localStorage.setItem("liga", currentLiga);
 
+    lastState.clear();
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
 
@@ -210,6 +178,7 @@ async function loadLigas() {
 }
 
 // ======================
+// PARTIDOS (REST igual)
 async function loadData() {
 
   const [c, p] = await Promise.all([
@@ -227,47 +196,51 @@ async function loadData() {
 }
 
 // ======================
+// SOCKET LIVE (NUEVO)
+socket.on("clasificacion", (msg) => {
+
+  if (msg.liga !== currentLiga) return;
+
+  renderTable(msg.data);
+  updateStatus(msg.time);
+});
+
+// ======================
+// CLASIFICACIÓN
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
 
-  // orden estable
   data = [...data].sort((a, b) =>
     b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
-  // mapa posiciones previas
-  const prev = new Map();
-  [...tbody.children].forEach((row, i) => {
-    prev.set(row.getAttribute("data-team"), i);
-  });
-
-  tbody.innerHTML = "";
+  const newState = new Map();
 
   data.forEach((t, i) => {
 
-    const tr = document.createElement("tr");
-    tr.setAttribute("data-team", t.equipo);
+    let tr = document.getElementById("row-" + t.equipo);
+
+    const prev = lastState.get(t.equipo);
 
     let arrow = "";
-    if (t.movement === "up") arrow = " <span class='arrow'>📈</span>";
-    else if (t.movement === "down") arrow = " <span class='arrow'>📉</span>";
-
     let cls = "mid";
+
+    if (prev) {
+      if (prev.pos > i) arrow = " 📈";
+      else if (prev.pos < i) arrow = " 📉";
+    }
+
     if (i < 3) cls = "up";
     else if (i >= data.length - 3) cls = "down";
 
-    tr.className = cls;
-
-    const oldPos = prev.get(t.equipo);
-
-    if (oldPos !== undefined) {
-      if (oldPos > i) {
-        tr.classList.add("flash-up", "flash-move");
-      } else if (oldPos < i) {
-        tr.classList.add("flash-down", "flash-move");
-      }
+    if (!tr) {
+      tr = document.createElement("tr");
+      tr.id = "row-" + t.equipo;
+      tbody.appendChild(tr);
     }
+
+    tr.className = cls;
 
     tr.innerHTML = `
       <td>${i + 1}</td>
@@ -279,18 +252,14 @@ function renderTable(data) {
       <td>${t.perdidos}</td>
     `;
 
-    tbody.appendChild(tr);
+    newState.set(t.equipo, { pos: i });
   });
 
-  setTimeout(() => {
-    document.querySelectorAll(".flash-up, .flash-down, .flash-move")
-      .forEach(el => {
-        el.classList.remove("flash-up", "flash-down", "flash-move");
-      });
-  }, 600);
+  lastState = newState;
 }
 
 // ======================
+// PARTIDOS
 function renderMatches(matches) {
 
   const div = document.getElementById("partidos");
@@ -319,13 +288,14 @@ function updateStatus(ts) {
   });
 
   document.getElementById("lastChange").innerText =
-    "📡 Último cambio real: " + (ts ? new Date(ts).toLocaleString() : "--");
+    "📡 Último cambio: " + (ts ? new Date(ts).toLocaleString() : "--");
 
   document.getElementById("lastRefresh").innerText =
     "🕒 Último refresh: " + now;
 }
 
 // ======================
+// INIT
 loadLigas();
 setInterval(loadData, 10000);
 
