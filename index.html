@@ -15,7 +15,7 @@ body {
   font-family: Arial;
   background: #0a0a0a;
   color: white;
-  padding: 10px 0 30px 0; /* 👈 aire general */
+  padding: 10px 0 30px 0;
 }
 
 header {
@@ -37,7 +37,7 @@ header {
   padding: 10px;
   border-radius: 6px;
 
-  margin: 15px 10px; /* 👈 separación real */
+  margin: 15px 10px;
   font-size: 12px;
 }
 
@@ -47,7 +47,7 @@ header {
 
 select {
   width: calc(100% - 20px);
-  margin: 15px 10px 20px 10px; /* 👈 aire */
+  margin: 15px 10px 20px 10px;
   padding: 10px;
   background: #1a1a1a;
   color: white;
@@ -55,33 +55,46 @@ select {
 }
 
 /* ======================
-   LAYOUT PRINCIPAL
+   LAYOUT PRINCIPAL (FIX FINAL)
 ====================== */
 
 .layout {
   display: flex;
   gap: 20px;
+
   max-width: 1200px;
-  margin: auto;
-  padding: 0 20px; /* 👈 clave: no pegado a bordes */
+  margin: 0 auto;
+
+  padding: 0 20px;
+
+  /* 🔥 FIX CLAVE */
+  align-items: stretch;
 }
 
-/* LEFT */
+.left, .right {
+  display: flex;
+  flex-direction: column;
+}
+
+/* IZQUIERDA */
 .left {
   width: 42%;
 }
 
-/* RIGHT */
+/* DERECHA */
 .right {
   width: 58%;
 }
 
 /* ======================
-   DIVIDER ESTADIO
+   DIVIDER ESTADIO PERFECTO
 ====================== */
 
 .divider {
   width: 3px;
+
+  align-self: stretch;
+
   background: linear-gradient(
     to bottom,
     transparent,
@@ -89,6 +102,7 @@ select {
     #00ff88,
     transparent
   );
+
   box-shadow: 0 0 12px #00ff88;
   border-radius: 3px;
 }
@@ -101,6 +115,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   background: #111;
+
   border-left: 2px solid rgba(0,255,136,0.35);
   border-right: 2px solid rgba(0,255,136,0.35);
 }
@@ -185,16 +200,17 @@ th {
 
 <header>⚽ Territori FUTCAT LIVE</header>
 
-<!-- STATUS -->
 <div id="statusBar">
   <div id="lastChange">📡 Último cambio: --</div>
   <div id="lastRefresh">🕒 Último refresh: --</div>
 </div>
 
-<!-- LIGA -->
 <select id="liga"></select>
 
-<!-- LAYOUT -->
+<!-- ======================
+     LAYOUT PRINCIPAL
+====================== -->
+
 <div class="layout">
 
   <!-- PARTIDOS -->
