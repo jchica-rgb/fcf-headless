@@ -45,6 +45,7 @@ select {
   border: 1px solid #333;
 }
 
+/* TABLE */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -77,6 +78,9 @@ th {
   border-radius: 8px;
 }
 
+.match div:first-child { text-align: left; }
+.match div:last-child { text-align: right; }
+
 .score {
   color: #00ff88;
   font-weight: bold;
@@ -96,14 +100,18 @@ th {
 
 <div class="container">
 
+<!-- STATUS -->
 <div id="statusBar">
   <div id="lastChange">📡 Último cambio: --</div>
   <div id="lastRefresh">🕒 Último refresh: --</div>
 </div>
 
+<!-- LIGAS -->
 <select id="liga"></select>
 
+<!-- CLASIFICACIÓN -->
 <h3>📊 Clasificación</h3>
+
 <table>
 <thead>
 <tr>
@@ -119,6 +127,7 @@ th {
 <tbody id="tabla"></tbody>
 </table>
 
+<!-- PARTIDOS -->
 <h3>⚽ Partidos</h3>
 <div id="partidos"></div>
 
@@ -133,9 +142,121 @@ const API = "https://fcf-headless.onrender.com";
 const socket = io(API);
 
 let currentLiga = null;
-
-// 🔥 ESTADO GLOBAL (POSICIONES)
 let lastState = new Map();
+
+// ======================
+// RENDER CLASIFICACIÓN (FIX DEFINITIVO)
+function renderTable(data) {
+
+  const tbody = document.getElementById("tabla");
+
+  const sorted = [...data].sort((a, b) =>
+    Number(b.puntos) - Number(a.puntos) ||
+    a.equipo.localeCompare(b.equipo)
+  );
+
+  const newState = new Map();
+
+  tbody.innerHTML = "";
+
+  sorted.forEach((t, i) => {
+
+    const prev = lastState.get(t.equipo);
+
+    let arrow = "";
+    if (prev) {
+      if (prev.pos > i) arrow = " 📈";
+      else if (prev.pos < i) arrow = " 📉";
+    }
+
+    let cls = "mid";
+    if (i < 3) cls = "up";
+    else if (i >= sorted.length - 3) cls = "down";
+
+    const tr = document.createElement("tr");
+
+    tr.className = cls;
+
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${t.equipo}${arrow}</td>
+      <td>${t.puntos}</td>
+      <td>${t.jugados}</td>
+      <td>${t.ganados}</td>
+      <td>${t.empatados}</td>
+      <td>${t.perdidos}</td>
+    `;
+
+    tbody.appendChild(tr);
+
+    newState.set(t.equipo, { pos: i });
+  });
+
+  lastState = newState;
+}
+
+// ======================
+// RENDER PARTIDOS
+function renderMatches(matches) {
+
+  const div = document.getElementById("partidos");
+  div.innerHTML = "";
+
+  matches.forEach(p => {
+
+    const el = document.createElement("div");
+    el.className = "match";
+
+    el.innerHTML = `
+      <div>${p.local}</div>
+      <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
+      <div>${p.visitante}</div>
+    `;
+
+    div.appendChild(el);
+  });
+}
+
+// ======================
+// STATUS
+function updateStatus(ts) {
+
+  const now = new Date().toLocaleString("es-ES", {
+    timeZone: "Europe/Madrid"
+  });
+
+  document.getElementById("lastChange").innerText =
+    "📡 Último cambio: " + (ts ? new Date(ts).toLocaleString() : "--");
+
+  document.getElementById("lastRefresh").innerText =
+    "🕒 Último refresh: " + now;
+}
+
+// ======================
+// REST LOAD (INICIAL)
+async function loadData() {
+
+  const [c, p] = await fetch(API + "/clasificacion?liga=" + currentLiga)
+    .then(r => r.json())
+    .then(clas => Promise.all([
+      Promise.resolve(clas),
+      fetch(API + "/partidos?liga=" + currentLiga).then(r => r.json())
+    ]));
+
+  renderTable(c.data);
+  renderMatches(p.data);
+  updateStatus(c.lastUpdate);
+}
+
+// ======================
+// SOCKET LIVE
+socket.on("clasificacion", (msg) => {
+
+  if (msg.liga !== currentLiga) return;
+
+  renderTable(msg.data);
+  updateStatus(msg.time);
+});
 
 // ======================
 // LIGAS
@@ -170,125 +291,6 @@ async function loadLigas() {
   };
 
   loadData();
-}
-
-// ======================
-// REST INIT
-async function loadData() {
-
-  const [c, p] = await Promise.all([
-    fetch(API + "/clasificacion?liga=" + currentLiga),
-    fetch(API + "/partidos?liga=" + currentLiga)
-  ]);
-
-  const clas = await c.json();
-  const part = await p.json();
-
-  renderTable(clas.data);
-  renderMatches(part.data);
-
-  updateStatus(clas.lastUpdate);
-}
-
-// ======================
-// SOCKET LIVE (SIN ORDEN AQUÍ)
-socket.on("clasificacion", (msg) => {
-
-  if (msg.liga !== currentLiga) return;
-
-  renderTable(msg.data);
-  updateStatus(msg.time);
-});
-
-// ======================
-// CLASIFICACIÓN (ORDEN ÚNICO AQUÍ 🔥)
-function renderTable(data) {
-
-  const tbody = document.getElementById("tabla");
-
-  // 🔥 ÚNICO ORDEN OFICIAL
-  data = [...data].sort((a, b) =>
-    Number(b.puntos) - Number(a.puntos) ||
-    a.equipo.localeCompare(b.equipo)
-  );
-
-  const newState = new Map();
-
-  data.forEach((t, i) => {
-
-    let tr = document.getElementById("row-" + t.equipo);
-
-    const prev = lastState.get(t.equipo);
-
-    // 🔥 FLECHAS ESTABLES
-    let arrow = "";
-    if (prev) {
-      if (prev.pos > i) arrow = " 📈";
-      else if (prev.pos < i) arrow = " 📉";
-    }
-
-    let cls = "mid";
-    if (i < 3) cls = "up";
-    else if (i >= data.length - 3) cls = "down";
-
-    if (!tr) {
-      tr = document.createElement("tr");
-      tr.id = "row-" + t.equipo;
-      tbody.appendChild(tr);
-    }
-
-    tr.className = cls;
-
-    tr.innerHTML = `
-      <td>${i + 1}</td>
-      <td>${t.equipo}${arrow}</td>
-      <td>${t.puntos}</td>
-      <td>${t.jugados}</td>
-      <td>${t.ganados}</td>
-      <td>${t.empatados}</td>
-      <td>${t.perdidos}</td>
-    `;
-
-    newState.set(t.equipo, { pos: i });
-  });
-
-  lastState = newState;
-}
-
-// ======================
-// PARTIDOS
-function renderMatches(matches) {
-
-  const div = document.getElementById("partidos");
-  div.innerHTML = "";
-
-  matches.forEach(p => {
-
-    const el = document.createElement("div");
-    el.className = "match";
-
-    el.innerHTML = `
-      <div>${p.local}</div>
-      <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-      <div>${p.visitante}</div>
-    `;
-
-    div.appendChild(el);
-  });
-}
-
-// ======================
-function updateStatus(ts) {
-
-  const now = new Date().toLocaleString("es-ES", {
-    timeZone: "Europe/Madrid"
-  });
-
-  document.getElementById("lastChange").innerText =
-    "📡 Último cambio: " + (ts ? new Date(ts).toLocaleString() : "--");
-
-  document.getElementById("lastRefresh").innerText =
-    "🕒 Último refresh: " + now;
 }
 
 // ======================
