@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-<title>TERRITORI FUTCAT LIVE</title>
-  
+<meta charset="UTF-8">
+<title>TERRITORI FUTCAT LIVE PRO</title>
+
 <style>
 body {
   margin: 0;
@@ -61,7 +61,6 @@ th {
   color: #00ff88;
 }
 
-/* 🔥 ESTADOS VISUALES ESTABLES */
 .up {
   background: rgba(0,255,0,0.12);
 }
@@ -70,7 +69,6 @@ th {
   background: rgba(255,0,0,0.12);
 }
 
-/* PARTIDOS */
 .match {
   background: #151515;
   padding: 10px;
@@ -116,9 +114,9 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 
-// 🔥 DOBLE ESTADO (CLAVE FINAL)
-let previousState = new Map();
-let currentState = new Map();
+// 🔥 ESTADOS (CLAVE DEL FIX)
+let lastState = new Map();
+let visualState = new Map();
 
 // ======================
 function formatTime(ts) {
@@ -152,8 +150,8 @@ async function loadLigas() {
     currentLiga = e.target.value;
     localStorage.setItem("liga", currentLiga);
 
-    previousState.clear();
-    currentState.clear();
+    lastState.clear();
+    visualState.clear();
 
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
@@ -181,7 +179,7 @@ async function loadData() {
 }
 
 // ======================
-// 🔥 CLASIFICACIÓN FINAL ESTABLE
+// 🔥 FIX FINAL CLASIFICACION
 // ======================
 function renderTable(data) {
 
@@ -191,14 +189,13 @@ function renderTable(data) {
 
     let tr = document.getElementById("row-" + t.equipo);
 
-    const prev = previousState.get(t.equipo);
+    const prev = lastState.get(t.equipo);
+    const oldVisual = visualState.get(t.equipo) || {};
 
-    let arrow = "";
-    let cls = "";
+    let arrow = oldVisual.arrow || "";
+    let cls = oldVisual.cls || "";
 
-    // ======================
-    // 🔥 COMPARACIÓN REAL
-    // ======================
+    // 🔥 comparación real de puntos
     if (prev) {
       if (t.puntos > prev.puntos) {
         arrow = " 📈";
@@ -227,18 +224,11 @@ function renderTable(data) {
       <td>${t.perdidos}</td>
     `;
 
-    currentState.set(t.equipo, t);
+    lastState.set(t.equipo, t);
+    visualState.set(t.equipo, { arrow, cls });
   });
 
-  // ======================
-  // 🔥 SWAP DE ESTADOS (CLAVE)
-  // ======================
-  previousState = new Map(currentState);
-  currentState = new Map();
-
-  // ======================
-  // 🔥 ORDEN ESTABLE DOM
-  // ======================
+  // mantener orden
   data.forEach(t => {
     const row = document.getElementById("row-" + t.equipo);
     if (row) tbody.appendChild(row);
@@ -285,7 +275,6 @@ setInterval(() => {
   if (currentLiga) loadData();
 }, 12000);
 
-// INIT
 loadLigas();
 
 </script>
