@@ -62,12 +62,22 @@ th {
   color: #00ff88;
 }
 
-/* ZONES */
-.up td { background: rgba(0,255,0,0.18) !important; }
-.down td { background: rgba(255,0,0,0.18) !important; }
-.mid td { background: rgba(255,255,255,0.04); }
+/* 🟢 ZONAS (RECUPERADO PRO) */
+.up td {
+  background: rgba(0,255,0,0.15) !important;
+  border-left: 3px solid #00ff88;
+}
 
-/* MATCHES */
+.down td {
+  background: rgba(255,0,0,0.15) !important;
+  border-left: 3px solid #ff3b3b;
+}
+
+.mid td {
+  background: rgba(255,255,255,0.03);
+}
+
+/* PARTIDOS */
 .match {
   background: #151515;
   padding: 12px;
@@ -86,7 +96,7 @@ th {
   font-weight: bold;
 }
 
-/* ARROWS */
+/* FLECHAS */
 .arrow {
   font-size: 12px;
   margin-left: 5px;
@@ -145,7 +155,7 @@ let currentLiga = null;
 let lastState = new Map();
 
 // ======================
-// RENDER CLASIFICACIÓN (FIX DEFINITIVO)
+// RENDER CLASIFICACIÓN
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
@@ -163,18 +173,19 @@ function renderTable(data) {
 
     const prev = lastState.get(t.equipo);
 
+    // 🔥 FLECHAS ESTABLES
     let arrow = "";
     if (prev) {
       if (prev.pos > i) arrow = " 📈";
       else if (prev.pos < i) arrow = " 📉";
     }
 
+    // 🟢 ZONAS (RECUPERADAS)
     let cls = "mid";
     if (i < 3) cls = "up";
     else if (i >= sorted.length - 3) cls = "down";
 
     const tr = document.createElement("tr");
-
     tr.className = cls;
 
     tr.innerHTML = `
@@ -196,7 +207,7 @@ function renderTable(data) {
 }
 
 // ======================
-// RENDER PARTIDOS
+// PARTIDOS
 function renderMatches(matches) {
 
   const div = document.getElementById("partidos");
@@ -233,19 +244,21 @@ function updateStatus(ts) {
 }
 
 // ======================
-// REST LOAD (INICIAL)
+// REST INIT
 async function loadData() {
 
-  const [c, p] = await fetch(API + "/clasificacion?liga=" + currentLiga)
-    .then(r => r.json())
-    .then(clas => Promise.all([
-      Promise.resolve(clas),
-      fetch(API + "/partidos?liga=" + currentLiga).then(r => r.json())
-    ]));
+  const [c, p] = await Promise.all([
+    fetch(API + "/clasificacion?liga=" + currentLiga),
+    fetch(API + "/partidos?liga=" + currentLiga)
+  ]);
 
-  renderTable(c.data);
-  renderMatches(p.data);
-  updateStatus(c.lastUpdate);
+  const clas = await c.json();
+  const part = await p.json();
+
+  renderTable(clas.data);
+  renderMatches(part.data);
+
+  updateStatus(clas.lastUpdate);
 }
 
 // ======================
