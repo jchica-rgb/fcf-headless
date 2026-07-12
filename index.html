@@ -36,7 +36,6 @@ header {
   background: #111;
   padding: 10px;
   border-radius: 6px;
-
   margin: 15px 10px;
   font-size: 12px;
 }
@@ -55,7 +54,7 @@ select {
 }
 
 /* ======================
-   LAYOUT PRINCIPAL (FIX FINAL)
+   LAYOUT PRINCIPAL
 ====================== */
 
 .layout {
@@ -64,16 +63,19 @@ select {
 
   max-width: 1200px;
   margin: 0 auto;
-
   padding: 0 20px;
 
-  /* 🔥 FIX CLAVE */
+  /* 🔥 FIX IMPORTANTE */
   align-items: stretch;
+  min-height: 75vh;
 }
 
 .left, .right {
   display: flex;
   flex-direction: column;
+
+  /* 🔥 FIX CRÍTICO NUEVO */
+  min-height: 75vh;
 }
 
 /* IZQUIERDA */
@@ -87,7 +89,7 @@ select {
 }
 
 /* ======================
-   DIVIDER ESTADIO PERFECTO
+   DIVIDER
 ====================== */
 
 .divider {
@@ -182,14 +184,16 @@ th {
 @media (max-width: 900px) {
   .layout {
     flex-direction: column;
-  }
-
-  .divider {
-    display: none;
+    min-height: auto;
   }
 
   .left, .right {
     width: 100%;
+    min-height: auto;
+  }
+
+  .divider {
+    display: none;
   }
 }
 
@@ -206,10 +210,6 @@ th {
 </div>
 
 <select id="liga"></select>
-
-<!-- ======================
-     LAYOUT PRINCIPAL
-====================== -->
 
 <div class="layout">
 
