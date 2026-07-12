@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>TERRITORI FUTCAT LIVE</title>
+<title>TERRITORI FUTCAT LIVE PRO</title>
 
 <style>
 body {
@@ -35,6 +35,25 @@ select {
   border: 1px solid #333;
 }
 
+/* ================= STATUS BAR ================= */
+#statusBar {
+  display: flex;
+  justify-content: space-between;
+  background: #111;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.badge {
+  background: #222;
+  padding: 6px 10px;
+  border-radius: 5px;
+  color: #ccc;
+}
+
+/* ================= TABLE ================= */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -55,20 +74,6 @@ tr.updated {
   background: #1f3b2c !important;
   transition: 0.5s;
 }
-
-#status {
-  font-size: 12px;
-  color: #aaa;
-  margin: 10px 0;
-}
-
-.badge {
-  display: inline-block;
-  padding: 5px 8px;
-  background: #222;
-  border-radius: 5px;
-  margin-right: 5px;
-}
 </style>
 </head>
 
@@ -78,11 +83,13 @@ tr.updated {
 
 <div class="container">
 
-<div id="status">
-  🔄 Cargando sistema...
-</div>
-
 <select id="liga"></select>
+
+<!-- ================= STATUS BAR ================= -->
+<div id="statusBar">
+  <div id="lastChange">📡 Último cambio real: --</div>
+  <div id="lastRefresh">🕒 Último refresh: --</div>
+</div>
 
 <h3>📊 Clasificación</h3>
 
@@ -109,12 +116,12 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 let lastData = null;
-let lastUpdate = null;
 
 // ======================
 // LIGAS
 // ======================
 async function loadLigas() {
+
   const res = await fetch(API + "/ligas");
   const json = await res.json();
 
@@ -153,7 +160,7 @@ async function loadData() {
 }
 
 // ======================
-// RENDER TABLE + HIGHLIGHT
+// TABLE
 // ======================
 function renderTable(data) {
 
@@ -164,7 +171,6 @@ function renderTable(data) {
 
     const tr = document.createElement("tr");
 
-    // highlight cambios
     if (lastData) {
       const prev = lastData.find(x => x.equipo === t.equipo);
       if (prev && prev.puntos !== t.puntos) {
@@ -189,20 +195,29 @@ function renderTable(data) {
 }
 
 // ======================
-// STATUS
+// STATUS BAR UPDATE
 // ======================
-function updateStatus(serverTime) {
+function updateStatus(lastChange) {
 
-  const now = new Date().toLocaleTimeString();
+  const now = new Date();
 
-  document.getElementById("status").innerHTML = `
-    <span class="badge">🕒 Último refresh: ${now}</span>
-    <span class="badge">📡 Último cambio real: ${serverTime || "sin cambios"}</span>
-  `;
+  const formatted = now.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+  document.getElementById("lastChange").innerText =
+    "📡 Último cambio real: " + (lastChange || "--");
+
+  document.getElementById("lastRefresh").innerText =
+    "🕒 Último refresh: " + formatted;
 }
 
 // ======================
-// LIVE AUTO REFRESH
+// AUTO REFRESH
 // ======================
 setInterval(() => {
   if (currentLiga) loadData();
