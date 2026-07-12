@@ -26,7 +26,6 @@ header {
   padding: 15px;
 }
 
-/* STATUS */
 #statusBar {
   display: flex;
   justify-content: space-between;
@@ -46,7 +45,6 @@ select {
   border: 1px solid #333;
 }
 
-/* TABLE */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -64,16 +62,14 @@ th {
   color: #00ff88;
 }
 
-/* FLECHAS */
 .up {
-  background: rgba(0, 255, 0, 0.12);
+  background: rgba(0,255,0,0.12);
 }
 
 .down {
-  background: rgba(255, 0, 0, 0.12);
+  background: rgba(255,0,0,0.12);
 }
 
-/* MATCHES */
 .match {
   background: #151515;
   padding: 10px;
@@ -129,7 +125,9 @@ th {
 const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
-let lastData = new Map();
+
+// 🔥 estado separado por liga (CLAVE FIX)
+let stateByLiga = {};
 
 // ======================
 // FECHA
@@ -148,7 +146,7 @@ function formatTime(ts) {
 }
 
 // ======================
-// LIGAS (PERSISTENCIA)
+// LIGAS
 // ======================
 async function loadLigas() {
 
@@ -197,33 +195,37 @@ async function loadData() {
 }
 
 // ======================
-// TABLE (FIX FINAL ESTABLE)
+// CLASIFICACIÓN (FIX FINAL)
 // ======================
 function updateTable(data) {
 
   const tbody = document.getElementById("tabla");
 
+  if (!stateByLiga[currentLiga]) {
+    stateByLiga[currentLiga] = new Map();
+  }
+
+  const prevMap = stateByLiga[currentLiga];
   const newMap = new Map();
 
-  // 🔥 PRIMERO RENDER
   data.forEach((t, i) => {
 
     let tr = document.getElementById("row-" + t.equipo);
 
-    const prev = lastData.get(t.equipo);
+    const prev = prevMap.get(t.equipo);
 
     let arrow = "";
-    let className = "";
+    let cls = "";
 
     if (prev) {
       if (t.puntos > prev.puntos) {
         arrow = " 📈";
-        className = "up";
+        cls = "up";
       } else if (t.puntos < prev.puntos) {
         arrow = " 📉";
-        className = "down";
+        cls = "down";
       } else {
-        className = tr?.dataset?.state || "";
+        cls = tr?.dataset?.state || "";
       }
     }
 
@@ -233,8 +235,8 @@ function updateTable(data) {
       tbody.appendChild(tr);
     }
 
-    tr.dataset.state = className;
-    tr.className = className;
+    tr.dataset.state = cls;
+    tr.className = cls;
 
     tr.innerHTML = `
       <td>${i + 1}</td>
@@ -249,9 +251,9 @@ function updateTable(data) {
     newMap.set(t.equipo, t);
   });
 
-  lastData = newMap;
+  stateByLiga[currentLiga] = newMap;
 
-  // 🔥 REORDENAR DOM (CLAVE)
+  // 🔥 ordenar DOM SIEMPRE
   data.forEach(t => {
     const row = document.getElementById("row-" + t.equipo);
     if (row) tbody.appendChild(row);
@@ -281,9 +283,9 @@ function updateMatches(matches) {
     }
 
     el.innerHTML = `
-      <div>${p.local}</div>
+      <div>${p.local || ""}</div>
       <div class="score">${p.goles_local ?? 0} - ${p.goles_visitante ?? 0}</div>
-      <div>${p.visitante}</div>
+      <div>${p.visitante || ""}</div>
     `;
   });
 
