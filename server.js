@@ -1,7 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
-const { Server } = require("socket.io");
 const { google } = require("googleapis");
 
 const app = express();
@@ -9,23 +8,39 @@ app.use(cors());
 app.use(express.json());
 
 // ======================
-// CONFIG
+// 🔐 USERS (LOGIN SYSTEM)
+const USERS = [
+  { user: "admin", pass: "admin123", role: "admin" },
+  { user: "editor", pass: "editor123", role: "editor" }
+];
+
+// sesiones simples en memoria
+const SESSIONS = new Map();
+
 // ======================
+// AUTH MIDDLEWARE
+function auth(req, res, next) {
+  const token = req.headers.authorization;
+
+  if (!token || !SESSIONS.has(token)) {
+    return res.status(403).json({ ok: false, message: "No autorizado" });
+  }
+
+  req.user = SESSIONS.get(token);
+  next();
+}
+
+// ======================
+// CONFIG SHEETS
 const SHEET_ID = process.env.SHEET_ID || "";
 
-// 🔥 ESTADO FLECHAS (NO ROMPE NADA)
-let lastTable = [];
-
-// ======================
-// GOOGLE AUTH
-// ======================
 function safeJson(v) {
   try { return JSON.parse(v); } catch { return null; }
 }
 
 const credentials = safeJson(process.env.GOOGLE_CREDENTIALS);
 
-const auth = credentials
+const authGoogle = credentials
   ? new google.auth.GoogleAuth({
       credentials,
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"]
@@ -33,22 +48,11 @@ const auth = credentials
   : null;
 
 // ======================
-// NORMALIZE
-// ======================
-function normalize(v) {
-  return String(v || "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-}
-
-// ======================
 // SHEETS
-// ======================
 async function getSheet(range) {
-  if (!auth || !SHEET_ID) return [];
+  if (!authGoogle || !SHEET_ID) return [];
 
-  const client = await auth.getClient();
+  const client = await authGoogle.getClient();
   const sheets = google.sheets({ version: "v4", auth: client });
 
   const res = await sheets.spreadsheets.values.get({
@@ -60,8 +64,48 @@ async function getSheet(range) {
 }
 
 // ======================
-// LIGAS (SIN CAMBIOS)
+// NORMALIZE
+function normalize(v) {
+  return String(v || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
 // ======================
+// 🔐 LOGIN ENDPOINT
+app.post("/login", (req, res) => {
+
+  const { user, pass } = req.body;
+
+  const found = USERS.find(u =>
+    u.user === user && u.pass === pass
+  );
+
+  if (!found) {
+    return res.status(401).json({
+      ok: false,
+      message: "Credenciales incorrectas"
+    });
+  }
+
+  const token = Buffer.from(user + ":" + Date.now()).toString("base64");
+
+  SESSIONS.set(token, {
+    user: found.user,
+    role: found.role
+  });
+
+  res.json({
+    ok: true,
+    token,
+    role: found.role,
+    user: found.user
+  });
+});
+
+// ======================
+// 🟢 LIGAS (SIN CAMBIOS)
 app.get("/ligas", async (req, res) => {
 
   const rows = await getSheet("LIGAS!A2:B");
@@ -75,8 +119,7 @@ app.get("/ligas", async (req, res) => {
 });
 
 // ======================
-// PARTIDOS (SIN CAMBIOS)
-// ======================
+// 🟢 PARTIDOS (SIN CAMBIOS)
 app.get("/partidos", async (req, res) => {
 
   const ligaId = normalize(req.query.liga);
@@ -99,8 +142,7 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ======================
-// CLASIFICACION (CON LIVE + FLECHAS)
-// ======================
+// 🟢 CLASIFICACION (SIN CAMBIOS)
 app.get("/clasificacion", async (req, res) => {
 
   const ligaId = normalize(req.query.liga);
@@ -128,8 +170,7 @@ app.get("/clasificacion", async (req, res) => {
         jugados: 0,
         ganados: 0,
         empatados: 0,
-        perdidos: 0,
-        movement: null
+        perdidos: 0
       };
     }
   };
@@ -164,30 +205,6 @@ app.get("/clasificacion", async (req, res) => {
     b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
-  // ======================
-  // 🔥 FLECHAS (COMPARACIÓN REAL)
-  const prevIndex = new Map();
-  lastTable.forEach((t, i) => prevIndex.set(t.equipo, i));
-
-  result.forEach((t, i) => {
-    const old = prevIndex.get(t.equipo);
-
-    if (old !== undefined) {
-      if (old > i) t.movement = "up";
-      else if (old < i) t.movement = "down";
-    }
-  });
-
-  lastTable = result.map(t => ({ ...t }));
-
-  // ======================
-  // 🔥 LIVE EMIT (NO AFECTA REST)
-  io.emit("clasificacion", {
-    liga: ligaId,
-    data: result,
-    time: Date.now()
-  });
-
   res.json({
     data: result,
     lastUpdate: Date.now()
@@ -195,30 +212,14 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 // ======================
-// SERVER WRAPPER (LIVE MODE)
-// ======================
-const server = http.createServer(app);
-
-const io = new Server(server, {
-  cors: { origin: "*" }
-});
-
-io.on("connection", (socket) => {
-  console.log("⚽ CLIENTE LIVE CONECTADO");
-});
-
-// ======================
 // HEALTH CHECK
-// ======================
 app.get("/", (req, res) => {
-  res.send("FUTCAT SERVER LIVE READY ⚽🔥");
+  res.send("FUTCAT SERVER WITH LOGIN ⚽🔐");
 });
 
-// ======================
-// START
 // ======================
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, () => {
-  console.log("⚽ FUTCAT LIVE MODE RUNNING");
+app.listen(PORT, () => {
+  console.log("SERVER RUNNING WITH LOGIN ⚽");
 });
