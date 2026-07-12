@@ -12,6 +12,7 @@ body {
   color: white;
 }
 
+/* HEADER */
 header {
   padding: 18px;
   text-align: center;
@@ -21,12 +22,14 @@ header {
   border-bottom: 1px solid rgba(0,255,136,0.15);
 }
 
+/* CONTAINER */
 .container {
   max-width: 1000px;
   margin: auto;
   padding: 15px;
 }
 
+/* STATUS */
 #statusBar {
   display: flex;
   justify-content: space-between;
@@ -37,6 +40,7 @@ header {
   margin-bottom: 10px;
 }
 
+/* SELECT */
 select {
   width: 100%;
   padding: 10px;
@@ -46,6 +50,7 @@ select {
   border: 1px solid #333;
 }
 
+/* TABLE */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -62,12 +67,12 @@ th {
   color: #00ff88;
 }
 
-/* ZONAS */
+/* ZONES */
 .up td { background: rgba(0,255,0,0.18) !important; }
 .down td { background: rgba(255,0,0,0.18) !important; }
 .mid td { background: rgba(255,255,255,0.04); }
 
-/* PARTIDOS */
+/* MATCHES */
 .match {
   background: #151515;
   padding: 12px;
@@ -90,7 +95,7 @@ th {
   min-width: 80px;
 }
 
-/* TITULOS */
+/* TITLES */
 h3 {
   display: flex;
   align-items: center;
@@ -104,19 +109,24 @@ h3::after {
   background: linear-gradient(90deg, #00ff88, transparent);
 }
 
-/* ANIMACIONES */
-@keyframes flashUp {
-  0% { background: rgba(0,255,136,0.35); }
-  100% { background: rgba(0,255,0,0.18); }
+/* =========================
+   GOD MODE ANIMATIONS
+========================= */
+tr {
+  transition: transform 0.35s ease, background 0.35s ease;
 }
 
-@keyframes flashDown {
-  0% { background: rgba(255,0,0,0.35); }
-  100% { background: rgba(255,0,0,0.18); }
+.flash-move {
+  transform: scale(1.01);
 }
 
-.flash-up td { animation: flashUp 0.8s ease; }
-.flash-down td { animation: flashDown 0.8s ease; }
+.flash-up td {
+  background: rgba(0,255,136,0.28) !important;
+}
+
+.flash-down td {
+  background: rgba(255,80,80,0.25) !important;
+}
 
 .arrow {
   font-size: 12px;
@@ -217,22 +227,27 @@ async function loadData() {
 }
 
 // ======================
-// 🔥 FIX REAL (ESTABILIDAD ENTRE LIGAS)
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
 
-  // ✔ orden SIEMPRE controlado aquí
+  // orden estable
   data = [...data].sort((a, b) =>
     b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
-  // 💣 FIX CLAVE: reset total del DOM (evita mezcla entre ligas)
+  // mapa posiciones previas
+  const prev = new Map();
+  [...tbody.children].forEach((row, i) => {
+    prev.set(row.getAttribute("data-team"), i);
+  });
+
   tbody.innerHTML = "";
 
   data.forEach((t, i) => {
 
     const tr = document.createElement("tr");
+    tr.setAttribute("data-team", t.equipo);
 
     let arrow = "";
     if (t.movement === "up") arrow = " <span class='arrow'>📈</span>";
@@ -243,6 +258,16 @@ function renderTable(data) {
     else if (i >= data.length - 3) cls = "down";
 
     tr.className = cls;
+
+    const oldPos = prev.get(t.equipo);
+
+    if (oldPos !== undefined) {
+      if (oldPos > i) {
+        tr.classList.add("flash-up", "flash-move");
+      } else if (oldPos < i) {
+        tr.classList.add("flash-down", "flash-move");
+      }
+    }
 
     tr.innerHTML = `
       <td>${i + 1}</td>
@@ -256,6 +281,13 @@ function renderTable(data) {
 
     tbody.appendChild(tr);
   });
+
+  setTimeout(() => {
+    document.querySelectorAll(".flash-up, .flash-down, .flash-move")
+      .forEach(el => {
+        el.classList.remove("flash-up", "flash-down", "flash-move");
+      });
+  }, 600);
 }
 
 // ======================
