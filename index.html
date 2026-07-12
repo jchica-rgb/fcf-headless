@@ -70,23 +70,17 @@ th {
   background: #151515;
   padding: 10px;
   margin-bottom: 8px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
+  display: flex;
+  justify-content: space-between;
   border-radius: 6px;
-  border-left: 3px solid rgba(0,255,136,0.35);
 }
-
-.match div:first-child { text-align: left; }
-.match div:last-child { text-align: right; }
 
 .score {
   color: #00ff88;
   font-weight: bold;
-  text-align: center;
-  justify-self: center;
 }
 
+/* 🔥 UI TITLES */
 h3 {
   display: flex;
   align-items: center;
@@ -165,7 +159,6 @@ async function loadLigas() {
 
   sel.onchange = (e) => {
     currentLiga = e.target.value;
-    localStorage.setItem("liga", currentLiga);
 
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
@@ -194,12 +187,12 @@ async function loadData() {
 }
 
 // ======================
-// 🔥 FIX CLAVE AQUÍ
+// 🔥 FIX MINIMO SOLO AQUÍ
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
 
-  // 💥 ORDEN FORZADO FRONTEND
+  // ✔ CLAVE: asegurar orden en cada refresh
   data.sort((a, b) =>
     b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
@@ -233,6 +226,12 @@ function renderTable(data) {
       <td>${t.empatados}</td>
       <td>${t.perdidos}</td>
     `;
+  });
+
+  // ✔ FIX CRÍTICO: reordenar DOM siempre
+  data.forEach(t => {
+    const row = document.getElementById("row-" + t.equipo);
+    if (row) tbody.appendChild(row);
   });
 }
 
