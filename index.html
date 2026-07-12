@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>FLASHSCORE PRO FUTCAT</title>
+<title>FLASHCORE PRO</title>
 
 <style>
 body {
@@ -24,15 +24,6 @@ header {
   max-width: 1000px;
   margin: auto;
   padding: 15px;
-}
-
-select {
-  width: 100%;
-  padding: 10px;
-  margin: 10px 0;
-  background: #1a1a1a;
-  color: white;
-  border: 1px solid #333;
 }
 
 table {
@@ -59,35 +50,29 @@ th {
 .match {
   background: #151515;
   padding: 10px;
-  margin-bottom: 8px;
+  margin: 6px 0;
   display: flex;
   justify-content: space-between;
-  border-radius: 6px;
 }
-
-.score {
-  color: #00ff88;
-  font-weight: bold;
-}
+.score { color: #00ff88; }
 </style>
 </head>
 
 <body>
 
-<header>⚽ FLASHSCORE PRO FUTCAT</header>
+<header>⚽ FLASHCORE PRO</header>
 
 <div class="container">
 
 <select id="liga"></select>
 
 <h3>Clasificación</h3>
-
 <table>
 <thead>
 <tr>
   <th>#</th>
   <th>Equipo</th>
-  <th>Puntos</th>
+  <th>P</th>
   <th>J</th>
   <th>G</th>
   <th>E</th>
@@ -108,7 +93,6 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 
-// ======================
 async function loadLigas() {
 
   const res = await fetch(API + "/ligas");
@@ -127,19 +111,11 @@ async function loadLigas() {
   currentLiga = json.data[0].id;
   sel.value = currentLiga;
 
-  sel.onchange = (e) => {
-    currentLiga = e.target.value;
-
-    document.getElementById("tabla").innerHTML = "";
-    document.getElementById("partidos").innerHTML = "";
-
-    loadData();
-  };
+  sel.onchange = () => loadData();
 
   loadData();
 }
 
-// ======================
 async function loadData() {
 
   const [c, p] = await Promise.all([
@@ -154,8 +130,6 @@ async function loadData() {
   renderMatches(part.data);
 }
 
-// ======================
-// 🔥 RENDER FINAL ESTABLE
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
@@ -192,7 +166,6 @@ function renderTable(data) {
   });
 }
 
-// ======================
 function renderMatches(matches) {
 
   const div = document.getElementById("partidos");
@@ -213,9 +186,7 @@ function renderMatches(matches) {
   });
 }
 
-// ======================
 loadLigas();
-
 setInterval(loadData, 10000);
 
 </script>
