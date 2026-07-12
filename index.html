@@ -62,7 +62,7 @@ th {
   font-weight: bold;
 }
 
-/* 🔥 colores estables */
+/* 🔥 estados visuales */
 .up td {
   background: rgba(0,255,0,0.18) !important;
 }
@@ -128,11 +128,11 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 
-// 🔥 estado anterior real (para flechas)
+// 🔥 ESTADO ACTUAL (runtime)
 let lastState = {};
 
-// 🔥 estado visual persistente (F5 OK)
-let visualState = JSON.parse(localStorage.getItem("visualState") || "{}");
+// 🔥 HISTORIAL REAL (PERSISTENTE F5)
+let historyState = JSON.parse(localStorage.getItem("historyState") || "{}");
 
 // ======================
 function formatTime(ts) {
@@ -167,8 +167,8 @@ async function loadLigas() {
     localStorage.setItem("liga", currentLiga);
 
     lastState = {};
-    visualState = {};
-    localStorage.removeItem("visualState");
+    historyState = {};
+    localStorage.removeItem("historyState");
 
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
@@ -196,25 +196,23 @@ async function loadData() {
 }
 
 // ======================
-// 🔥 RENDER FINAL ESTABLE REAL
-// ======================
+// 🔥 RENDER FINAL PRO REAL (F5 SAFE)
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
 
-  const newVisual = {};
+  const newHistory = {};
 
   data.forEach((t, i) => {
 
     let tr = document.getElementById("row-" + t.equipo);
 
-    const prev = lastState[t.equipo];
-    const oldVisual = visualState[t.equipo];
+    const prev = historyState[t.equipo];
 
     let arrow = "";
     let cls = "";
 
-    // 🔥 comparación real
+    // 🔥 comparación REAL persistente
     if (prev) {
       if (t.puntos > prev.puntos) {
         arrow = " 📈";
@@ -222,9 +220,6 @@ function renderTable(data) {
       } else if (t.puntos < prev.puntos) {
         arrow = " 📉";
         cls = "down";
-      } else if (oldVisual) {
-        arrow = oldVisual.arrow;
-        cls = oldVisual.cls;
       }
     }
 
@@ -246,19 +241,17 @@ function renderTable(data) {
       <td>${t.perdidos}</td>
     `;
 
+    // runtime
     lastState[t.equipo] = t;
-    newVisual[t.equipo] = { arrow, cls };
+
+    // persistente
+    newHistory[t.equipo] = {
+      puntos: t.puntos
+    };
   });
 
-  // 🔥 persistencia F5
-  visualState = newVisual;
-  localStorage.setItem("visualState", JSON.stringify(newVisual));
-
-  // 🔥 orden estable
-  data.forEach(t => {
-    const row = document.getElementById("row-" + t.equipo);
-    if (row) tbody.appendChild(row);
-  });
+  historyState = newHistory;
+  localStorage.setItem("historyState", JSON.stringify(newHistory));
 }
 
 // ======================
