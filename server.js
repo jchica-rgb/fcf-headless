@@ -1,5 +1,7 @@
 const express = require("express");
 const cors = require("cors");
+const http = require("http");
+const { Server } = require("socket.io");
 const { google } = require("googleapis");
 
 const app = express();
@@ -11,11 +13,11 @@ app.use(express.json());
 // ======================
 const SHEET_ID = process.env.SHEET_ID || "";
 
-// 🔥 ESTADO PARA FLECHAS (NO ROMPE NADA)
+// 🔥 ESTADO FLECHAS (NO ROMPE NADA)
 let lastTable = [];
 
 // ======================
-// SAFE JSON
+// GOOGLE AUTH
 // ======================
 function safeJson(v) {
   try { return JSON.parse(v); } catch { return null; }
@@ -23,9 +25,6 @@ function safeJson(v) {
 
 const credentials = safeJson(process.env.GOOGLE_CREDENTIALS);
 
-// ======================
-// AUTH GOOGLE
-// ======================
 const auth = credentials
   ? new google.auth.GoogleAuth({
       credentials,
@@ -44,7 +43,7 @@ function normalize(v) {
 }
 
 // ======================
-// GET SHEET
+// SHEETS
 // ======================
 async function getSheet(range) {
   if (!auth || !SHEET_ID) return [];
@@ -61,7 +60,7 @@ async function getSheet(range) {
 }
 
 // ======================
-// LIGAS
+// LIGAS (SIN CAMBIOS)
 // ======================
 app.get("/ligas", async (req, res) => {
 
@@ -76,7 +75,7 @@ app.get("/ligas", async (req, res) => {
 });
 
 // ======================
-// PARTIDOS
+// PARTIDOS (SIN CAMBIOS)
 // ======================
 app.get("/partidos", async (req, res) => {
 
@@ -100,7 +99,7 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ======================
-// CLASIFICACION (🔥 CON FLECHAS OK)
+// CLASIFICACION (CON LIVE + FLECHAS)
 // ======================
 app.get("/clasificacion", async (req, res) => {
 
@@ -161,35 +160,33 @@ app.get("/clasificacion", async (req, res) => {
 
   let result = Object.values(tabla);
 
-  // 🔥 ORDEN FIJO
   result.sort((a, b) =>
     b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
   // ======================
-  // 🔥 FLECHAS (COMPARACIÓN ENTRE REFRESHES)
-  // ======================
+  // 🔥 FLECHAS (COMPARACIÓN REAL)
   const prevIndex = new Map();
-
-  lastTable.forEach((t, i) => {
-    prevIndex.set(t.equipo, i);
-  });
+  lastTable.forEach((t, i) => prevIndex.set(t.equipo, i));
 
   result.forEach((t, i) => {
-
     const old = prevIndex.get(t.equipo);
 
     if (old !== undefined) {
       if (old > i) t.movement = "up";
       else if (old < i) t.movement = "down";
-      else t.movement = null;
-    } else {
-      t.movement = null;
     }
   });
 
-  // actualizar estado global
   lastTable = result.map(t => ({ ...t }));
+
+  // ======================
+  // 🔥 LIVE EMIT (NO AFECTA REST)
+  io.emit("clasificacion", {
+    liga: ligaId,
+    data: result,
+    time: Date.now()
+  });
 
   res.json({
     data: result,
@@ -198,10 +195,23 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 // ======================
+// SERVER WRAPPER (LIVE MODE)
+// ======================
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: { origin: "*" }
+});
+
+io.on("connection", (socket) => {
+  console.log("⚽ CLIENTE LIVE CONECTADO");
+});
+
+// ======================
 // HEALTH CHECK
 // ======================
 app.get("/", (req, res) => {
-  res.send("FUTCAT SERVER OK ⚽");
+  res.send("FUTCAT SERVER LIVE READY ⚽🔥");
 });
 
 // ======================
@@ -209,6 +219,6 @@ app.get("/", (req, res) => {
 // ======================
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log("FUTCAT SERVER RUNNING ⚽");
+server.listen(PORT, () => {
+  console.log("⚽ FUTCAT LIVE MODE RUNNING");
 });
