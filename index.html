@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>FLASHCORE PRO</title>
+<title>FLASHCORE PRO FUTCAT</title>
 
 <style>
 body {
@@ -24,6 +24,25 @@ header {
   max-width: 1000px;
   margin: auto;
   padding: 15px;
+}
+
+#statusBar {
+  display: flex;
+  justify-content: space-between;
+  background: #111;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+select {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  background: #1a1a1a;
+  color: white;
+  border: 1px solid #333;
 }
 
 table {
@@ -50,29 +69,40 @@ th {
 .match {
   background: #151515;
   padding: 10px;
-  margin: 6px 0;
+  margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
+  border-radius: 6px;
 }
-.score { color: #00ff88; }
+
+.score {
+  color: #00ff88;
+  font-weight: bold;
+}
 </style>
 </head>
 
 <body>
 
-<header>⚽ FLASHCORE PRO</header>
+<header>⚽ FLASHCORE PRO FUTCAT</header>
 
 <div class="container">
+
+<div id="statusBar">
+  <div id="lastChange">📡 Último cambio real: --</div>
+  <div id="lastRefresh">🕒 Último refresh: --</div>
+</div>
 
 <select id="liga"></select>
 
 <h3>Clasificación</h3>
+
 <table>
 <thead>
 <tr>
   <th>#</th>
   <th>Equipo</th>
-  <th>P</th>
+  <th>Puntos</th>
   <th>J</th>
   <th>G</th>
   <th>E</th>
@@ -93,6 +123,9 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 
+// ======================
+// INIT LIGAS
+// ======================
 async function loadLigas() {
 
   const res = await fetch(API + "/ligas");
@@ -111,11 +144,23 @@ async function loadLigas() {
   currentLiga = json.data[0].id;
   sel.value = currentLiga;
 
-  sel.onchange = () => loadData();
+  // 🔥 FIX DEFINITIVO CAMBIO DE LIGA
+  sel.onchange = (e) => {
+
+    currentLiga = e.target.value;
+
+    document.getElementById("tabla").innerHTML = "";
+    document.getElementById("partidos").innerHTML = "";
+
+    loadData();
+  };
 
   loadData();
 }
 
+// ======================
+// LOAD DATA
+// ======================
 async function loadData() {
 
   const [c, p] = await Promise.all([
@@ -128,8 +173,13 @@ async function loadData() {
 
   renderTable(clas.data);
   renderMatches(part.data);
+
+  updateStatus(clas.lastUpdate);
 }
 
+// ======================
+// RENDER CLASIFICACION
+// ======================
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
@@ -144,10 +194,12 @@ function renderTable(data) {
       tbody.appendChild(tr);
     }
 
+    // 🔥 flechas reales desde backend
     let arrow = "";
     if (t.movement === "up") arrow = " 📈";
     else if (t.movement === "down") arrow = " 📉";
 
+    // 🔥 zonas reales por posición
     let cls = "mid";
     if (i < 3) cls = "up";
     else if (i >= data.length - 3) cls = "down";
@@ -166,6 +218,9 @@ function renderTable(data) {
   });
 }
 
+// ======================
+// PARTIDOS
+// ======================
 function renderMatches(matches) {
 
   const div = document.getElementById("partidos");
@@ -186,6 +241,25 @@ function renderMatches(matches) {
   });
 }
 
+// ======================
+// STATUS
+// ======================
+function updateStatus(ts) {
+
+  const now = new Date().toLocaleString("es-ES", {
+    timeZone: "Europe/Madrid"
+  });
+
+  document.getElementById("lastChange").innerText =
+    "📡 Último cambio real: " + (ts ? new Date(ts).toLocaleString() : "--");
+
+  document.getElementById("lastRefresh").innerText =
+    "🕒 Último refresh: " + now;
+}
+
+// ======================
+// START
+// ======================
 loadLigas();
 setInterval(loadData, 10000);
 
