@@ -5,14 +5,19 @@
 <title>Territori FUTCAT LIVE</title>
 
 <style>
+
+/* ======================
+   BASE
+====================== */
+
 body {
   margin: 0;
   font-family: Arial;
   background: #0a0a0a;
   color: white;
+  padding: 10px 0 30px 0; /* 👈 aire general */
 }
 
-/* HEADER */
 header {
   padding: 18px;
   text-align: center;
@@ -21,47 +26,60 @@ header {
   font-weight: bold;
 }
 
-/* STATUS */
+/* ======================
+   STATUS BAR
+====================== */
+
 #statusBar {
   display: flex;
   justify-content: space-between;
   background: #111;
   padding: 10px;
   border-radius: 6px;
+
+  margin: 15px 10px; /* 👈 separación real */
   font-size: 12px;
-  margin: 10px;
 }
 
-/* SELECT */
+/* ======================
+   SELECT LIGA
+====================== */
+
 select {
   width: calc(100% - 20px);
-  margin: 10px;
+  margin: 15px 10px 20px 10px; /* 👈 aire */
   padding: 10px;
   background: #1a1a1a;
   color: white;
   border: 1px solid #333;
 }
 
-/* 🧠 LAYOUT PRINCIPAL */
+/* ======================
+   LAYOUT PRINCIPAL
+====================== */
+
 .layout {
   display: flex;
   gap: 20px;
-  padding: 10px;
   max-width: 1200px;
   margin: auto;
+  padding: 0 20px; /* 👈 clave: no pegado a bordes */
 }
 
-/* IZQUIERDA (PARTIDOS) */
+/* LEFT */
 .left {
   width: 42%;
 }
 
-/* DERECHA (CLASIFICACIÓN) */
+/* RIGHT */
 .right {
   width: 58%;
 }
 
-/* 🌟 DIVISOR VERDE DEGRADADO */
+/* ======================
+   DIVIDER ESTADIO
+====================== */
+
 .divider {
   width: 3px;
   background: linear-gradient(
@@ -75,11 +93,16 @@ select {
   border-radius: 3px;
 }
 
-/* TABLE */
+/* ======================
+   TABLE
+====================== */
+
 table {
   width: 100%;
   border-collapse: collapse;
   background: #111;
+  border-left: 2px solid rgba(0,255,136,0.35);
+  border-right: 2px solid rgba(0,255,136,0.35);
 }
 
 th, td {
@@ -97,7 +120,10 @@ th {
   color: #00ff88;
 }
 
-/* ZONES */
+/* ======================
+   ZONAS
+====================== */
+
 .up td {
   background: rgba(0,255,0,0.15) !important;
   border-left: 3px solid #00ff88;
@@ -112,15 +138,21 @@ th {
   background: rgba(255,255,255,0.03);
 }
 
-/* MATCHES */
+/* ======================
+   MATCHES
+====================== */
+
 .match {
   background: #151515;
   padding: 12px;
   margin-bottom: 8px;
   border-radius: 8px;
+
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
+
+  border-left: 2px solid rgba(0,255,136,0.2);
 }
 
 .score {
@@ -128,18 +160,24 @@ th {
   font-weight: bold;
 }
 
-/* RESPONSIVE */
+/* ======================
+   RESPONSIVE
+====================== */
+
 @media (max-width: 900px) {
   .layout {
     flex-direction: column;
   }
+
   .divider {
     display: none;
   }
+
   .left, .right {
     width: 100%;
   }
 }
+
 </style>
 </head>
 
@@ -147,14 +185,16 @@ th {
 
 <header>⚽ Territori FUTCAT LIVE</header>
 
+<!-- STATUS -->
 <div id="statusBar">
   <div id="lastChange">📡 Último cambio: --</div>
   <div id="lastRefresh">🕒 Último refresh: --</div>
 </div>
 
+<!-- LIGA -->
 <select id="liga"></select>
 
-<!-- 🧠 NUEVO LAYOUT -->
+<!-- LAYOUT -->
 <div class="layout">
 
   <!-- PARTIDOS -->
@@ -163,7 +203,7 @@ th {
     <div id="partidos"></div>
   </div>
 
-  <!-- DIVISOR -->
+  <!-- DIVIDER -->
   <div class="divider"></div>
 
   <!-- CLASIFICACIÓN -->
@@ -200,8 +240,10 @@ const socket = io(API);
 let currentLiga = null;
 let lastState = new Map();
 
-// ======================
-// CLASIFICACIÓN
+/* ======================
+   CLASIFICACIÓN
+====================== */
+
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
@@ -250,8 +292,10 @@ function renderTable(data) {
   lastState = newState;
 }
 
-// ======================
-// PARTIDOS
+/* ======================
+   PARTIDOS
+====================== */
+
 function renderMatches(matches) {
 
   const div = document.getElementById("partidos");
@@ -272,8 +316,10 @@ function renderMatches(matches) {
   });
 }
 
-// ======================
-// STATUS
+/* ======================
+   STATUS
+====================== */
+
 function updateStatus(ts) {
 
   const now = new Date().toLocaleString("es-ES", {
@@ -287,8 +333,10 @@ function updateStatus(ts) {
     "🕒 Último refresh: " + now;
 }
 
-// ======================
-// LOAD DATA
+/* ======================
+   LOAD DATA
+====================== */
+
 async function loadData() {
 
   const [c, p] = await Promise.all([
@@ -305,8 +353,10 @@ async function loadData() {
   updateStatus(clas.lastUpdate);
 }
 
-// ======================
-// SOCKET
+/* ======================
+   SOCKET
+====================== */
+
 socket.on("clasificacion", (msg) => {
 
   if (msg.liga !== currentLiga) return;
@@ -315,8 +365,10 @@ socket.on("clasificacion", (msg) => {
   updateStatus(msg.time);
 });
 
-// ======================
-// LIGAS
+/* ======================
+   LIGAS
+====================== */
+
 async function loadLigas() {
 
   const res = await fetch(API + "/ligas");
@@ -350,7 +402,8 @@ async function loadLigas() {
   loadData();
 }
 
-// INIT
+/* ====================== */
+
 loadLigas();
 setInterval(loadData, 10000);
 
