@@ -26,16 +26,6 @@ header {
   padding: 15px;
 }
 
-#statusBar {
-  display: flex;
-  justify-content: space-between;
-  background: #111;
-  padding: 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  margin-bottom: 10px;
-}
-
 select {
   width: 100%;
   padding: 10px;
@@ -88,11 +78,6 @@ th {
 
 <div class="container">
 
-<div id="statusBar">
-  <div id="lastChange">📡 Último cambio real: --</div>
-  <div id="lastRefresh">🕒 Último refresh: --</div>
-</div>
-
 <select id="liga"></select>
 
 <h3>Clasificación</h3>
@@ -124,8 +109,6 @@ const API = "https://fcf-headless.onrender.com";
 let currentLiga = null;
 
 // ======================
-// INIT
-// ======================
 async function loadLigas() {
 
   const res = await fetch(API + "/ligas");
@@ -144,7 +127,6 @@ async function loadLigas() {
   currentLiga = json.data[0].id;
   sel.value = currentLiga;
 
-  // 🔥 FIX REAL: cambio de liga correcto
   sel.onchange = (e) => {
     currentLiga = e.target.value;
 
@@ -158,8 +140,6 @@ async function loadLigas() {
 }
 
 // ======================
-// LOAD DATA
-// ======================
 async function loadData() {
 
   const [c, p] = await Promise.all([
@@ -172,13 +152,10 @@ async function loadData() {
 
   renderTable(clas.data);
   renderMatches(part.data);
-
-  updateStatus(clas.lastUpdate);
 }
 
 // ======================
-// CLASIFICACION PRO
-// ======================
+// 🔥 RENDER FINAL ESTABLE
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
@@ -193,12 +170,10 @@ function renderTable(data) {
       tbody.appendChild(tr);
     }
 
-    // 🔥 flechas SOLO por movimiento del backend
     let arrow = "";
     if (t.movement === "up") arrow = " 📈";
     else if (t.movement === "down") arrow = " 📉";
 
-    // 🔥 zonas por posición
     let cls = "mid";
     if (i < 3) cls = "up";
     else if (i >= data.length - 3) cls = "down";
@@ -218,8 +193,6 @@ function renderTable(data) {
 }
 
 // ======================
-// PARTIDOS
-// ======================
 function renderMatches(matches) {
 
   const div = document.getElementById("partidos");
@@ -232,7 +205,7 @@ function renderMatches(matches) {
 
     el.innerHTML = `
       <div>${p.local}</div>
-      <div class="score">${p.goles_local ?? 0} - ${p.goles_visitante ?? 0}</div>
+      <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
       <div>${p.visitante}</div>
     `;
 
@@ -241,30 +214,9 @@ function renderMatches(matches) {
 }
 
 // ======================
-// STATUS
-// ======================
-function updateStatus(ts) {
-
-  const now = new Date().toLocaleString("es-ES", {
-    timeZone: "Europe/Madrid"
-  });
-
-  document.getElementById("lastChange").innerText =
-    "📡 Último cambio real: " + (ts ? new Date(ts).toLocaleString() : "--");
-
-  document.getElementById("lastRefresh").innerText =
-    "🕒 Último refresh: " + now;
-}
-
-// ======================
-// AUTO REFRESH
-// ======================
-setInterval(() => {
-  if (currentLiga) loadData();
-}, 10000);
-
-// INIT
 loadLigas();
+
+setInterval(loadData, 10000);
 
 </script>
 
