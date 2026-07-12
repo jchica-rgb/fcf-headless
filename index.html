@@ -26,7 +26,7 @@ header {
   padding: 15px;
 }
 
-/* STATUS */
+/* STATUS BAR */
 #statusBar {
   display: flex;
   justify-content: space-between;
@@ -43,7 +43,7 @@ header {
   border-radius: 5px;
 }
 
-/* LIGAS */
+/* SELECT */
 select {
   width: 100%;
   padding: 10px;
@@ -136,7 +136,7 @@ let currentLiga = null;
 let lastData = null;
 
 // ======================
-// LIGAS
+// LIGAS (PERSISTENCIA)
 // ======================
 async function loadLigas() {
 
@@ -153,11 +153,16 @@ async function loadLigas() {
     select.appendChild(opt);
   });
 
-  currentLiga = json.data[0].id;
+  // 🔥 IMPORTANTE: mantener liga guardada
+  const savedLiga = localStorage.getItem("liga");
+
+  currentLiga = savedLiga || json.data[0].id;
   select.value = currentLiga;
 
+  // guardar cada cambio
   select.addEventListener("change", e => {
     currentLiga = e.target.value;
+    localStorage.setItem("liga", currentLiga);
     loadData();
   });
 
@@ -241,7 +246,7 @@ function renderMatches(matches) {
 }
 
 // ======================
-// STATUS (HORA CORREGIDA ESPAÑA)
+// STATUS (HORA FRONTEND REAL)
 // ======================
 function updateStatus(lastChange) {
 
