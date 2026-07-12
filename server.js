@@ -6,8 +6,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ======================
+// CONFIG
+// ======================
 const SHEET_ID = process.env.SHEET_ID || "";
 
+// ======================
+// AUTH
+// ======================
 function safeJson(v) {
   try { return JSON.parse(v); } catch { return null; }
 }
@@ -21,10 +27,16 @@ const auth = credentials
     })
   : null;
 
+// ======================
+// NORMALIZE
+// ======================
 function normalize(v) {
   return String(v || "").trim().toLowerCase();
 }
 
+// ======================
+// SHEETS
+// ======================
 async function getSheet(range) {
   try {
     if (!auth || !SHEET_ID) return [];
@@ -39,7 +51,7 @@ async function getSheet(range) {
 
     return res.data.values || [];
   } catch (e) {
-    console.error("SHEETS ERROR:", e.message);
+    console.error("SHEET ERROR:", e.message);
     return [];
   }
 }
@@ -54,18 +66,21 @@ let lastUpdateByLiga = {};
 // LIGAS
 // ======================
 app.get("/ligas", async (req, res) => {
+
   const rows = await getSheet("LIGAS!A2:B");
 
-  res.json({
-    data: rows.map(r => ({
-      id: r[0],
-      nombre: r[1]
-    }))
-  });
+  const data = rows
+    .filter(r => r && r.length >= 2)
+    .map(r => ({
+      id: String(r[0] || ""),
+      nombre: String(r[1] || "")
+    }));
+
+  res.json({ data });
 });
 
 // ======================
-// PARTIDOS
+// PARTIDOS (FIX DEFINITIVO)
 // ======================
 app.get("/partidos", async (req, res) => {
 
@@ -74,12 +89,14 @@ app.get("/partidos", async (req, res) => {
   const rows = await getSheet("PARTIDOS!A2:F");
 
   const data = rows
+    .filter(r => r && r.length >= 6)
     .map(r => ({
       liga: normalize(r[0]),
-      local: r[2],
-      visitante: r[3],
-      gl: Number(r[4] || 0),
-      gv: Number(r[5] || 0)
+      jornada: r[1] || "",
+      local: String(r[2] || "").trim(),
+      visitante: String(r[3] || "").trim(),
+      goles_local: Number(r[4] || 0),
+      goles_visitante: Number(r[5] || 0)
     }))
     .filter(p => p.liga === ligaId);
 
@@ -96,10 +113,11 @@ app.get("/clasificacion", async (req, res) => {
   const rows = await getSheet("PARTIDOS!A2:F");
 
   const partidos = rows
+    .filter(r => r && r.length >= 6)
     .map(r => ({
       liga: normalize(r[0]),
-      local: r[2],
-      visitante: r[3],
+      local: String(r[2] || "").trim(),
+      visitante: String(r[3] || "").trim(),
       gl: Number(r[4] || 0),
       gv: Number(r[5] || 0)
     }))
@@ -147,15 +165,14 @@ app.get("/clasificacion", async (req, res) => {
   const result = Object.values(tabla)
     .sort((a, b) => b.puntos - a.puntos || a.equipo.localeCompare(b.equipo));
 
-  // 🔥 HASH ESTABLE REAL
-  const key = result.map(r =>
-    `${r.equipo}|${r.puntos}|${r.jugados}|${r.ganados}|${r.empatados}|${r.perdidos}`
-  ).join("#");
+  // HASH ESTABLE
+  const key = result
+    .map(r => `${r.equipo}|${r.puntos}|${r.jugados}|${r.ganados}|${r.empatados}|${r.perdidos}`)
+    .join("#");
 
-  // 🔥 SOLO CAMBIA SI HAY CAMBIO REAL
   if (lastKeyByLiga[ligaId] !== key) {
     lastKeyByLiga[ligaId] = key;
-    lastUpdateByLiga[ligaId] = Date.now(); // 👈 CLAVE REAL
+    lastUpdateByLiga[ligaId] = Date.now();
   }
 
   res.json({
@@ -166,5 +183,5 @@ app.get("/clasificacion", async (req, res) => {
 
 // ======================
 app.listen(process.env.PORT || 3000, () => {
-  console.log("FUTCAT RUNNING ⚽");
+  console.log("FUTCAT SERVER RUNNING ⚽");
 });
