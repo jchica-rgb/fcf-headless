@@ -51,7 +51,6 @@ table {
   background: #111;
 }
 
-/* 🔥 FIX REAL HEADER */
 th, td {
   padding: 10px;
   text-align: center;
@@ -63,7 +62,7 @@ th {
   font-weight: bold;
 }
 
-/* 🔥 ESTADOS VISUALES */
+/* 🔥 colores estables */
 .up td {
   background: rgba(0,255,0,0.18) !important;
 }
@@ -129,13 +128,11 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 
-// 🔥 ESTADO ACTUAL
-let lastState = new Map();
+// 🔥 estado anterior real (para flechas)
+let lastState = {};
 
-// 🔥 ESTADO VISUAL PERSISTENTE (F5 SAFE)
-let visualState = new Map(
-  Object.entries(JSON.parse(localStorage.getItem("visualState") || "{}"))
-);
+// 🔥 estado visual persistente (F5 OK)
+let visualState = JSON.parse(localStorage.getItem("visualState") || "{}");
 
 // ======================
 function formatTime(ts) {
@@ -169,8 +166,8 @@ async function loadLigas() {
     currentLiga = e.target.value;
     localStorage.setItem("liga", currentLiga);
 
-    lastState.clear();
-    visualState = new Map();
+    lastState = {};
+    visualState = {};
     localStorage.removeItem("visualState");
 
     document.getElementById("tabla").innerHTML = "";
@@ -199,7 +196,7 @@ async function loadData() {
 }
 
 // ======================
-// 🔥 RENDER FINAL ESTABLE
+// 🔥 RENDER FINAL ESTABLE REAL
 // ======================
 function renderTable(data) {
 
@@ -211,8 +208,8 @@ function renderTable(data) {
 
     let tr = document.getElementById("row-" + t.equipo);
 
-    const prev = lastState.get(t.equipo);
-    const oldVisual = visualState.get(t.equipo);
+    const prev = lastState[t.equipo];
+    const oldVisual = visualState[t.equipo];
 
     let arrow = "";
     let cls = "";
@@ -226,8 +223,8 @@ function renderTable(data) {
         arrow = " 📉";
         cls = "down";
       } else if (oldVisual) {
-        arrow = oldVisual.arrow || "";
-        cls = oldVisual.cls || "";
+        arrow = oldVisual.arrow;
+        cls = oldVisual.cls;
       }
     }
 
@@ -249,12 +246,12 @@ function renderTable(data) {
       <td>${t.perdidos}</td>
     `;
 
-    lastState.set(t.equipo, t);
+    lastState[t.equipo] = t;
     newVisual[t.equipo] = { arrow, cls };
   });
 
-  // 🔥 persistencia real F5
-  visualState = new Map(Object.entries(newVisual));
+  // 🔥 persistencia F5
+  visualState = newVisual;
   localStorage.setItem("visualState", JSON.stringify(newVisual));
 
   // 🔥 orden estable
