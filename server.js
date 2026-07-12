@@ -46,8 +46,6 @@ async function getSheet(range) {
 }
 
 // ======================
-// LIGAS
-// ======================
 app.get("/ligas", async (req, res) => {
 
   const rows = await getSheet("LIGAS!A2:B");
@@ -61,19 +59,18 @@ app.get("/ligas", async (req, res) => {
 });
 
 // ======================
-// PARTIDOS
-// ======================
 app.get("/partidos", async (req, res) => {
 
   const ligaId = normalize(req.query.liga);
+
   const rows = await getSheet("PARTIDOS!A2:F");
 
   const data = rows
     .filter(r => r && r.length >= 6)
     .map(r => ({
       liga: normalize(r[0]),
-      local: r[2],
-      visitante: r[3],
+      local: normalize(r[2]),
+      visitante: normalize(r[3]),
       goles_local: Number(r[4] || 0),
       goles_visitante: Number(r[5] || 0)
     }))
@@ -83,7 +80,7 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ======================
-// 🔥 FLASHSCORE PRO FIX FINAL
+// 🔥 CLASIFICACIÓN FLASHCORE FIX REAL
 // ======================
 const historyByLiga = {};
 
@@ -150,18 +147,18 @@ app.get("/clasificacion", async (req, res) => {
   );
 
   // ======================
-  // 🔥 MOVIMIENTO REAL ESTABLE
+  // 🔥 MOVIMIENTO REAL CORRECTO
   const prev = historyByLiga[ligaId] || {};
+
+  const indexMapPrev = prev.indexMap || {};
 
   result = result.map((t, i) => {
 
-    const old = prev[t.equipo];
-
     let movement = "same";
 
-    if (old) {
-      if (i < old.pos) movement = "up";
-      else if (i > old.pos) movement = "down";
+    if (indexMapPrev[t.equipo] !== undefined) {
+      if (i < indexMapPrev[t.equipo]) movement = "up";
+      else if (i > indexMapPrev[t.equipo]) movement = "down";
     }
 
     return {
@@ -171,17 +168,13 @@ app.get("/clasificacion", async (req, res) => {
     };
   });
 
-  // snapshot limpio
-  const snapshot = {};
-
-  result.forEach(t => {
-    snapshot[t.equipo] = {
-      pos: t.pos,
-      puntos: t.puntos
-    };
-  });
-
-  historyByLiga[ligaId] = snapshot;
+  // ======================
+  // SNAPSHOT CORRECTO
+  historyByLiga[ligaId] = {
+    indexMap: Object.fromEntries(
+      result.map((t, i) => [t.equipo, i])
+    )
+  };
 
   res.json({
     data: result,
@@ -191,5 +184,5 @@ app.get("/clasificacion", async (req, res) => {
 
 // ======================
 app.listen(process.env.PORT || 3000, () => {
-  console.log("FLASHSCORE PRO FIXED RUNNING ⚽");
+  console.log("FLASHCORE PRO RUNNING ⚽");
 });
