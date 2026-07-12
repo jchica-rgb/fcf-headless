@@ -12,7 +12,6 @@ body {
   color: white;
 }
 
-/* HEADER */
 header {
   padding: 18px;
   text-align: center;
@@ -28,7 +27,6 @@ header {
   padding: 15px;
 }
 
-/* STATUS */
 #statusBar {
   display: flex;
   justify-content: space-between;
@@ -39,7 +37,6 @@ header {
   margin-bottom: 10px;
 }
 
-/* SELECT */
 select {
   width: 100%;
   padding: 10px;
@@ -49,7 +46,6 @@ select {
   border: 1px solid #333;
 }
 
-/* TABLE */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -66,12 +62,12 @@ th {
   color: #00ff88;
 }
 
-/* ZONES */
+/* ZONAS */
 .up td { background: rgba(0,255,0,0.18) !important; }
 .down td { background: rgba(255,0,0,0.18) !important; }
 .mid td { background: rgba(255,255,255,0.04); }
 
-/* MATCHES */
+/* PARTIDOS */
 .match {
   background: #151515;
   padding: 12px;
@@ -94,7 +90,7 @@ th {
   min-width: 80px;
 }
 
-/* TITLES */
+/* TITULOS */
 h3 {
   display: flex;
   align-items: center;
@@ -108,7 +104,7 @@ h3::after {
   background: linear-gradient(90deg, #00ff88, transparent);
 }
 
-/* ANIMATION */
+/* ANIMACIONES */
 @keyframes flashUp {
   0% { background: rgba(0,255,136,0.35); }
   100% { background: rgba(0,255,0,0.18); }
@@ -169,14 +165,6 @@ h3::after {
 const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
-let lastHash = null;
-
-// ======================
-function createHash(data) {
-  return data.map(d =>
-    `${d.equipo}-${d.puntos}-${d.jugados}`
-  ).join("|");
-}
 
 // ======================
 async function loadLigas() {
@@ -205,8 +193,6 @@ async function loadLigas() {
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
 
-    lastHash = null;
-
     loadData();
   };
 
@@ -224,15 +210,6 @@ async function loadData() {
   const clas = await c.json();
   const part = await p.json();
 
-  const newHash = createHash(clas.data);
-
-  if (newHash === lastHash) {
-    updateStatus(clas.lastUpdate);
-    return;
-  }
-
-  lastHash = newHash;
-
   renderTable(clas.data);
   renderMatches(part.data);
 
@@ -240,35 +217,22 @@ async function loadData() {
 }
 
 // ======================
+// 🔥 FIX REAL (ESTABILIDAD ENTRE LIGAS)
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
 
+  // ✔ orden SIEMPRE controlado aquí
   data = [...data].sort((a, b) =>
     b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
+  // 💣 FIX CLAVE: reset total del DOM (evita mezcla entre ligas)
+  tbody.innerHTML = "";
+
   data.forEach((t, i) => {
 
-    let tr = document.getElementById("row-" + t.equipo);
-
-    if (!tr) {
-      tr = document.createElement("tr");
-      tr.id = "row-" + t.equipo;
-      tbody.appendChild(tr);
-    }
-
-    let oldPos = tr.getAttribute("data-pos");
-
-    if (oldPos !== null) {
-      if (parseInt(oldPos) > i) {
-        tr.classList.add("flash-up");
-      } else if (parseInt(oldPos) < i) {
-        tr.classList.add("flash-down");
-      }
-    }
-
-    tr.setAttribute("data-pos", i);
+    const tr = document.createElement("tr");
 
     let arrow = "";
     if (t.movement === "up") arrow = " <span class='arrow'>📈</span>";
@@ -289,15 +253,9 @@ function renderTable(data) {
       <td>${t.empatados}</td>
       <td>${t.perdidos}</td>
     `;
-  });
 
-  setTimeout(() => {
-    document.querySelectorAll(".flash-up, .flash-down")
-      .forEach(el => {
-        el.classList.remove("flash-up");
-        el.classList.remove("flash-down");
-      });
-  }, 900);
+    tbody.appendChild(tr);
+  });
 }
 
 // ======================
