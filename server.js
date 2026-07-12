@@ -6,9 +6,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ======================
-// CONFIG
-// ======================
 const SHEET_ID = process.env.SHEET_ID || "";
 
 // ======================
@@ -28,59 +25,55 @@ const auth = credentials
   : null;
 
 // ======================
-// NORMALIZE
+// NORMALIZE (CLAVE)
 // ======================
 function normalize(v) {
-  return String(v || "").trim().toLowerCase();
+  return String(v || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
 }
 
 // ======================
 // SHEETS
 // ======================
 async function getSheet(range) {
-  try {
-    if (!auth || !SHEET_ID) return [];
+  if (!auth || !SHEET_ID) return [];
 
-    const client = await auth.getClient();
-    const sheets = google.sheets({ version: "v4", auth: client });
+  const client = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: client });
 
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range
-    });
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range
+  });
 
-    return res.data.values || [];
-  } catch (e) {
-    console.error("SHEET ERROR:", e.message);
-    return [];
-  }
+  return res.data.values || [];
 }
 
 // ======================
-// CACHE
+// CACHE CAMBIOS
 // ======================
 let lastKeyByLiga = {};
 let lastUpdateByLiga = {};
 
 // ======================
-// LIGAS
+// LIGAS (ID FIXED)
 // ======================
 app.get("/ligas", async (req, res) => {
 
   const rows = await getSheet("LIGAS!A2:B");
 
-  const data = rows
-    .filter(r => r && r.length >= 2)
-    .map(r => ({
-      id: String(r[0] || ""),
-      nombre: String(r[1] || "")
-    }));
-
-  res.json({ data });
+  res.json({
+    data: rows.map(r => ({
+      id: normalize(r[0]),
+      nombre: r[1]
+    }))
+  });
 });
 
 // ======================
-// PARTIDOS (FIX DEFINITIVO)
+// PARTIDOS
 // ======================
 app.get("/partidos", async (req, res) => {
 
@@ -93,8 +86,8 @@ app.get("/partidos", async (req, res) => {
     .map(r => ({
       liga: normalize(r[0]),
       jornada: r[1] || "",
-      local: String(r[2] || "").trim(),
-      visitante: String(r[3] || "").trim(),
+      local: (r[2] || "").trim(),
+      visitante: (r[3] || "").trim(),
       goles_local: Number(r[4] || 0),
       goles_visitante: Number(r[5] || 0)
     }))
@@ -104,7 +97,7 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ======================
-// CLASIFICACION
+// CLASIFICACION (PRO ORDER)
 // ======================
 app.get("/clasificacion", async (req, res) => {
 
@@ -116,8 +109,8 @@ app.get("/clasificacion", async (req, res) => {
     .filter(r => r && r.length >= 6)
     .map(r => ({
       liga: normalize(r[0]),
-      local: String(r[2] || "").trim(),
-      visitante: String(r[3] || "").trim(),
+      local: (r[2] || "").trim(),
+      visitante: (r[3] || "").trim(),
       gl: Number(r[4] || 0),
       gv: Number(r[5] || 0)
     }))
@@ -162,13 +155,16 @@ app.get("/clasificacion", async (req, res) => {
     }
   });
 
-  const result = Object.values(tabla)
-    .sort((a, b) => b.puntos - a.puntos || a.equipo.localeCompare(b.equipo));
+  let result = Object.values(tabla);
 
-  // HASH ESTABLE
-  const key = result
-    .map(r => `${r.equipo}|${r.puntos}|${r.jugados}|${r.ganados}|${r.empatados}|${r.perdidos}`)
-    .join("#");
+  // 🔥 ORDER FIJO (CLAVE PRO)
+  result.sort((a, b) =>
+    b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
+  );
+
+  const key = result.map(r =>
+    `${r.equipo}|${r.puntos}|${r.jugados}|${r.ganados}|${r.empatados}|${r.perdidos}`
+  ).join("#");
 
   if (lastKeyByLiga[ligaId] !== key) {
     lastKeyByLiga[ligaId] = key;
@@ -183,5 +179,5 @@ app.get("/clasificacion", async (req, res) => {
 
 // ======================
 app.listen(process.env.PORT || 3000, () => {
-  console.log("FUTCAT SERVER RUNNING ⚽");
+  console.log("FUTCAT PRO RUNNING ⚽");
 });
