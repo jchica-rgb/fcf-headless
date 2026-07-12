@@ -83,8 +83,10 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ======================
-// CLASIFICACION (ESTABLE + SIMPLE + COMPATIBLE)
+// 🔥 CLASIFICACION FLASHSCORE PRO
 // ======================
+const historyByLiga = {};
+
 app.get("/clasificacion", async (req, res) => {
 
   const ligaId = normalize(req.query.liga);
@@ -147,6 +149,39 @@ app.get("/clasificacion", async (req, res) => {
     b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
+  // ======================
+  // 🔥 MOVIMIENTO REAL
+  const prev = historyByLiga[ligaId] || {};
+
+  result = result.map((t, i) => {
+
+    const old = prev[t.equipo];
+
+    let movement = "same";
+
+    if (old) {
+      if (i < old.pos) movement = "up";
+      else if (i > old.pos) movement = "down";
+    }
+
+    return {
+      ...t,
+      pos: i + 1,
+      movement
+    };
+  });
+
+  // guardar snapshot
+  const snapshot = {};
+  result.forEach(t => {
+    snapshot[t.equipo] = {
+      pos: t.pos,
+      puntos: t.puntos
+    };
+  });
+
+  historyByLiga[ligaId] = snapshot;
+
   res.json({
     data: result,
     lastUpdate: Date.now()
@@ -155,5 +190,5 @@ app.get("/clasificacion", async (req, res) => {
 
 // ======================
 app.listen(process.env.PORT || 3000, () => {
-  console.log("FUTCAT PRO RUNNING ⚽");
+  console.log("FLASHSCORE PRO RUNNING ⚽");
 });
