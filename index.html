@@ -61,7 +61,7 @@ th {
   color: #00ff88;
 }
 
-/* 🔥 ESTADOS FIJOS */
+/* 🔥 estados visuales */
 .up td {
   background: rgba(0,255,0,0.18) !important;
 }
@@ -70,7 +70,6 @@ th {
   background: rgba(255,0,0,0.18) !important;
 }
 
-/* PARTIDOS */
 .match {
   background: #151515;
   padding: 10px;
@@ -101,7 +100,19 @@ th {
 <select id="liga"></select>
 
 <h3>📊 Clasificación</h3>
+
 <table>
+<thead>
+<tr>
+  <th>#</th>
+  <th>Equipo</th>
+  <th>Puntos</th>
+  <th>Jugados</th>
+  <th>Ganados</th>
+  <th>Empatados</th>
+  <th>Perdidos</th>
+</tr>
+</thead>
 <tbody id="tabla"></tbody>
 </table>
 
@@ -116,8 +127,11 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 
-// 🔥 estado anterior REAL
-let prevState = new Map();
+// 🔥 ESTADO ACTUAL (desde backend)
+let lastState = new Map();
+
+// 🔥 ESTADO VISUAL PERSISTENTE (CLAVE REAL)
+let visualState = JSON.parse(localStorage.getItem("visualState") || "{}");
 
 // ======================
 function formatTime(ts) {
@@ -151,7 +165,11 @@ async function loadLigas() {
     currentLiga = e.target.value;
     localStorage.setItem("liga", currentLiga);
 
-    prevState.clear();
+    lastState.clear();
+    visualState = {};
+
+    localStorage.removeItem("visualState");
+
     document.getElementById("tabla").innerHTML = "";
     document.getElementById("partidos").innerHTML = "";
 
@@ -178,22 +196,24 @@ async function loadData() {
 }
 
 // ======================
-// 🔥 RENDER ESTABLE REAL
+// 🔥 CLASIFICACION FINAL PERSISTENTE
 // ======================
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
 
-  const newState = new Map();
+  const newVisual = {};
 
   data.forEach((t, i) => {
 
     let tr = document.getElementById("row-" + t.equipo);
 
-    const prev = prevState.get(t.equipo);
+    const prev = lastState.get(t.equipo);
 
     let arrow = "";
     let cls = "";
+
+    const prevVisual = visualState[t.equipo];
 
     // 🔥 comparación real
     if (prev) {
@@ -203,8 +223,9 @@ function renderTable(data) {
       } else if (t.puntos < prev.puntos) {
         arrow = " 📉";
         cls = "down";
-      } else {
-        cls = tr?.dataset?.cls || "";
+      } else if (prevVisual) {
+        arrow = prevVisual.arrow;
+        cls = prevVisual.cls;
       }
     }
 
@@ -214,7 +235,6 @@ function renderTable(data) {
       tbody.appendChild(tr);
     }
 
-    tr.dataset.cls = cls;
     tr.className = cls;
 
     tr.innerHTML = `
@@ -227,13 +247,15 @@ function renderTable(data) {
       <td>${t.perdidos}</td>
     `;
 
-    newState.set(t.equipo, t);
+    lastState.set(t.equipo, t);
+
+    newVisual[t.equipo] = { arrow, cls };
   });
 
-  // 🔥 swap limpio de estado
-  prevState = new Map(newState);
+  visualState = newVisual;
+  localStorage.setItem("visualState", JSON.stringify(visualState));
 
-  // 🔥 orden estable
+  // mantener orden
   data.forEach(t => {
     const row = document.getElementById("row-" + t.equipo);
     if (row) tbody.appendChild(row);
