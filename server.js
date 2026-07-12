@@ -83,7 +83,7 @@ app.get("/partidos", async (req, res) => {
 });
 
 // ======================
-// 🔥 CLASIFICACION FLASHSCORE PRO
+// 🔥 FLASHSCORE PRO FIX FINAL
 // ======================
 const historyByLiga = {};
 
@@ -97,8 +97,8 @@ app.get("/clasificacion", async (req, res) => {
     .filter(r => r && r.length >= 6)
     .map(r => ({
       liga: normalize(r[0]),
-      local: r[2],
-      visitante: r[3],
+      local: normalize(r[2]),
+      visitante: normalize(r[3]),
       gl: Number(r[4] || 0),
       gv: Number(r[5] || 0)
     }))
@@ -150,7 +150,7 @@ app.get("/clasificacion", async (req, res) => {
   );
 
   // ======================
-  // 🔥 MOVIMIENTO REAL
+  // 🔥 MOVIMIENTO REAL ESTABLE
   const prev = historyByLiga[ligaId] || {};
 
   result = result.map((t, i) => {
@@ -171,8 +171,9 @@ app.get("/clasificacion", async (req, res) => {
     };
   });
 
-  // guardar snapshot
+  // snapshot limpio
   const snapshot = {};
+
   result.forEach(t => {
     snapshot[t.equipo] = {
       pos: t.pos,
@@ -190,5 +191,5 @@ app.get("/clasificacion", async (req, res) => {
 
 // ======================
 app.listen(process.env.PORT || 3000, () => {
-  console.log("FLASHSCORE PRO RUNNING ⚽");
+  console.log("FLASHSCORE PRO FIXED RUNNING ⚽");
 });
