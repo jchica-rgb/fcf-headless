@@ -81,9 +81,13 @@ th {
   background: #151515;
   padding: 10px;
   margin-bottom: 8px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   border-radius: 6px;
+
+  border-left: 3px solid rgba(0,255,136,0.35);
+}
 
   /* 💚 RESTAURADO LOOK PRO */
   border-left: 3px solid rgba(0,255,136,0.35);
