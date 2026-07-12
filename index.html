@@ -26,7 +26,7 @@ header {
   padding: 15px;
 }
 
-/* ================= STATUS ================= */
+/* STATUS */
 #statusBar {
   display: flex;
   justify-content: space-between;
@@ -43,7 +43,7 @@ header {
   border-radius: 5px;
 }
 
-/* ================= LIGAS ================= */
+/* LIGAS */
 select {
   width: 100%;
   padding: 10px;
@@ -53,7 +53,7 @@ select {
   border: 1px solid #333;
 }
 
-/* ================= TABLE ================= */
+/* TABLE */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -75,7 +75,7 @@ tr.updated {
   background: #1f3b2c !important;
 }
 
-/* ================= PARTIDOS ================= */
+/* MATCHES */
 .match {
   background: #151515;
   padding: 10px;
@@ -104,7 +104,7 @@ tr.updated {
   <div id="lastRefresh">🕒 Último refresh: --</div>
 </div>
 
-<!-- LIGAS (AHORA DEBAJO COMO PEDISTE) -->
+<!-- LIGAS -->
 <select id="liga"></select>
 
 <h3>📊 Clasificación</h3>
@@ -135,7 +135,9 @@ const API = "https://fcf-headless.onrender.com";
 let currentLiga = null;
 let lastData = null;
 
-// ================= LIGAS =================
+// ======================
+// LIGAS
+// ======================
 async function loadLigas() {
 
   const res = await fetch(API + "/ligas");
@@ -162,7 +164,9 @@ async function loadLigas() {
   loadData();
 }
 
-// ================= DATA =================
+// ======================
+// DATA
+// ======================
 async function loadData() {
 
   const [c, p] = await Promise.all([
@@ -178,7 +182,9 @@ async function loadData() {
   updateStatus(clas.lastUpdate);
 }
 
-// ================= CLASIFICACION =================
+// ======================
+// TABLE
+// ======================
 function renderTable(data) {
 
   const tbody = document.getElementById("tabla");
@@ -211,7 +217,9 @@ function renderTable(data) {
   lastData = data;
 }
 
-// ================= PARTIDOS =================
+// ======================
+// PARTIDOS
+// ======================
 function renderMatches(matches) {
 
   const div = document.getElementById("partidos");
@@ -232,10 +240,13 @@ function renderMatches(matches) {
   });
 }
 
-// ================= STATUS =================
+// ======================
+// STATUS (HORA CORREGIDA ESPAÑA)
+// ======================
 function updateStatus(lastChange) {
 
   const now = new Date().toLocaleString("es-ES", {
+    timeZone: "Europe/Madrid",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -250,12 +261,14 @@ function updateStatus(lastChange) {
     "🕒 Último refresh: " + now;
 }
 
-// ================= AUTO REFRESH =================
+// ======================
+// AUTO REFRESH
+// ======================
 setInterval(() => {
   if (currentLiga) loadData();
 }, 15000);
 
-// ================= INIT =================
+// ======================
 loadLigas();
 
 </script>
