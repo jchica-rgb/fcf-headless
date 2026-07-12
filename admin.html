@@ -1,98 +1,96 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>FutCat Admin</title>
+<meta charset="UTF-8">
+<title>Admin FUTCAT Login</title>
 
-  <style>
-    body {
-      margin:0;
-      font-family:Arial;
-      background:#0f0f0f;
-      color:white;
-      display:flex;
-      justify-content:center;
-      padding-top:40px;
-    }
+<style>
+body {
+  margin:0;
+  font-family: Arial;
+  background:#0a0a0a;
+  color:white;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
 
-    .box {
-      width:420px;
-      background:#1a1a1a;
-      padding:20px;
-      border-radius:10px;
-    }
+.box {
+  background:#111;
+  padding:30px;
+  border-radius:10px;
+  width:320px;
+}
 
-    input, select {
-      width:100%;
-      padding:10px;
-      margin:6px 0;
-      border:none;
-      background:#222;
-      color:white;
-    }
+input {
+  width:100%;
+  padding:10px;
+  margin:10px 0;
+  background:#1a1a1a;
+  border:1px solid #333;
+  color:white;
+}
 
-    button {
-      width:100%;
-      padding:12px;
-      background:#00aa00;
-      border:none;
-      color:white;
-      font-weight:bold;
-      cursor:pointer;
-    }
-  </style>
+button {
+  width:100%;
+  padding:10px;
+  background:#00ff88;
+  border:none;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+#msg {
+  margin-top:10px;
+  font-size:12px;
+}
+</style>
 </head>
 
 <body>
 
 <div class="box">
+  <h2>⚽ LOGIN ADMIN</h2>
 
-<h2>⚽ Admin FutCat</h2>
+  <input id="user" placeholder="Usuario">
+  <input id="pass" type="password" placeholder="Contraseña">
 
-<input id="jornada" placeholder="Jornada">
+  <button onclick="login()">Entrar</button>
 
-<select id="liga">
-  <option value="">Liga</option>
-  <option value="1">Lliga Elit</option>
-  <option value="2">Primera Catalana</option>
-  <option value="3">Segunda Catalana</option>
-</select>
-
-<input id="local" placeholder="Local">
-<input id="visitante" placeholder="Visitante">
-<input id="gl" placeholder="Goles local">
-<input id="gv" placeholder="Goles visitante">
-
-<button onclick="save()">Guardar</button>
-
-<p id="msg"></p>
-
+  <div id="msg"></div>
 </div>
 
 <script>
 
 const API = "https://fcf-headless.onrender.com";
 
-async function save(){
+async function login() {
 
-  const data = {
-    jornada: document.getElementById("jornada").value,
-    liga: document.getElementById("liga").value,
-    local: document.getElementById("local").value,
-    visitante: document.getElementById("visitante").value,
-    goles_local: document.getElementById("gl").value,
-    goles_visitante: document.getElementById("gv").value
-  };
+  const user = document.getElementById("user").value;
+  const pass = document.getElementById("pass").value;
 
-  const res = await fetch(`${API}/add-partido`,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(data)
+  const res = await fetch(API + "/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user, pass })
   });
 
-  const json = await res.json();
+  const data = await res.json();
 
-  document.getElementById("msg").innerText =
-    json.ok ? "OK guardado" : "Error";
+  if (!data.ok) {
+    document.getElementById("msg").innerText = "❌ Login incorrecto";
+    return;
+  }
+
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("role", data.role);
+
+  document.getElementById("msg").innerText = "✔ Login correcto";
+
+  setTimeout(() => {
+    alert("Login OK. Siguiente paso: panel admin");
+  }, 800);
 }
 
 </script>
