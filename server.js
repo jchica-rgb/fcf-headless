@@ -16,15 +16,10 @@ const USERS = [
   { user: "editor", pass: "editor123", role: "editor" }
 ];
 
-/* ⚠️ FIX IMPORTANTE:
-   Render pierde memoria → sesiones en Map NO fiables
-   => solución simple: tokens sin bloqueo en memoria
-*/
-
 const TOKENS = new Set();
 
 /* ======================
-   GOOGLE SHEETS
+   GOOGLE SHEETS CONFIG
 ====================== */
 
 function safeJson(v) {
@@ -81,7 +76,7 @@ app.post("/login", (req, res) => {
 });
 
 /* ======================
-   AUTH (SIMPLIFICADO Y ESTABLE)
+   AUTH
 ====================== */
 
 function auth(req, res, next) {
@@ -96,14 +91,14 @@ function auth(req, res, next) {
 }
 
 /* ======================
-   SHEETS
+   SHEETS READ
 ====================== */
 
 async function getSheet(range) {
 
   if (!authGoogle || !SHEET_ID) return [];
 
-  const client = await authGoogle.getClient();
+  const client = await getClient();
   const sheets = google.sheets({ version: "v4", auth: client });
 
   const res = await sheets.spreadsheets.values.get({
@@ -128,6 +123,31 @@ app.get("/ligas", async (req, res) => {
       nombre: r[1]
     }))
   });
+});
+
+/* ======================
+   EQUIPOS (DESDE SHEET)
+====================== */
+
+app.get("/equipos", async (req, res) => {
+
+  try {
+
+    const liga = normalize(req.query.liga);
+
+    const rows = await getSheet("EQUIPOS!A2:B");
+
+    const data = rows
+      .filter(r => r && r.length >= 2 && normalize(r[0]) === liga)
+      .map(r => r[1]);
+
+    res.json({ data });
+
+  } catch (err) {
+
+    console.error("ERROR /equipos:", err);
+    res.json({ data: [] });
+  }
 });
 
 /* ======================
@@ -214,7 +234,7 @@ app.get("/clasificacion", async (req, res) => {
   });
 
   const result = Object.values(tabla).sort(
-    (a,b) => b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
+    (a, b) => b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
   res.json({
@@ -224,7 +244,7 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 /* ======================
-   GUARDAR PARTIDO (FIX DEFINITIVO)
+   GUARDAR PARTIDO
 ====================== */
 
 app.post("/partido", auth, async (req, res) => {
@@ -233,7 +253,7 @@ app.post("/partido", auth, async (req, res) => {
 
     const { liga, jornada, local, visitante, goles_local, goles_visitante } = req.body;
 
-    const client = await authGoogle.getClient();
+    const client = await getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
 
     await sheets.spreadsheets.values.append({
@@ -256,18 +276,25 @@ app.post("/partido", auth, async (req, res) => {
 
   } catch (err) {
 
-    console.error("ERROR PARTIDO:", err);
-
+    console.error("ERROR /partido:", err);
     res.status(500).json({ ok: false });
   }
 });
 
 /* ======================
-   SERVER
+   HEALTH CHECK
+====================== */
+
+app.get("/", (req, res) => {
+  res.send("FUTCAT SERVER OK ⚽");
+});
+
+/* ======================
+   START SERVER
 ====================== */
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("SERVER RUNNING OK");
+  console.log("SERVER RUNNING ON PORT", PORT);
 });
