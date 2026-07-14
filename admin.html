@@ -2,95 +2,101 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Admin FUTCAT Login</title>
+<title>Admin - Territori FUTCAT</title>
 
 <style>
+
 body {
-  margin:0;
+  margin: 0;
   font-family: Arial;
-  background:#0a0a0a;
-  color:white;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
+  background: #0a0a0a;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
 }
 
 .box {
-  background:#111;
-  padding:30px;
-  border-radius:10px;
-  width:320px;
+  width: 320px;
+  background: #111;
+  padding: 25px;
+  border-radius: 10px;
+  border: 1px solid #00ff88;
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 20px;
 }
 
 input {
-  width:100%;
-  padding:10px;
-  margin:10px 0;
-  background:#1a1a1a;
-  border:1px solid #333;
-  color:white;
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: white;
 }
 
 button {
-  width:100%;
-  padding:10px;
-  background:#00ff88;
-  border:none;
-  font-weight:bold;
-  cursor:pointer;
+  width: 100%;
+  padding: 10px;
+  background: #00ff88;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
 }
 
-#msg {
-  margin-top:10px;
-  font-size:12px;
+#error {
+  color: red;
+  font-size: 12px;
+  text-align: center;
+  margin-top: 10px;
 }
+
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2>⚽ LOGIN ADMIN</h2>
+  <h2>🔐 ADMIN LOGIN</h2>
 
   <input id="user" placeholder="Usuario">
   <input id="pass" type="password" placeholder="Contraseña">
 
   <button onclick="login()">Entrar</button>
 
-  <div id="msg"></div>
+  <div id="error"></div>
 </div>
 
 <script>
 
-const API = "https://fcf-headless.onrender.com";
+/* 🔥 USUARIOS SIMPLES (PASO 1) */
+const USERS = [
+  { user: "admin", pass: "1234", role: "admin" },
+  { user: "editor", pass: "1234", role: "editor" }
+];
 
-async function login() {
+function login() {
 
-  const user = document.getElementById("user").value;
-  const pass = document.getElementById("pass").value;
+  const u = document.getElementById("user").value;
+  const p = document.getElementById("pass").value;
 
-  const res = await fetch(API + "/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user, pass })
-  });
+  const found = USERS.find(x => x.user === u && x.pass === p);
 
-  const data = await res.json();
-
-  if (!data.ok) {
-    document.getElementById("msg").innerText = "❌ Login incorrecto";
+  if (!found) {
+    document.getElementById("error").innerText = "Usuario o contraseña incorrectos";
     return;
   }
 
-  localStorage.setItem("token", data.token);
-  localStorage.setItem("role", data.role);
+  /* guardar sesión */
+  localStorage.setItem("tf_user", JSON.stringify(found));
 
-  document.getElementById("msg").innerText = "✔ Login correcto";
-
-  setTimeout(() => {
-    alert("Login OK. Siguiente paso: panel admin");
-  }, 800);
+  /* redirigir */
+  window.location.href = "admin-panel.html";
 }
 
 </script>
