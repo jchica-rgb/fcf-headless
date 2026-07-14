@@ -19,7 +19,7 @@ const USERS = [
 const TOKENS = new Set();
 
 /* ======================
-   SHEETS CONFIG
+   GOOGLE SHEETS CONFIG
 ====================== */
 
 function safeJson(v) {
@@ -127,10 +127,8 @@ app.get("/ligas", async (req, res) => {
 });
 
 /* ======================
-   EQUIPOS (FIX REAL SEGÚN TU SHEET)
-   A = id
-   B = nombre
-   C = liga
+   EQUIPOS (CORRECTO)
+   A=id | B=nombre | C=liga
 ====================== */
 
 app.get("/equipos", async (req, res) => {
@@ -253,6 +251,7 @@ app.get("/clasificacion", async (req, res) => {
 
 /* ======================
    GUARDAR PARTIDO
+   + VALIDACION MISMO EQUIPO
 ====================== */
 
 app.post("/partido", auth, async (req, res) => {
@@ -267,6 +266,30 @@ app.post("/partido", auth, async (req, res) => {
       goles_local,
       goles_visitante
     } = req.body;
+
+    /* ======================
+       VALIDACIÓN CRÍTICA
+    ====================== */
+
+    if (!local || !visitante) {
+      return res.status(400).json({
+        ok: false,
+        error: "Faltan equipos"
+      });
+    }
+
+    if (
+      normalize(local) === normalize(visitante)
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: "Un equipo no puede jugar contra sí mismo"
+      });
+    }
+
+    /* ======================
+       GUARDAR SHEETS
+    ====================== */
 
     const client = await getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
@@ -292,24 +315,20 @@ app.post("/partido", auth, async (req, res) => {
   } catch (err) {
 
     console.error("ERROR /partido:", err);
-    res.status(500).json({ ok: false });
+
+    res.status(500).json({
+      ok: false,
+      error: "Error interno"
+    });
   }
 });
 
 /* ======================
-   HEALTH
-====================== */
-
-app.get("/", (req, res) => {
-  res.send("FUTCAT SERVER OK ⚽");
-});
-
-/* ======================
-   START
+   SERVER
 ====================== */
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("SERVER RUNNING", PORT);
+  console.log("SERVER RUNNING ⚽", PORT);
 });
