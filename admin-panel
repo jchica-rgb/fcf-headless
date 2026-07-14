@@ -7,48 +7,62 @@
 <style>
 
 body {
-  margin:0;
-  background:#0a0a0a;
-  color:white;
-  font-family:Arial;
+  margin: 0;
+  font-family: Arial;
+  background: #0a0a0a;
+  color: white;
 }
 
 header {
-  background:#111;
-  padding:15px;
-  text-align:center;
-  font-weight:bold;
+  background: #111;
+  padding: 15px;
+  text-align: center;
+  font-weight: bold;
 }
 
 .container {
-  max-width:800px;
-  margin:auto;
-  padding:20px;
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
 }
 
 .card {
-  background:#111;
-  padding:15px;
-  margin-bottom:10px;
-  border-radius:10px;
+  background: #111;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #222;
 }
 
 input {
-  width:100%;
-  padding:10px;
-  margin:5px 0;
-  background:#1a1a1a;
-  border:1px solid #333;
-  color:white;
+  width: 100%;
+  padding: 10px;
+  margin: 6px 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: white;
 }
 
 button {
-  width:100%;
-  padding:10px;
-  background:#00ff88;
-  border:none;
-  font-weight:bold;
-  cursor:pointer;
+  width: 100%;
+  padding: 10px;
+  background: #00ff88;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #00cc6a;
+}
+
+#panel {
+  display: none;
+}
+
+#error {
+  color: red;
+  text-align: center;
 }
 
 </style>
@@ -56,21 +70,28 @@ button {
 
 <body>
 
-<header>⚽ ADMIN PANEL - PASO 2.1</header>
+<header>⚽ TERRITORI FUTCAT ADMIN</header>
 
 <div class="container">
 
-  <div class="card">
-    <h3>➕ Nuevo Partido</h3>
+  <div id="error"></div>
 
-    <input id="liga" placeholder="Liga">
-    <input id="jornada" placeholder="Jornada">
-    <input id="local" placeholder="Local">
-    <input id="visitante" placeholder="Visitante">
-    <input id="gl" type="number" placeholder="Goles local">
-    <input id="gv" type="number" placeholder="Goles visitante">
+  <!-- PANEL REAL -->
+  <div id="panel">
 
-    <button onclick="saveMatch()">Guardar partido</button>
+    <div class="card">
+      <h3>➕ Nuevo Partido</h3>
+
+      <input id="liga" placeholder="Liga (ej: 1a-catalana)">
+      <input id="jornada" placeholder="Jornada">
+      <input id="local" placeholder="Local">
+      <input id="visitante" placeholder="Visitante">
+      <input id="gl" type="number" placeholder="Goles local">
+      <input id="gv" type="number" placeholder="Goles visitante">
+
+      <button onclick="saveMatch()">Guardar partido</button>
+    </div>
+
   </div>
 
 </div>
@@ -80,17 +101,23 @@ button {
 const API = "https://fcf-headless.onrender.com";
 
 /* =========================
-   GUARDAR PARTIDO REAL
+   CHECK LOGIN
+========================= */
+
+const token = localStorage.getItem("token");
+
+if (!token) {
+  document.getElementById("error").innerText =
+    "❌ No has iniciado sesión";
+} else {
+  document.getElementById("panel").style.display = "block";
+}
+
+/* =========================
+   GUARDAR PARTIDO
 ========================= */
 
 async function saveMatch() {
-
-  const token = localStorage.getItem("token");
-
-  if (!token) {
-    alert("❌ No hay sesión activa");
-    return;
-  }
 
   const match = {
     liga: document.getElementById("liga").value,
@@ -115,21 +142,20 @@ async function saveMatch() {
     const data = await res.json();
 
     if (data.ok) {
-      alert("✅ Partido guardado correctamente");
+      alert("✅ Partido guardado");
 
-      // limpiar campos
       document.getElementById("local").value = "";
       document.getElementById("visitante").value = "";
       document.getElementById("gl").value = "";
       document.getElementById("gv").value = "";
 
     } else {
-      alert("❌ Error al guardar partido");
+      alert("❌ Error al guardar");
     }
 
   } catch (err) {
     console.error(err);
-    alert("❌ Error de conexión con el servidor");
+    alert("❌ Error de conexión");
   }
 }
 
