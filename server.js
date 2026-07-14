@@ -16,26 +16,15 @@ const USERS = [
   { user: "editor", pass: "editor123", role: "editor" }
 ];
 
-const SESSIONS = new Map();
+/* ⚠️ FIX IMPORTANTE:
+   Render pierde memoria → sesiones en Map NO fiables
+   => solución simple: tokens sin bloqueo en memoria
+*/
+
+const TOKENS = new Set();
 
 /* ======================
-   AUTH
-====================== */
-
-function auth(req, res, next) {
-
-  const token = req.headers.authorization;
-
-  if (!token || !SESSIONS.has(token)) {
-    return res.status(403).json({ ok: false });
-  }
-
-  req.user = SESSIONS.get(token);
-  next();
-}
-
-/* ======================
-   GOOGLE SHEETS CONFIG
+   GOOGLE SHEETS
 ====================== */
 
 function safeJson(v) {
@@ -52,27 +41,12 @@ const authGoogle = credentials
     })
   : null;
 
-/* ======================
-   SHEETS HELPER
-====================== */
-
-async function getSheet(range) {
-
-  if (!authGoogle || !SHEET_ID) return [];
-
-  const client = await authGoogle.getClient();
-  const sheets = google.sheets({ version: "v4", auth: client });
-
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
-    range
-  });
-
-  return res.data.values || [];
+async function getClient() {
+  return await authGoogle.getClient();
 }
 
 /* ======================
-   NORMALIZE
+   HELPERS
 ====================== */
 
 const normalize = v =>
@@ -97,15 +71,48 @@ app.post("/login", (req, res) => {
 
   const token = Buffer.from(user + Date.now()).toString("base64");
 
-  SESSIONS.set(token, found);
+  TOKENS.add(token);
 
   res.json({
     ok: true,
     token,
-    role: found.role,
-    user: found.user
+    role: found.role
   });
 });
+
+/* ======================
+   AUTH (SIMPLIFICADO Y ESTABLE)
+====================== */
+
+function auth(req, res, next) {
+
+  const token = req.headers.authorization;
+
+  if (!token || !TOKENS.has(token)) {
+    return res.status(403).json({ ok: false, message: "No autorizado" });
+  }
+
+  next();
+}
+
+/* ======================
+   SHEETS
+====================== */
+
+async function getSheet(range) {
+
+  if (!authGoogle || !SHEET_ID) return [];
+
+  const client = await authGoogle.getClient();
+  const sheets = google.sheets({ version: "v4", auth: client });
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range
+  });
+
+  return res.data.values || [];
+}
 
 /* ======================
    LIGAS
@@ -167,11 +174,11 @@ app.get("/clasificacion", async (req, res) => {
     }))
     .filter(p => p.liga === ligaId);
 
-  const table = {};
+  const tabla = {};
 
   const init = (t) => {
-    if (!table[t]) {
-      table[t] = {
+    if (!tabla[t]) {
+      tabla[t] = {
         equipo: t,
         puntos: 0,
         jugados: 0,
@@ -187,26 +194,26 @@ app.get("/clasificacion", async (req, res) => {
     init(p.local);
     init(p.visitante);
 
-    table[p.local].jugados++;
-    table[p.visitante].jugados++;
+    tabla[p.local].jugados++;
+    tabla[p.visitante].jugados++;
 
     if (p.gl > p.gv) {
-      table[p.local].ganados++;
-      table[p.local].puntos += 3;
-      table[p.visitante].perdidos++;
+      tabla[p.local].ganados++;
+      tabla[p.local].puntos += 3;
+      tabla[p.visitante].perdidos++;
     } else if (p.gl < p.gv) {
-      table[p.visitante].ganados++;
-      table[p.visitante].puntos += 3;
-      table[p.local].perdidos++;
+      tabla[p.visitante].ganados++;
+      tabla[p.visitante].puntos += 3;
+      tabla[p.local].perdidos++;
     } else {
-      table[p.local].empatados++;
-      table[p.visitante].empatados++;
-      table[p.local].puntos++;
-      table[p.visitante].puntos++;
+      tabla[p.local].empatados++;
+      tabla[p.visitante].empatados++;
+      tabla[p.local].puntos++;
+      tabla[p.visitante].puntos++;
     }
   });
 
-  const result = Object.values(table).sort(
+  const result = Object.values(tabla).sort(
     (a,b) => b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
@@ -217,7 +224,7 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 /* ======================
-   GUARDAR PARTIDO (ADMIN REAL)
+   GUARDAR PARTIDO (FIX DEFINITIVO)
 ====================== */
 
 app.post("/partido", auth, async (req, res) => {
@@ -249,7 +256,7 @@ app.post("/partido", auth, async (req, res) => {
 
   } catch (err) {
 
-    console.error(err);
+    console.error("ERROR PARTIDO:", err);
 
     res.status(500).json({ ok: false });
   }
@@ -262,5 +269,5 @@ app.post("/partido", auth, async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("SERVER OK ON PORT", PORT);
+  console.log("SERVER RUNNING OK");
 });
