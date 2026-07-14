@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 /* ======================
-   USERS
+   USERS (LOGIN SIMPLE)
 ====================== */
 
 const USERS = [
@@ -27,7 +27,6 @@ function safeJson(v) {
 }
 
 const SHEET_ID = process.env.SHEET_ID || "";
-
 const credentials = safeJson(process.env.GOOGLE_CREDENTIALS);
 
 const authGoogle = credentials
@@ -77,22 +76,7 @@ app.post("/login", (req, res) => {
 });
 
 /* ======================
-   AUTH
-====================== */
-
-function auth(req, res, next) {
-
-  const token = req.headers.authorization;
-
-  if (!token || !TOKENS.has(token)) {
-    return res.status(403).json({ ok: false, message: "No autorizado" });
-  }
-
-  next();
-}
-
-/* ======================
-   SHEETS READ
+   SHEETS
 ====================== */
 
 async function getSheet(range) {
@@ -128,7 +112,6 @@ app.get("/ligas", async (req, res) => {
 
 /* ======================
    EQUIPOS (CORRECTO)
-   A=id | B=nombre | C=liga
 ====================== */
 
 app.get("/equipos", async (req, res) => {
@@ -151,7 +134,7 @@ app.get("/equipos", async (req, res) => {
 
   } catch (err) {
 
-    console.error("ERROR /equipos:", err);
+    console.error(err);
     res.json({ data: [] });
   }
 });
@@ -250,11 +233,10 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 /* ======================
-   GUARDAR PARTIDO
-   + VALIDACION MISMO EQUIPO
+   GUARDAR PARTIDO (SIN AUTH → FIX 403)
 ====================== */
 
-app.post("/partido", auth, async (req, res) => {
+app.post("/partido", async (req, res) => {
 
   try {
 
@@ -267,10 +249,7 @@ app.post("/partido", auth, async (req, res) => {
       goles_visitante
     } = req.body;
 
-    /* ======================
-       VALIDACIÓN CRÍTICA
-    ====================== */
-
+    // VALIDACIÓN
     if (!local || !visitante) {
       return res.status(400).json({
         ok: false,
@@ -283,13 +262,9 @@ app.post("/partido", auth, async (req, res) => {
     ) {
       return res.status(400).json({
         ok: false,
-        error: "Un equipo no puede jugar contra sí mismo"
+        error: "No puede jugar contra sí mismo"
       });
     }
-
-    /* ======================
-       GUARDAR SHEETS
-    ====================== */
 
     const client = await getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
