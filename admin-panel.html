@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Admin Panel - Territori FUTCAT</title>
+<title>Admin FUTCAT V2</title>
 
 <style>
 
@@ -21,7 +21,7 @@ header {
 }
 
 .container {
-  max-width: 900px;
+  max-width: 700px;
   margin: auto;
   padding: 20px;
 }
@@ -34,18 +34,18 @@ header {
   border: 1px solid #222;
 }
 
-input {
+select, input {
   width: 100%;
   padding: 10px;
   margin: 6px 0;
   background: #1a1a1a;
-  border: 1px solid #333;
   color: white;
+  border: 1px solid #333;
 }
 
 button {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   background: #00ff88;
   border: none;
   font-weight: bold;
@@ -56,13 +56,13 @@ button:hover {
   background: #00cc6a;
 }
 
-#panel {
-  display: none;
+.row {
+  display: flex;
+  gap: 10px;
 }
 
-#error {
-  color: red;
-  text-align: center;
+.row select, .row input {
+  flex: 1;
 }
 
 </style>
@@ -70,28 +70,31 @@ button:hover {
 
 <body>
 
-<header>⚽ TERRITORI FUTCAT ADMIN</header>
+<header>⚽ ADMIN PANEL V2 - TERRITORI FUTCAT</header>
 
 <div class="container">
 
-  <div id="error"></div>
+  <!-- LIGA -->
+  <div class="card">
+    <h3>🏆 Liga activa</h3>
+    <select id="liga"></select>
+  </div>
 
-  <!-- PANEL REAL -->
-  <div id="panel">
+  <!-- PARTIDO -->
+  <div class="card">
+    <h3>➕ Nuevo partido</h3>
 
-    <div class="card">
-      <h3>➕ Nuevo Partido</h3>
+    <input id="jornada" placeholder="Jornada">
 
-      <input id="liga" placeholder="Liga (ej: 1a-catalana)">
-      <input id="jornada" placeholder="Jornada">
-      <input id="local" placeholder="Local">
-      <input id="visitante" placeholder="Visitante">
-      <input id="gl" type="number" placeholder="Goles local">
-      <input id="gv" type="number" placeholder="Goles visitante">
+    <select id="local"></select>
+    <select id="visitante"></select>
 
-      <button onclick="saveMatch()">Guardar partido</button>
+    <div class="row">
+      <input id="gl" type="number" placeholder="Local">
+      <input id="gv" type="number" placeholder="Visitante">
     </div>
 
+    <button onclick="saveMatch()">GUARDAR PARTIDO</button>
   </div>
 
 </div>
@@ -100,64 +103,117 @@ button:hover {
 
 const API = "https://fcf-headless.onrender.com";
 
-/* =========================
-   CHECK LOGIN
-========================= */
+let equiposCache = [];
 
-const token = localStorage.getItem("token");
+/* ======================
+   CARGAR LIGAS
+====================== */
 
-if (!token) {
-  document.getElementById("error").innerText =
-    "❌ No has iniciado sesión";
-} else {
-  document.getElementById("panel").style.display = "block";
+async function loadLigas() {
+
+  const res = await fetch(API + "/ligas");
+  const json = await res.json();
+
+  const liga = document.getElementById("liga");
+
+  json.data.forEach(l => {
+    const opt = document.createElement("option");
+    opt.value = l.id;
+    opt.textContent = l.nombre;
+    liga.appendChild(opt);
+  });
+
+  liga.onchange = loadEquipos;
+
+  loadEquipos();
 }
 
-/* =========================
+/* ======================
+   CARGAR EQUIPOS
+   (desde clasificación)
+====================== */
+
+async function loadEquipos() {
+
+  const liga = document.getElementById("liga").value;
+
+  const res = await fetch(API + "/clasificacion?liga=" + liga);
+  const json = await res.json();
+
+  equiposCache = json.data.map(e => e.equipo);
+
+  const local = document.getElementById("local");
+  const visitante = document.getElementById("visitante");
+
+  local.innerHTML = "";
+  visitante.innerHTML = "";
+
+  equiposCache.forEach(e => {
+
+    const opt1 = document.createElement("option");
+    opt1.value = e;
+    opt1.textContent = e;
+
+    const opt2 = opt1.cloneNode(true);
+
+    local.appendChild(opt1);
+    visitante.appendChild(opt2);
+  });
+}
+
+/* ======================
    GUARDAR PARTIDO
-========================= */
+====================== */
 
 async function saveMatch() {
 
-  const match = {
-    liga: document.getElementById("liga").value,
-    jornada: document.getElementById("jornada").value,
-    local: document.getElementById("local").value,
-    visitante: document.getElementById("visitante").value,
-    goles_local: Number(document.getElementById("gl").value),
-    goles_visitante: Number(document.getElementById("gv").value)
-  };
+  const liga = document.getElementById("liga").value;
+  const jornada = document.getElementById("jornada").value;
+  const local = document.getElementById("local").value;
+  const visitante = document.getElementById("visitante").value;
+  const gl = Number(document.getElementById("gl").value);
+  const gv = Number(document.getElementById("gv").value);
 
-  try {
+  // VALIDACIÓN
+  if (!liga || !jornada || !local || !visitante) {
+    alert("Faltan datos");
+    return;
+  }
 
-    const res = await fetch(API + "/partido", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": token
-      },
-      body: JSON.stringify(match)
-    });
+  if (gl < 0 || gv < 0) {
+    alert("Goles inválidos");
+    return;
+  }
 
-    const data = await res.json();
+  const res = await fetch(API + "/partido", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": localStorage.getItem("token")
+    },
+    body: JSON.stringify({
+      liga,
+      jornada,
+      local,
+      visitante,
+      goles_local: gl,
+      goles_visitante: gv
+    })
+  });
 
-    if (data.ok) {
-      alert("✅ Partido guardado");
+  const data = await res.json();
 
-      document.getElementById("local").value = "";
-      document.getElementById("visitante").value = "";
-      document.getElementById("gl").value = "";
-      document.getElementById("gv").value = "";
-
-    } else {
-      alert("❌ Error al guardar");
-    }
-
-  } catch (err) {
-    console.error(err);
-    alert("❌ Error de conexión");
+  if (data.ok) {
+    alert("✔ Partido guardado");
+    document.getElementById("jornada").value = "";
+    document.getElementById("gl").value = "";
+    document.getElementById("gv").value = "";
+  } else {
+    alert("Error al guardar");
   }
 }
+
+loadLigas();
 
 </script>
 
