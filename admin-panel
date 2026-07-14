@@ -2,9 +2,10 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Admin Panel</title>
+<title>Admin Panel - Territori FUTCAT</title>
 
 <style>
+
 body {
   margin:0;
   background:#0a0a0a;
@@ -16,6 +17,7 @@ header {
   background:#111;
   padding:15px;
   text-align:center;
+  font-weight:bold;
 }
 
 .container {
@@ -48,12 +50,13 @@ button {
   font-weight:bold;
   cursor:pointer;
 }
+
 </style>
 </head>
 
 <body>
 
-<header>⚽ ADMIN PANEL</header>
+<header>⚽ ADMIN PANEL - PASO 2.1</header>
 
 <div class="container">
 
@@ -67,7 +70,7 @@ button {
     <input id="gl" type="number" placeholder="Goles local">
     <input id="gv" type="number" placeholder="Goles visitante">
 
-    <button onclick="saveMatch()">Guardar</button>
+    <button onclick="saveMatch()">Guardar partido</button>
   </div>
 
 </div>
@@ -76,34 +79,57 @@ button {
 
 const API = "https://fcf-headless.onrender.com";
 
+/* =========================
+   GUARDAR PARTIDO REAL
+========================= */
+
 async function saveMatch() {
 
   const token = localStorage.getItem("token");
 
-  const body = {
+  if (!token) {
+    alert("❌ No hay sesión activa");
+    return;
+  }
+
+  const match = {
     liga: document.getElementById("liga").value,
     jornada: document.getElementById("jornada").value,
     local: document.getElementById("local").value,
     visitante: document.getElementById("visitante").value,
-    goles_local: document.getElementById("gl").value,
-    goles_visitante: document.getElementById("gv").value
+    goles_local: Number(document.getElementById("gl").value),
+    goles_visitante: Number(document.getElementById("gv").value)
   };
 
-  const res = await fetch(API + "/partido", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": token
-    },
-    body: JSON.stringify(body)
-  });
+  try {
 
-  const data = await res.json();
+    const res = await fetch(API + "/partido", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token
+      },
+      body: JSON.stringify(match)
+    });
 
-  if (data.ok) {
-    alert("Partido guardado");
-  } else {
-    alert("Error");
+    const data = await res.json();
+
+    if (data.ok) {
+      alert("✅ Partido guardado correctamente");
+
+      // limpiar campos
+      document.getElementById("local").value = "";
+      document.getElementById("visitante").value = "";
+      document.getElementById("gl").value = "";
+      document.getElementById("gv").value = "";
+
+    } else {
+      alert("❌ Error al guardar partido");
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("❌ Error de conexión con el servidor");
   }
 }
 
