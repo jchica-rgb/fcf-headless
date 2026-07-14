@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Admin Panel</title>
+
+<style>
+
+body {
+  margin: 0;
+  font-family: Arial;
+  background: #0a0a0a;
+  color: white;
+}
+
+header {
+  background: #111;
+  padding: 15px;
+  text-align: center;
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
+}
+
+.card {
+  background: #111;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid #222;
+}
+
+input, select {
+  width: 100%;
+  padding: 10px;
+  margin: 5px 0;
+  background: #1a1a1a;
+  color: white;
+  border: 1px solid #333;
+}
+
+button {
+  padding: 10px;
+  background: #00ff88;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.hidden {
+  display: none;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>⚽ ADMIN PANEL - Territori FUTCAT</header>
+
+<div class="container">
+
+  <div id="accessDenied" class="card hidden">
+    ❌ No autorizado
+  </div>
+
+  <div id="panel">
+
+    <div class="card">
+      <h3>👤 Usuario</h3>
+      <div id="userInfo"></div>
+    </div>
+
+    <div class="card">
+      <h3>➕ Añadir Partido</h3>
+
+      <input id="local" placeholder="Equipo local">
+      <input id="visitante" placeholder="Equipo visitante">
+      <input id="gl" type="number" placeholder="Goles local">
+      <input id="gv" type="number" placeholder="Goles visitante">
+
+      <button onclick="saveMatch()">Guardar</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+/* recuperar usuario */
+const user = JSON.parse(localStorage.getItem("tf_user"));
+
+if (!user) {
+  document.getElementById("panel").style.display = "none";
+  document.getElementById("accessDenied").classList.remove("hidden");
+} else {
+  document.getElementById("userInfo").innerText =
+    user.user + " (" + user.role + ")";
+}
+
+/* guardar partido (SIMULADO PASO 1) */
+function saveMatch() {
+
+  const match = {
+    local: document.getElementById("local").value,
+    visitante: document.getElementById("visitante").value,
+    goles_local: document.getElementById("gl").value,
+    goles_visitante: document.getElementById("gv").value
+  };
+
+  console.log("PARTIDO:", match);
+
+  alert("Guardado (simulado en paso 1)");
+
+}
+
+</script>
+
+</body>
+</html>
