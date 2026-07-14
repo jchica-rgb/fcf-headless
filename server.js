@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 /* ======================
-   USERS LOGIN
+   USERS
 ====================== */
 
 const USERS = [
@@ -19,7 +19,7 @@ const USERS = [
 const TOKENS = new Set();
 
 /* ======================
-   GOOGLE SHEETS CONFIG
+   SHEETS CONFIG
 ====================== */
 
 function safeJson(v) {
@@ -27,6 +27,7 @@ function safeJson(v) {
 }
 
 const SHEET_ID = process.env.SHEET_ID || "";
+
 const credentials = safeJson(process.env.GOOGLE_CREDENTIALS);
 
 const authGoogle = credentials
@@ -126,7 +127,10 @@ app.get("/ligas", async (req, res) => {
 });
 
 /* ======================
-   EQUIPOS (DESDE SHEET)
+   EQUIPOS (FIX REAL SEGÚN TU SHEET)
+   A = id
+   B = nombre
+   C = liga
 ====================== */
 
 app.get("/equipos", async (req, res) => {
@@ -135,10 +139,14 @@ app.get("/equipos", async (req, res) => {
 
     const liga = normalize(req.query.liga);
 
-    const rows = await getSheet("EQUIPOS!A2:B");
+    const rows = await getSheet("EQUIPOS!A2:C");
 
     const data = rows
-      .filter(r => r && r.length >= 2 && normalize(r[0]) === liga)
+      .filter(r =>
+        r &&
+        r.length >= 3 &&
+        normalize(r[2]) === liga
+      )
       .map(r => r[1]);
 
     res.json({ data });
@@ -251,7 +259,14 @@ app.post("/partido", auth, async (req, res) => {
 
   try {
 
-    const { liga, jornada, local, visitante, goles_local, goles_visitante } = req.body;
+    const {
+      liga,
+      jornada,
+      local,
+      visitante,
+      goles_local,
+      goles_visitante
+    } = req.body;
 
     const client = await getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
@@ -282,7 +297,7 @@ app.post("/partido", auth, async (req, res) => {
 });
 
 /* ======================
-   HEALTH CHECK
+   HEALTH
 ====================== */
 
 app.get("/", (req, res) => {
@@ -290,11 +305,11 @@ app.get("/", (req, res) => {
 });
 
 /* ======================
-   START SERVER
+   START
 ====================== */
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("SERVER RUNNING ON PORT", PORT);
+  console.log("SERVER RUNNING", PORT);
 });
