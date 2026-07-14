@@ -2,67 +2,67 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Admin FUTCAT V2</title>
+<title>Admin FUTCAT V3</title>
 
 <style>
 
 body {
-  margin: 0;
-  font-family: Arial;
-  background: #0a0a0a;
-  color: white;
+  margin:0;
+  font-family:Arial;
+  background:#0a0a0a;
+  color:white;
 }
 
 header {
-  background: #111;
-  padding: 15px;
-  text-align: center;
-  font-weight: bold;
+  background:#111;
+  padding:15px;
+  text-align:center;
+  font-weight:bold;
 }
 
 .container {
-  max-width: 700px;
-  margin: auto;
-  padding: 20px;
+  max-width:700px;
+  margin:auto;
+  padding:20px;
 }
 
 .card {
-  background: #111;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 12px;
-  border: 1px solid #222;
+  background:#111;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:12px;
+  border:1px solid #222;
 }
 
 select, input {
-  width: 100%;
-  padding: 10px;
-  margin: 6px 0;
-  background: #1a1a1a;
-  color: white;
-  border: 1px solid #333;
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  background:#1a1a1a;
+  border:1px solid #333;
+  color:white;
 }
 
 button {
-  width: 100%;
-  padding: 12px;
-  background: #00ff88;
-  border: none;
-  font-weight: bold;
-  cursor: pointer;
+  width:100%;
+  padding:12px;
+  background:#00ff88;
+  border:none;
+  font-weight:bold;
+  cursor:pointer;
 }
 
 button:hover {
-  background: #00cc6a;
+  background:#00cc6a;
 }
 
 .row {
-  display: flex;
-  gap: 10px;
+  display:flex;
+  gap:10px;
 }
 
-.row select, .row input {
-  flex: 1;
+.row input {
+  flex:1;
 }
 
 </style>
@@ -70,18 +70,19 @@ button:hover {
 
 <body>
 
-<header>⚽ ADMIN PANEL V2 - TERRITORI FUTCAT</header>
+<header>⚽ ADMIN PANEL V3 - EQUIPOS DESDE SHEETS</header>
 
 <div class="container">
 
   <!-- LIGA -->
   <div class="card">
-    <h3>🏆 Liga activa</h3>
+    <h3>🏆 Liga</h3>
     <select id="liga"></select>
   </div>
 
   <!-- PARTIDO -->
   <div class="card">
+
     <h3>➕ Nuevo partido</h3>
 
     <input id="jornada" placeholder="Jornada">
@@ -90,11 +91,12 @@ button:hover {
     <select id="visitante"></select>
 
     <div class="row">
-      <input id="gl" type="number" placeholder="Local">
-      <input id="gv" type="number" placeholder="Visitante">
+      <input id="gl" type="number" placeholder="Goles local">
+      <input id="gv" type="number" placeholder="Goles visitante">
     </div>
 
     <button onclick="saveMatch()">GUARDAR PARTIDO</button>
+
   </div>
 
 </div>
@@ -103,10 +105,10 @@ button:hover {
 
 const API = "https://fcf-headless.onrender.com";
 
-let equiposCache = [];
+let equipos = [];
 
 /* ======================
-   CARGAR LIGAS
+   LIGAS
 ====================== */
 
 async function loadLigas() {
@@ -114,33 +116,32 @@ async function loadLigas() {
   const res = await fetch(API + "/ligas");
   const json = await res.json();
 
-  const liga = document.getElementById("liga");
+  const select = document.getElementById("liga");
 
   json.data.forEach(l => {
     const opt = document.createElement("option");
     opt.value = l.id;
     opt.textContent = l.nombre;
-    liga.appendChild(opt);
+    select.appendChild(opt);
   });
 
-  liga.onchange = loadEquipos;
+  select.onchange = loadEquipos;
 
   loadEquipos();
 }
 
 /* ======================
-   CARGAR EQUIPOS
-   (desde clasificación)
+   EQUIPOS DESDE SHEET
 ====================== */
 
 async function loadEquipos() {
 
   const liga = document.getElementById("liga").value;
 
-  const res = await fetch(API + "/clasificacion?liga=" + liga);
+  const res = await fetch(API + "/equipos?liga=" + liga);
   const json = await res.json();
 
-  equiposCache = json.data.map(e => e.equipo);
+  equipos = json.data;
 
   const local = document.getElementById("local");
   const visitante = document.getElementById("visitante");
@@ -148,7 +149,7 @@ async function loadEquipos() {
   local.innerHTML = "";
   visitante.innerHTML = "";
 
-  equiposCache.forEach(e => {
+  equipos.forEach(e => {
 
     const opt1 = document.createElement("option");
     opt1.value = e;
@@ -167,49 +168,36 @@ async function loadEquipos() {
 
 async function saveMatch() {
 
-  const liga = document.getElementById("liga").value;
-  const jornada = document.getElementById("jornada").value;
-  const local = document.getElementById("local").value;
-  const visitante = document.getElementById("visitante").value;
-  const gl = Number(document.getElementById("gl").value);
-  const gv = Number(document.getElementById("gv").value);
+  const token = localStorage.getItem("token");
 
-  // VALIDACIÓN
-  if (!liga || !jornada || !local || !visitante) {
-    alert("Faltan datos");
-    return;
-  }
-
-  if (gl < 0 || gv < 0) {
-    alert("Goles inválidos");
-    return;
-  }
+  const match = {
+    liga: document.getElementById("liga").value,
+    jornada: document.getElementById("jornada").value,
+    local: document.getElementById("local").value,
+    visitante: document.getElementById("visitante").value,
+    goles_local: Number(document.getElementById("gl").value),
+    goles_visitante: Number(document.getElementById("gv").value)
+  };
 
   const res = await fetch(API + "/partido", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": localStorage.getItem("token")
+      "Authorization": token
     },
-    body: JSON.stringify({
-      liga,
-      jornada,
-      local,
-      visitante,
-      goles_local: gl,
-      goles_visitante: gv
-    })
+    body: JSON.stringify(match)
   });
 
   const data = await res.json();
 
   if (data.ok) {
     alert("✔ Partido guardado");
+
     document.getElementById("jornada").value = "";
     document.getElementById("gl").value = "";
     document.getElementById("gv").value = "";
   } else {
-    alert("Error al guardar");
+    alert("Error");
   }
 }
 
