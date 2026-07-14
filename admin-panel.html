@@ -2,67 +2,77 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Admin FUTCAT V3</title>
+<title>FUTCAT MATCH CONTROL</title>
 
 <style>
 
 body {
-  margin:0;
-  font-family:Arial;
-  background:#0a0a0a;
-  color:white;
+  margin: 0;
+  font-family: Arial;
+  background: #0a0a0a;
+  color: white;
 }
 
+/* HEADER */
 header {
-  background:#111;
-  padding:15px;
-  text-align:center;
-  font-weight:bold;
+  background: #111;
+  padding: 15px;
+  text-align: center;
+  font-weight: bold;
+  letter-spacing: 1px;
 }
 
+/* CONTAINER */
 .container {
-  max-width:700px;
-  margin:auto;
-  padding:20px;
+  max-width: 700px;
+  margin: auto;
+  padding: 20px;
 }
 
+/* CARD */
 .card {
-  background:#111;
-  padding:15px;
-  border-radius:10px;
-  margin-bottom:12px;
-  border:1px solid #222;
+  background: #111;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #222;
 }
 
-select, input {
-  width:100%;
-  padding:10px;
-  margin:6px 0;
-  background:#1a1a1a;
-  border:1px solid #333;
-  color:white;
+/* INPUTS Y SELECTS (FIX ESTÉTICO IMPORTANTE) */
+input, select {
+  width: 100%;
+  padding: 10px;
+  margin: 6px 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: white;
+  box-sizing: border-box;
+  border-radius: 6px;
 }
 
+/* BOTÓN */
 button {
-  width:100%;
-  padding:12px;
-  background:#00ff88;
-  border:none;
-  font-weight:bold;
-  cursor:pointer;
+  width: 100%;
+  padding: 12px;
+  background: #00ff88;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 6px;
 }
 
 button:hover {
-  background:#00cc6a;
+  background: #00cc6a;
 }
 
+/* ROW */
 .row {
-  display:flex;
-  gap:10px;
+  display: flex;
+  gap: 10px;
 }
 
 .row input {
-  flex:1;
+  flex: 1;
 }
 
 </style>
@@ -70,7 +80,8 @@ button:hover {
 
 <body>
 
-<header>⚽ ADMIN PANEL V3 - EQUIPOS DESDE SHEETS</header>
+<!-- HEADER NUEVO -->
+<header>⚽ FUTCAT MATCH CONTROL</header>
 
 <div class="container">
 
@@ -116,22 +127,24 @@ async function loadLigas() {
   const res = await fetch(API + "/ligas");
   const json = await res.json();
 
-  const select = document.getElementById("liga");
+  const liga = document.getElementById("liga");
+
+  liga.innerHTML = "";
 
   json.data.forEach(l => {
     const opt = document.createElement("option");
     opt.value = l.id;
     opt.textContent = l.nombre;
-    select.appendChild(opt);
+    liga.appendChild(opt);
   });
 
-  select.onchange = loadEquipos;
+  liga.onchange = loadEquipos;
 
   loadEquipos();
 }
 
 /* ======================
-   EQUIPOS DESDE SHEET
+   EQUIPOS DESDE SHEETS
 ====================== */
 
 async function loadEquipos() {
@@ -168,8 +181,6 @@ async function loadEquipos() {
 
 async function saveMatch() {
 
-  const token = localStorage.getItem("token");
-
   const match = {
     liga: document.getElementById("liga").value,
     jornada: document.getElementById("jornada").value,
@@ -179,11 +190,15 @@ async function saveMatch() {
     goles_visitante: Number(document.getElementById("gv").value)
   };
 
+  if (!match.jornada) {
+    alert("Introduce jornada");
+    return;
+  }
+
   const res = await fetch(API + "/partido", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      "Authorization": token
+      "Content-Type": "application/json"
     },
     body: JSON.stringify(match)
   });
@@ -197,7 +212,7 @@ async function saveMatch() {
     document.getElementById("gl").value = "";
     document.getElementById("gv").value = "";
   } else {
-    alert("Error");
+    alert(data.error || "Error al guardar");
   }
 }
 
