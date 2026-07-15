@@ -22,13 +22,14 @@ header {
   border-bottom:1px solid #222;
 }
 
-/* LAYOUT */
+/* CONTAINER */
 .container {
   max-width:1200px;
   margin:auto;
   padding:15px;
 }
 
+/* LAYOUT */
 .layout {
   display:flex;
   gap:20px;
@@ -56,6 +57,7 @@ input, select {
   color:white;
   border-radius:6px;
   box-sizing:border-box;
+  font-size:13px;
 }
 
 /* BUTTON */
@@ -67,6 +69,7 @@ button {
   font-weight:bold;
   cursor:pointer;
   border-radius:6px;
+  font-size:13px;
 }
 
 button:hover {
@@ -82,6 +85,7 @@ button:hover {
   display:flex;
   justify-content:space-between;
   align-items:center;
+  font-size:13px;
 }
 
 .small-btn {
@@ -101,7 +105,7 @@ button:hover {
 
   <div class="layout">
 
-    <!-- LEFT -->
+    <!-- ================= LEFT ================= -->
     <div class="left">
 
       <div class="card">
@@ -125,8 +129,16 @@ button:hover {
 
     </div>
 
-    <!-- RIGHT -->
+    <!-- ================= RIGHT ================= -->
     <div class="right">
+
+      <!-- 🔥 FILTRO JORNADA (RECUPERADO Y CORRECTO) -->
+      <div class="card">
+        <h3>🎯 Filtrar jornada</h3>
+        <select id="filterJornada" onchange="renderFiltered()">
+          <option value="all">Todas</option>
+        </select>
+      </div>
 
       <div class="card">
         <h3>📋 Partidos</h3>
@@ -147,9 +159,7 @@ let partidos = [];
 let equipos = [];
 let editRow = null;
 
-/* ======================
-   LIGAS
-====================== */
+/* ================= LIGAS ================= */
 
 async function loadLigas() {
 
@@ -175,9 +185,7 @@ async function loadLigas() {
   loadPartidos();
 }
 
-/* ======================
-   EQUIPOS
-====================== */
+/* ================= EQUIPOS ================= */
 
 async function loadEquipos() {
 
@@ -207,9 +215,7 @@ async function loadEquipos() {
   });
 }
 
-/* ======================
-   PARTIDOS
-====================== */
+/* ================= PARTIDOS ================= */
 
 async function loadPartidos() {
 
@@ -222,10 +228,37 @@ async function loadPartidos() {
 
   partidos = json.data;
 
+  /* 🔥 generar jornadas únicas */
+  const jornadas = [...new Set(partidos.map(p => p.jornada))];
+
+  const sel = document.getElementById("filterJornada");
+
+  sel.innerHTML = `<option value="all">Todas</option>`;
+
+  jornadas.forEach(j => {
+    const opt = document.createElement("option");
+    opt.value = j;
+    opt.textContent = "Jornada " + j;
+    sel.appendChild(opt);
+  });
+
+  renderFiltered();
+}
+
+/* ================= FILTRO ================= */
+
+function renderFiltered() {
+
+  const jornada = document.getElementById("filterJornada").value;
+
   const div = document.getElementById("listaPartidos");
   div.innerHTML = "";
 
-  partidos.forEach(p => {
+  const data = (jornada === "all")
+    ? partidos
+    : partidos.filter(p => String(p.jornada) === String(jornada));
+
+  data.forEach(p => {
 
     const el = document.createElement("div");
     el.className = "match";
@@ -242,9 +275,7 @@ async function loadPartidos() {
   });
 }
 
-/* ======================
-   EDIT
-====================== */
+/* ================= EDIT ================= */
 
 function edit(id) {
 
@@ -259,9 +290,7 @@ function edit(id) {
   document.getElementById("gv").value = p.goles_visitante;
 }
 
-/* ======================
-   SAVE + DUPLICADOS FIX
-====================== */
+/* ================= SAVE ================= */
 
 async function saveMatch() {
 
