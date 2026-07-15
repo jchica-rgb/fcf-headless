@@ -84,11 +84,11 @@ app.get("/equipos", async (req, res) => {
 
   const rows = await getSheet("EQUIPOS!A2:C");
 
-  const data = rows
-    .filter(r => normalize(r[2]) === liga)
-    .map(r => r[1]);
-
-  res.json({ data });
+  res.json({
+    data: rows
+      .filter(r => normalize(r[2]) === liga)
+      .map(r => r[1])
+  });
 });
 
 /* ======================
@@ -175,8 +175,10 @@ app.get("/clasificacion", async (req, res) => {
     }
   });
 
-  const result = Object.values(tabla).sort(
-    (a, b) => b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
+  const result = Object.values(tabla);
+
+  result.sort((a, b) =>
+    b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
   res.json({
@@ -186,29 +188,104 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 /* ======================
-   CREAR PARTIDO (CON DUPLICADOS BLOQUEADOS)
+   📊 ESTADISTICAS (NUEVO)
+====================== */
+
+app.get("/estadisticas", async (req, res) => {
+
+  const liga = normalize(req.query.liga);
+
+  const rows = await getSheet("PARTIDOS!A2:F");
+
+  const partidos = rows
+    .map(r => ({
+      liga: normalize(r[0]),
+      local: r[2],
+      visitante: r[3],
+      gl: Number(r[4] || 0),
+      gv: Number(r[5] || 0)
+    }))
+    .filter(p => p.liga === liga);
+
+  const stats = {};
+
+  const init = (team) => {
+    if (!stats[team]) {
+      stats[team] = {
+        equipo: team,
+        jugados: 0,
+        ganados: 0,
+        empatados: 0,
+        perdidos: 0,
+        goles_favor: 0,
+        goles_contra: 0,
+        diferencia: 0,
+        puntos: 0
+      };
+    }
+  };
+
+  partidos.forEach(p => {
+
+    init(p.local);
+    init(p.visitante);
+
+    stats[p.local].jugados++;
+    stats[p.visitante].jugados++;
+
+    stats[p.local].goles_favor += p.gl;
+    stats[p.local].goles_contra += p.gv;
+
+    stats[p.visitante].goles_favor += p.gv;
+    stats[p.visitante].goles_contra += p.gl;
+
+    if (p.gl > p.gv) {
+
+      stats[p.local].ganados++;
+      stats[p.local].puntos += 3;
+
+      stats[p.visitante].perdidos++;
+
+    } else if (p.gl < p.gv) {
+
+      stats[p.visitante].ganados++;
+      stats[p.visitante].puntos += 3;
+
+      stats[p.local].perdidos++;
+
+    } else {
+
+      stats[p.local].empatados++;
+      stats[p.visitante].empatados++;
+
+      stats[p.local].puntos += 1;
+      stats[p.visitante].puntos += 1;
+    }
+  });
+
+  Object.values(stats).forEach(t => {
+    t.diferencia = t.goles_favor - t.goles_contra;
+  });
+
+  const result = Object.values(stats).sort(
+    (a, b) =>
+      b.puntos - a.puntos ||
+      b.diferencia - a.diferencia ||
+      b.goles_favor - a.goles_favor
+  );
+
+  res.json({ data: result });
+});
+
+/* ======================
+   CREAR PARTIDO (DUPLICADOS)
 ====================== */
 
 app.post("/partido", async (req, res) => {
 
   try {
 
-    const {
-      liga,
-      jornada,
-      local,
-      visitante,
-      goles_local,
-      goles_visitante
-    } = req.body;
-
-    if (!liga || !jornada || !local || !visitante) {
-      return res.status(400).json({ ok: false, error: "Faltan datos" });
-    }
-
-    if (local === visitante) {
-      return res.status(400).json({ ok: false, error: "No puede jugar contra sí mismo" });
-    }
+    const { liga, jornada, local, visitante, goles_local, goles_visitante } = req.body;
 
     const rows = await getSheet("PARTIDOS!A2:F");
 
@@ -224,7 +301,7 @@ app.post("/partido", async (req, res) => {
     if (exists) {
       return res.status(409).json({
         ok: false,
-        error: "Este partido ya existe en esta jornada"
+        error: "Partido duplicado en esta jornada"
       });
     }
 
@@ -236,22 +313,15 @@ app.post("/partido", async (req, res) => {
       range: "PARTIDOS!A:F",
       valueInputOption: "RAW",
       requestBody: {
-        values: [[
-          liga,
-          jornada,
-          local,
-          visitante,
-          goles_local,
-          goles_visitante
-        ]]
+        values: [[liga, jornada, local, visitante, goles_local, goles_visitante]]
       }
     });
 
     res.json({ ok: true });
 
   } catch (err) {
-    console.error("ERROR CREATE:", err);
-    res.status(500).json({ ok: false, error: "Error servidor" });
+    console.error(err);
+    res.status(500).json({ ok: false });
   }
 });
 
@@ -263,19 +333,7 @@ app.post("/partido/update", async (req, res) => {
 
   try {
 
-    const {
-      row,
-      liga,
-      jornada,
-      local,
-      visitante,
-      goles_local,
-      goles_visitante
-    } = req.body;
-
-    if (!row) {
-      return res.status(400).json({ ok: false, error: "Falta row" });
-    }
+    const { row, liga, jornada, local, visitante, goles_local, goles_visitante } = req.body;
 
     const client = await getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
@@ -285,31 +343,24 @@ app.post("/partido/update", async (req, res) => {
       range: `PARTIDOS!A${row}:F${row}`,
       valueInputOption: "RAW",
       requestBody: {
-        values: [[
-          liga,
-          jornada,
-          local,
-          visitante,
-          goles_local,
-          goles_visitante
-        ]]
+        values: [[liga, jornada, local, visitante, goles_local, goles_visitante]]
       }
     });
 
     res.json({ ok: true });
 
   } catch (err) {
-    console.error("ERROR UPDATE:", err);
-    res.status(500).json({ ok: false, error: "Error update" });
+    console.error(err);
+    res.status(500).json({ ok: false });
   }
 });
 
 /* ======================
-   SERVER START
+   SERVER
 ====================== */
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("⚽ FUTCAT SERVER FINAL RUNNING ON", PORT);
+  console.log("⚽ FUTCAT SERVER FINAL RUNNING", PORT);
 });
