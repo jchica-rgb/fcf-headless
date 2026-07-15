@@ -7,7 +7,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* ================= CONFIG ================= */
+/* ======================
+   CONFIG
+====================== */
 
 function safeJson(v){
   try { return JSON.parse(v); } catch { return null; }
@@ -19,7 +21,7 @@ const credentials = safeJson(process.env.GOOGLE_CREDENTIALS);
 const authGoogle = credentials
   ? new google.auth.GoogleAuth({
       credentials,
-      scopes:["https://www.googleapis.com/auth/spreadsheets"]
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"]
     })
   : null;
 
@@ -43,7 +45,9 @@ async function getSheet(range){
 const normalize = v =>
   String(v||"").trim().toLowerCase();
 
-/* ================= LIGAS ================= */
+/* ======================
+   LIGAS
+====================== */
 
 app.get("/ligas", async (req,res)=>{
 
@@ -57,7 +61,9 @@ app.get("/ligas", async (req,res)=>{
   });
 });
 
-/* ================= EQUIPOS ================= */
+/* ======================
+   EQUIPOS
+====================== */
 
 app.get("/equipos", async (req,res)=>{
 
@@ -72,7 +78,9 @@ app.get("/equipos", async (req,res)=>{
   });
 });
 
-/* ================= TEMPORADAS ================= */
+/* ======================
+   TEMPORADAS
+====================== */
 
 app.get("/temporadas", async (req,res)=>{
 
@@ -85,7 +93,9 @@ app.get("/temporadas", async (req,res)=>{
   res.json({ data: seasons });
 });
 
-/* ================= TEMPORADA ACTIVA ================= */
+/* ======================
+   TEMPORADA ACTIVA
+====================== */
 
 app.get("/temporada-activa", async (req,res)=>{
 
@@ -99,10 +109,14 @@ app.get("/temporada-activa", async (req,res)=>{
 
   seasons.sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
 
-  res.json({ data: seasons[seasons.length-1] });
+  res.json({
+    data: seasons[seasons.length-1]
+  });
 });
 
-/* ================= PARTIDOS ================= */
+/* ======================
+   PARTIDOS
+====================== */
 
 app.get("/partidos", async (req,res)=>{
 
@@ -129,7 +143,9 @@ app.get("/partidos", async (req,res)=>{
   res.json({ data });
 });
 
-/* ================= CREAR ================= */
+/* ======================
+   CREAR PARTIDO
+====================== */
 
 app.post("/partido", async (req,res)=>{
 
@@ -189,10 +205,15 @@ app.post("/partido", async (req,res)=>{
     }
   });
 
-  res.json({ ok:true, message:"Partido creado" });
+  res.json({
+    ok:true,
+    message:"Partido creado correctamente"
+  });
 });
 
-/* ================= UPDATE + BLOQUEO ================= */
+/* ======================
+   UPDATE + BLOQUEO TEMPORADA
+====================== */
 
 app.post("/partido/update", async (req,res)=>{
 
@@ -214,21 +235,23 @@ app.post("/partido/update", async (req,res)=>{
     });
   }
 
-  const active = await getSheet("PARTIDOS!B2:B");
+  const activeRows = await getSheet("PARTIDOS!B2:B");
 
-  const seasons = [...new Set(active.map(r=>r[0]).filter(Boolean))];
-  seasons.sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
+  const seasons = [...new Set(activeRows.map(r=>r[0]).filter(Boolean))];
 
-  const activeSeason = seasons[seasons.length-1];
+  if(seasons.length>0){
+    seasons.sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
+    const active = seasons[seasons.length-1];
 
-  const rows = await getSheet("PARTIDOS!A2:G");
-  const actual = rows[row-2];
+    const all = await getSheet("PARTIDOS!A2:G");
+    const current = all[row-2];
 
-  if(actual && actual[1] !== activeSeason){
-    return res.status(403).json({
-      ok:false,
-      error:"No se puede editar temporada anterior"
-    });
+    if(current && current[1] !== active){
+      return res.status(403).json({
+        ok:false,
+        error:"No se pueden editar partidos de temporadas anteriores"
+      });
+    }
   }
 
   const client = await getClient();
@@ -251,10 +274,15 @@ app.post("/partido/update", async (req,res)=>{
     }
   });
 
-  res.json({ ok:true, message:"Actualizado" });
+  res.json({
+    ok:true,
+    message:"Partido actualizado correctamente"
+  });
 });
 
-/* ================= CLASIFICACION ================= */
+/* ======================
+   CLASIFICACION
+====================== */
 
 app.get("/clasificacion", async (req,res)=>{
 
@@ -281,7 +309,14 @@ app.get("/clasificacion", async (req,res)=>{
 
   const init=t=>{
     if(!tabla[t]){
-      tabla[t]={equipo:t,puntos:0,j:0,g:0,e:0,p:0};
+      tabla[t]={
+        equipo:t,
+        puntos:0,
+        jugados:0,
+        ganados:0,
+        empatados:0,
+        perdidos:0
+      };
     }
   };
 
@@ -290,20 +325,20 @@ app.get("/clasificacion", async (req,res)=>{
     init(p.local);
     init(p.visitante);
 
-    tabla[p.local].j++;
-    tabla[p.visitante].j++;
+    tabla[p.local].jugados++;
+    tabla[p.visitante].jugados++;
 
     if(p.gl>p.gv){
-      tabla[p.local].g++;
+      tabla[p.local].ganados++;
       tabla[p.local].puntos+=3;
-      tabla[p.visitante].p++;
-    }else if(p.gl<p.gv){
-      tabla[p.visitante].g++;
+      tabla[p.visitante].perdidos++;
+    } else if(p.gl<p.gv){
+      tabla[p.visitante].ganados++;
       tabla[p.visitante].puntos+=3;
-      tabla[p.local].p++;
-    }else{
-      tabla[p.local].e++;
-      tabla[p.visitante].e++;
+      tabla[p.local].perdidos++;
+    } else {
+      tabla[p.local].empatados++;
+      tabla[p.visitante].empatados++;
       tabla[p.local].puntos++;
       tabla[p.visitante].puntos++;
     }
@@ -315,8 +350,8 @@ app.get("/clasificacion", async (req,res)=>{
   });
 });
 
-const PORT=3000;
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT,()=>{
-  console.log("FUTCAT SERVER FINAL OK");
+  console.log("⚽ FUTCAT SERVER FINAL ESTABLE (NO CUT VERSION)");
 });
