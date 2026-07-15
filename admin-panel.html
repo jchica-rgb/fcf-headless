@@ -6,92 +6,65 @@
 
 <style>
 
-body {
+body{
   margin:0;
   font-family:Arial;
   background:#0a0a0a;
   color:white;
 }
 
-/* HEADER */
-header {
-  background:#111;
-  padding:12px;
-  text-align:center;
-  font-weight:bold;
-  border-bottom:1px solid #222;
-}
-
-/* CONTAINER */
-.container {
+.container{
   max-width:1200px;
   margin:auto;
-  padding:15px;
+  padding:20px;
 }
 
-/* LAYOUT */
-.layout {
+h1{
+  text-align:center;
+}
+
+.layout{
   display:flex;
-  gap:20px;
+  gap:30px;
 }
 
-.left { flex:0.4; }
-.right { flex:0.6; }
-
-/* CARD */
-.card {
+.col{
+  flex:1;
   background:#111;
-  padding:12px;
-  border-radius:8px;
-  margin-bottom:12px;
-  border:1px solid #222;
+  padding:15px;
+  border-radius:10px;
 }
 
-/* INPUTS */
-input, select {
+input, select{
   width:100%;
-  padding:8px;
-  margin:5px 0;
+  padding:10px;
+  margin:6px 0;
   background:#1a1a1a;
-  border:1px solid #333;
   color:white;
-  border-radius:6px;
-  box-sizing:border-box;
-  font-size:13px;
+  border:1px solid #333;
 }
 
-/* BUTTON */
-button {
+button{
   width:100%;
   padding:10px;
   background:#00ff88;
   border:none;
-  font-weight:bold;
   cursor:pointer;
-  border-radius:6px;
-  font-size:13px;
+  font-weight:bold;
+  margin-top:10px;
 }
 
-button:hover {
-  background:#00cc6a;
-}
-
-/* MATCH */
-.match {
+.match{
   background:#151515;
   padding:10px;
   margin:6px 0;
   border-radius:6px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  font-size:13px;
+  cursor:pointer;
 }
 
-.small-btn {
-  width:auto;
-  padding:5px 8px;
+.small{
   font-size:12px;
+  opacity:0.7;
 }
 
 </style>
@@ -99,240 +72,234 @@ button:hover {
 
 <body>
 
-<header>⚽ FUTCAT ADMIN PANEL</header>
-
 <div class="container">
 
-  <div class="layout">
+<h1>⚽ FUTCAT ADMIN PANEL</h1>
 
-    <!-- ================= LEFT ================= -->
-    <div class="left">
+<div class="layout">
 
-      <div class="card">
-        <h3>🏆 Liga</h3>
-        <select id="liga"></select>
-      </div>
+<!-- ================= CREAR ================= -->
+<div class="col">
 
-      <div class="card">
-        <h3>➕ Partido</h3>
+<h3>➕ Crear Partido</h3>
 
-        <input id="jornada" placeholder="Jornada">
+<select id="liga"></select>
 
-        <select id="local"></select>
-        <select id="visitante"></select>
+<select id="temporada"></select>
 
-        <input id="gl" type="number" placeholder="Goles local">
-        <input id="gv" type="number" placeholder="Goles visitante">
+<input id="jornada" placeholder="Jornada">
 
-        <button onclick="saveMatch()">GUARDAR</button>
-      </div>
+<input id="local" placeholder="Local">
 
-    </div>
+<input id="visitante" placeholder="Visitante">
 
-    <!-- ================= RIGHT ================= -->
-    <div class="right">
+<input id="gl" placeholder="Goles Local">
 
-      <!-- 🔥 FILTRO JORNADA (RECUPERADO Y CORRECTO) -->
-      <div class="card">
-        <h3>🎯 Filtrar jornada</h3>
-        <select id="filterJornada" onchange="renderFiltered()">
-          <option value="all">Todas</option>
-        </select>
-      </div>
+<input id="gv" placeholder="Goles Visitante">
 
-      <div class="card">
-        <h3>📋 Partidos</h3>
-        <div id="listaPartidos"></div>
-      </div>
+<button onclick="crear()">Guardar Partido</button>
 
-    </div>
+</div>
 
-  </div>
+<!-- ================= LISTA ================= -->
+<div class="col">
 
+<h3>📋 Partidos</h3>
+
+<select id="filtroLiga"></select>
+<select id="filtroTemporada"></select>
+
+<div id="lista"></div>
+
+</div>
+
+<!-- ================= EDIT ================= -->
+<div class="col">
+
+<h3>✏️ Editar Partido</h3>
+
+<div class="small">Selecciona un partido</div>
+
+<input id="editRow" placeholder="Fila (Sheet)">
+
+<input id="editJornada">
+<input id="editLocal">
+<input id="editVisitante">
+<input id="editGL">
+<input id="editGV">
+
+<button onclick="update()">Actualizar</button>
+
+</div>
+
+</div>
 </div>
 
 <script>
 
 const API = "https://fcf-headless.onrender.com";
 
+let ligas = [];
 let partidos = [];
-let equipos = [];
-let editRow = null;
+let currentLiga = "";
+let currentTemporada = "";
 
-/* ================= LIGAS ================= */
+/* ================= INIT ================= */
 
-async function loadLigas() {
+async function init(){
 
-  const res = await fetch(API + "/ligas");
-  const json = await res.json();
+  const r = await fetch(API+"/ligas");
+  const j = await r.json();
 
-  const sel = document.getElementById("liga");
-  sel.innerHTML = "";
+  ligas = j.data;
 
-  json.data.forEach(l => {
-    const opt = document.createElement("option");
-    opt.value = l.id;
-    opt.textContent = l.nombre;
-    sel.appendChild(opt);
-  });
-
-  sel.onchange = () => {
-    loadEquipos();
-    loadPartidos();
-  };
-
-  loadEquipos();
+  fillSelects();
   loadPartidos();
 }
 
-/* ================= EQUIPOS ================= */
+/* ================= SELECTS ================= */
 
-async function loadEquipos() {
+function fillSelects(){
 
-  const liga = document.getElementById("liga").value;
+  const selects = ["liga","filtroLiga"];
 
-  const res = await fetch(API + "/equipos?liga=" + liga);
-  const json = await res.json();
+  selects.forEach(id=>{
+    const sel = document.getElementById(id);
+    sel.innerHTML = "";
 
-  equipos = json.data;
+    ligas.forEach(l=>{
+      const opt = document.createElement("option");
+      opt.value = l.id;
+      opt.textContent = l.nombre;
+      sel.appendChild(opt);
+    });
+  });
 
-  const local = document.getElementById("local");
-  const visitante = document.getElementById("visitante");
+  const seasons = ["2023-24","2024-25","2025-26"];
 
-  local.innerHTML = "";
-  visitante.innerHTML = "";
+  ["temporada","filtroTemporada"].forEach(id=>{
+    const sel = document.getElementById(id);
+    sel.innerHTML = "";
 
-  equipos.forEach(e => {
-
-    const o1 = document.createElement("option");
-    o1.value = e;
-    o1.textContent = e;
-
-    const o2 = o1.cloneNode(true);
-
-    local.appendChild(o1);
-    visitante.appendChild(o2);
+    seasons.forEach(s=>{
+      const opt = document.createElement("option");
+      opt.value = s;
+      opt.textContent = s;
+      sel.appendChild(opt);
+    });
   });
 }
 
-/* ================= PARTIDOS ================= */
+/* ================= LOAD PARTIDOS ================= */
 
-async function loadPartidos() {
+async function loadPartidos(){
 
-  editRow = null;
+  const liga = document.getElementById("filtroLiga").value;
+  const temporada = document.getElementById("filtroTemporada").value;
 
-  const liga = document.getElementById("liga").value;
+  const r = await fetch(API+
+    "/partidos?liga="+liga+"&temporada="+temporada);
 
-  const res = await fetch(API + "/partidos?liga=" + liga);
-  const json = await res.json();
+  const j = await r.json();
 
-  partidos = json.data;
+  partidos = j.data;
 
-  /* 🔥 generar jornadas únicas */
-  const jornadas = [...new Set(partidos.map(p => p.jornada))];
-
-  const sel = document.getElementById("filterJornada");
-
-  sel.innerHTML = `<option value="all">Todas</option>`;
-
-  jornadas.forEach(j => {
-    const opt = document.createElement("option");
-    opt.value = j;
-    opt.textContent = "Jornada " + j;
-    sel.appendChild(opt);
-  });
-
-  renderFiltered();
+  render();
 }
 
-/* ================= FILTRO ================= */
+/* ================= RENDER ================= */
 
-function renderFiltered() {
+function render(){
 
-  const jornada = document.getElementById("filterJornada").value;
-
-  const div = document.getElementById("listaPartidos");
+  const div = document.getElementById("lista");
   div.innerHTML = "";
 
-  const data = (jornada === "all")
-    ? partidos
-    : partidos.filter(p => String(p.jornada) === String(jornada));
-
-  data.forEach(p => {
+  partidos.forEach((p,i)=>{
 
     const el = document.createElement("div");
-    el.className = "match";
+    el.className="match";
 
     el.innerHTML = `
-      <div>
-        <b>${p.local}</b> ${p.goles_local}-${p.goles_visitante} <b>${p.visitante}</b><br>
-        Jornada: ${p.jornada}
-      </div>
-      <button class="small-btn" onclick="edit(${p.id})">EDIT</button>
+      <b>${p.local}</b> ${p.goles_local}-${p.goles_visitante} <b>${p.visitante}</b>
+      <div class="small">J${p.jornada} | ${p.temporada}</div>
     `;
+
+    el.onclick = ()=>fillEdit(p,i+2);
 
     div.appendChild(el);
   });
 }
 
-/* ================= EDIT ================= */
+/* ================= CREAR ================= */
 
-function edit(id) {
+async function crear(){
 
-  const p = partidos.find(x => x.id === id);
-
-  editRow = id;
-
-  document.getElementById("jornada").value = p.jornada;
-  document.getElementById("local").value = p.local;
-  document.getElementById("visitante").value = p.visitante;
-  document.getElementById("gl").value = p.goles_local;
-  document.getElementById("gv").value = p.goles_visitante;
-}
-
-/* ================= SAVE ================= */
-
-async function saveMatch() {
-
-  const body = {
+  const data = {
     liga: document.getElementById("liga").value,
+    temporada: document.getElementById("temporada").value,
     jornada: document.getElementById("jornada").value,
     local: document.getElementById("local").value,
     visitante: document.getElementById("visitante").value,
-    goles_local: Number(document.getElementById("gl").value),
-    goles_visitante: Number(document.getElementById("gv").value)
+    goles_local: document.getElementById("gl").value,
+    goles_visitante: document.getElementById("gv").value
   };
 
-  let url = "/partido";
-
-  if (editRow !== null) {
-    url = "/partido/update";
-    body.row = editRow;
-  }
-
-  const res = await fetch(API + url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
+  await fetch(API+"/partido",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify(data)
   });
-
-  const data = await res.json();
-
-  if (!data.ok) {
-    alert(data.error || "Error");
-    return;
-  }
-
-  editRow = null;
-
-  document.getElementById("jornada").value = "";
-  document.getElementById("gl").value = "";
-  document.getElementById("gv").value = "";
 
   loadPartidos();
 }
 
-loadLigas();
+/* ================= EDIT ================= */
+
+function fillEdit(p,row){
+
+  document.getElementById("editRow").value=row;
+  document.getElementById("editJornada").value=p.jornada;
+  document.getElementById("editLocal").value=p.local;
+  document.getElementById("editVisitante").value=p.visitante;
+  document.getElementById("editGL").value=p.goles_local;
+  document.getElementById("editGV").value=p.goles_visitante;
+}
+
+/* ================= UPDATE ================= */
+
+async function update(){
+
+  const data = {
+    row: document.getElementById("editRow").value,
+    liga: document.getElementById("filtroLiga").value,
+    jornada: document.getElementById("editJornada").value,
+    local: document.getElementById("editLocal").value,
+    visitante: document.getElementById("editVisitante").value,
+    goles_local: document.getElementById("editGL").value,
+    goles_visitante: document.getElementById("editGV").value
+  };
+
+  await fetch(API+"/partido/update",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify(data)
+  });
+
+  loadPartidos();
+}
+
+/* ================= EVENTS ================= */
+
+document.addEventListener("change", (e)=>{
+  if(
+    e.target.id==="filtroLiga" ||
+    e.target.id==="filtroTemporada"
+  ){
+    loadPartidos();
+  }
+});
+
+init();
 
 </script>
 
