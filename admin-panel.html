@@ -21,12 +21,8 @@ body{
   padding:20px;
 }
 
-h1{
-  text-align:center;
-  margin-bottom:20px;
-}
+h1{text-align:center}
 
-/* LAYOUT */
 .layout{
   display:flex;
   gap:20px;
@@ -39,7 +35,7 @@ h1{
   border-radius:10px;
 }
 
-/* FIELDS */
+/* FIELD */
 .field{margin-bottom:10px}
 
 label{
@@ -80,6 +76,18 @@ button{
 }
 
 .small{font-size:12px;opacity:0.7}
+
+/* LOCKED STYLE */
+.locked{
+  opacity:0.4;
+  pointer-events:none;
+}
+
+.notice{
+  font-size:12px;
+  color:#ffcc00;
+  margin-bottom:10px;
+}
 
 </style>
 </head>
@@ -156,39 +164,19 @@ button{
 </div>
 
 <!-- ================= EDIT ================= -->
-<div class="col">
+<div class="col" id="editPanel">
 
 <h3>✏️ Editar Partido</h3>
 
-<div class="field">
-<label>Row (Sheet real)</label>
-<input id="editRow">
-</div>
+<div class="notice" id="lockNotice"></div>
 
-<div class="field">
-<label>Jornada</label>
+<input id="editRow" placeholder="row">
+
 <input id="editJornada">
-</div>
-
-<div class="field">
-<label>Local</label>
 <input id="editLocal">
-</div>
-
-<div class="field">
-<label>Visitante</label>
 <input id="editVisitante">
-</div>
-
-<div class="field">
-<label>Goles Local</label>
 <input id="editGL">
-</div>
-
-<div class="field">
-<label>Goles Visitante</label>
 <input id="editGV">
-</div>
 
 <button onclick="update()">Actualizar</button>
 
@@ -204,15 +192,14 @@ const API="https://fcf-headless.onrender.com";
 let ligas=[];
 let equipos=[];
 let partidos=[];
+let temporadaActiva=null;
 
 /* ================= INIT ================= */
 
 async function init(){
 
   const r=await fetch(API+"/ligas");
-  const j=await r.json();
-
-  ligas=j.data;
+  ligas=(await r.json()).data;
 
   fillLigas();
   loadTemporadas();
@@ -241,9 +228,7 @@ async function loadEquipos(){
   const liga=document.getElementById("liga").value;
 
   const r=await fetch(API+"/equipos?liga="+liga);
-  const j=await r.json();
-
-  equipos=j.data;
+  equipos=(await r.json()).data;
 
   const local=document.getElementById("local");
   const visitante=document.getElementById("visitante");
@@ -252,24 +237,24 @@ async function loadEquipos(){
   visitante.innerHTML="";
 
   equipos.forEach(e=>{
-
-    const o1=document.createElement("option");
-    const o2=document.createElement("option");
-
-    o1.value=o2.value=e;
-    o1.textContent=o2.textContent=e;
-
-    local.appendChild(o1);
-    visitante.appendChild(o2);
+    local.innerHTML+=`<option>${e}</option>`;
+    visitante.innerHTML+=`<option>${e}</option>`;
   });
 }
 
-/* ================= TEMPORADAS ================= */
+/* ================= TEMPORADAS + ACTIVA ================= */
 
 async function loadTemporadas(){
 
-  const r=await fetch(API+"/temporadas");
-  const j=await r.json();
+  const [t,a]=await Promise.all([
+    fetch(API+"/temporadas"),
+    fetch(API+"/temporada-activa")
+  ]);
+
+  const temporadas=(await t.json()).data;
+  const activa=(await a.json()).data;
+
+  temporadaActiva=activa;
 
   const sel=document.getElementById("temporada");
   const sel2=document.getElementById("filtroTemporada");
@@ -277,17 +262,13 @@ async function loadTemporadas(){
   sel.innerHTML="";
   sel2.innerHTML="";
 
-  j.data.forEach(s=>{
-
-    const o1=document.createElement("option");
-    const o2=document.createElement("option");
-
-    o1.value=o2.value=s;
-    o1.textContent=o2.textContent=s;
-
-    sel.appendChild(o1);
-    sel2.appendChild(o2);
+  temporadas.forEach(s=>{
+    sel.innerHTML+=`<option>${s}</option>`;
+    sel2.innerHTML+=`<option>${s}</option>`;
   });
+
+  sel.value=activa;
+  sel2.value=activa;
 
   await loadEquipos();
   loadPartidos();
@@ -303,14 +284,12 @@ async function loadPartidos(){
   const r=await fetch(API+
     "/partidos?liga="+liga+"&temporada="+temporada);
 
-  const j=await r.json();
-
-  partidos=j.data;
+  partidos=(await r.json()).data;
 
   render();
 }
 
-/* ================= RENDER (ROW REAL FIX) ================= */
+/* ================= RENDER ================= */
 
 function render(){
 
@@ -327,14 +306,13 @@ function render(){
       <div class="small">J${p.jornada} | ${p.temporada}</div>
     `;
 
-    // 🔥 FIX REAL: usar row del server
     el.onclick=()=>fillEdit(p);
 
     div.appendChild(el);
   });
 }
 
-/* ================= FILL EDIT (FIX REAL) ================= */
+/* ================= EDIT + BLOQUEO ================= */
 
 function fillEdit(p){
 
@@ -345,6 +323,18 @@ function fillEdit(p){
   document.getElementById("editVisitante").value=p.visitante;
   document.getElementById("editGL").value=p.goles_local;
   document.getElementById("editGV").value=p.goles_visitante;
+
+  const panel=document.getElementById("editPanel");
+  const notice=document.getElementById("lockNotice");
+
+  if(p.temporada!==temporadaActiva){
+
+    panel.classList.add("locked");
+    notice.innerText="🔒 Partido bloqueado (temporada histórica)";
+  }else{
+    panel.classList.remove("locked");
+    notice.innerText="";
+  }
 }
 
 /* ================= CREATE ================= */
@@ -352,13 +342,13 @@ function fillEdit(p){
 async function crear(){
 
   const data={
-    liga:document.getElementById("liga").value,
-    temporada:document.getElementById("temporada").value,
-    jornada:document.getElementById("jornada").value,
-    local:document.getElementById("local").value,
-    visitante:document.getElementById("visitante").value,
-    goles_local:document.getElementById("gl").value,
-    goles_visitante:document.getElementById("gv").value
+    liga:liga.value,
+    temporada:temporada.value,
+    jornada:jornada.value,
+    local:local.value,
+    visitante:visitante.value,
+    goles_local:gl.value,
+    goles_visitante:gv.value
   };
 
   await fetch(API+"/partido",{
@@ -370,31 +360,36 @@ async function crear(){
   loadPartidos();
 }
 
-/* ================= UPDATE (FIX REAL) ================= */
+/* ================= UPDATE ================= */
 
 async function update(){
 
-  const row=document.getElementById("editRow").value;
+  const row=editRow.value;
 
   if(!row){
-    alert("❌ Selecciona partido");
+    alert("Selecciona partido");
     return;
   }
 
-  const data={
-    row,
-    liga:document.getElementById("filtroLiga").value,
-    jornada:document.getElementById("editJornada").value,
-    local:document.getElementById("editLocal").value,
-    visitante:document.getElementById("editVisitante").value,
-    goles_local:document.getElementById("editGL").value,
-    goles_visitante:document.getElementById("editGV").value
-  };
+  const p = partidos.find(x=>x.row==row);
+
+  if(p.temporada!==temporadaActiva){
+    alert("❌ No se pueden modificar temporadas históricas");
+    return;
+  }
 
   await fetch(API+"/partido/update",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(data)
+    body:JSON.stringify({
+      row,
+      liga:filtroLiga.value,
+      jornada:editJornada.value,
+      local:editLocal.value,
+      visitante:editVisitante.value,
+      goles_local:editGL.value,
+      goles_visitante:editGV.value
+    })
   });
 
   loadPartidos();
@@ -403,11 +398,9 @@ async function update(){
 /* ================= EVENTS ================= */
 
 document.addEventListener("change",e=>{
-
   if(e.target.id==="liga"){
     loadEquipos();
   }
-
   if(e.target.id==="filtroLiga" || e.target.id==="filtroTemporada"){
     loadPartidos();
   }
