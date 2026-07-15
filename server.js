@@ -49,6 +49,7 @@ const normalize = v =>
 ====================== */
 
 app.get("/ligas", async (req,res)=>{
+
   const rows = await getSheet("LIGAS!A2:B");
 
   res.json({
@@ -64,6 +65,7 @@ app.get("/ligas", async (req,res)=>{
 ====================== */
 
 app.get("/equipos", async (req,res)=>{
+
   const liga = normalize(req.query.liga);
 
   const rows = await getSheet("EQUIPOS!A2:C");
@@ -80,18 +82,20 @@ app.get("/equipos", async (req,res)=>{
 ====================== */
 
 app.get("/temporadas", async (req,res)=>{
+
   const rows = await getSheet("PARTIDOS!B2:B");
 
-  const unique = [...new Set(rows.map(r=>r[0]).filter(Boolean))];
+  const seasons = [...new Set(rows.map(r=>r[0]).filter(Boolean))];
 
-  res.json({ data: unique });
+  res.json({ data: seasons });
 });
 
 /* ======================
-   TEMPORADA ACTIVA (CLAVE)
+   TEMPORADA ACTIVA (REAL)
 ====================== */
 
 app.get("/temporada-activa", async (req,res)=>{
+
   const rows = await getSheet("PARTIDOS!B2:B");
 
   const seasons = [...new Set(rows.map(r=>r[0]).filter(Boolean))];
@@ -100,7 +104,7 @@ app.get("/temporada-activa", async (req,res)=>{
     return res.json({ data:null });
   }
 
-  seasons.sort();
+  seasons.sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
 
   res.json({
     data: seasons[seasons.length - 1]
@@ -108,7 +112,7 @@ app.get("/temporada-activa", async (req,res)=>{
 });
 
 /* ======================
-   PARTIDOS (CON ETIQUETAS CORRECTAS)
+   PARTIDOS (ROW REAL + ETIQUETAS)
 ====================== */
 
 app.get("/partidos", async (req,res)=>{
@@ -123,14 +127,16 @@ app.get("/partidos", async (req,res)=>{
     row: i + 2,
 
     liga: normalize(r[0]),
-    liga_label: r[0],        // 🔥 etiqueta visible
+    liga_label: r[0],
+
     temporada: r[1],
-    temporada_label: r[1],   // 🔥 etiqueta visible
+    temporada_label: r[1],
+
     jornada: r[2],
     local: r[3],
     visitante: r[4],
-    goles_local: Number(r[5] || 0),
-    goles_visitante: Number(r[6] || 0)
+    goles_local: Number(r[5]||0),
+    goles_visitante: Number(r[6]||0)
   }))
   .filter(p =>
     (!liga || p.liga === liga) &&
@@ -141,7 +147,7 @@ app.get("/partidos", async (req,res)=>{
 });
 
 /* ======================
-   CREAR PARTIDO
+   CREAR PARTIDO (CONTROL TOTAL)
 ====================== */
 
 app.post("/partido", async (req,res)=>{
@@ -156,21 +162,7 @@ app.post("/partido", async (req,res)=>{
     goles_visitante
   } = req.body;
 
-  /* ======================
-     TEMPORADA ACTIVA CONTROL
-  ====================== */
-
-  if(!temporada){
-    return res.status(400).json({
-      ok:false,
-      error:"Temporada obligatoria"
-    });
-  }
-
-  /* ======================
-     BLOQUEO MISMO EQUIPO
-  ====================== */
-
+  /* BLOQUEO MISMO EQUIPO */
   if(local === visitante){
     return res.status(400).json({
       ok:false,
@@ -178,10 +170,7 @@ app.post("/partido", async (req,res)=>{
     });
   }
 
-  /* ======================
-     DUPLICADOS
-  ====================== */
-
+  /* CONTROL DUPLICADOS */
   const rows = await getSheet("PARTIDOS!A2:G");
 
   const exists = rows.some(r =>
@@ -225,7 +214,7 @@ app.post("/partido", async (req,res)=>{
 });
 
 /* ======================
-   UPDATE
+   UPDATE (TEMPORADA PROTEGIDA + FIX REAL)
 ====================== */
 
 app.post("/partido/update", async (req,res)=>{
@@ -233,6 +222,7 @@ app.post("/partido/update", async (req,res)=>{
   const {
     row,
     liga,
+    temporada,
     jornada,
     local,
     visitante,
@@ -240,10 +230,7 @@ app.post("/partido/update", async (req,res)=>{
     goles_visitante
   } = req.body;
 
-  /* ======================
-     BLOQUEO MISMO EQUIPO
-  ====================== */
-
+  /* BLOQUEO MISMO EQUIPO */
   if(local === visitante){
     return res.status(400).json({
       ok:false,
@@ -261,7 +248,7 @@ app.post("/partido/update", async (req,res)=>{
     requestBody:{
       values:[[
         liga,
-        "", // temporada bloqueada
+        temporada,
         jornada,
         local,
         visitante,
@@ -351,5 +338,5 @@ app.get("/clasificacion", async (req,res)=>{
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT,()=>{
-  console.log("⚽ FUTCAT SERVER COMPLETO V6");
+  console.log("⚽ FUTCAT SERVER FINAL V7 STABLE");
 });
