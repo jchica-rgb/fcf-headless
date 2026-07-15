@@ -7,10 +7,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* ======================
-   CONFIG SHEETS
-====================== */
-
 function safeJson(v){
   try { return JSON.parse(v); } catch { return null; }
 }
@@ -32,28 +28,20 @@ async function getClient(){
 const normalize = v =>
   String(v || "").trim().toLowerCase().replace(/\s+/g," ");
 
-/* ======================
-   SHEETS HELPER
-====================== */
-
 async function getSheet(range){
 
-  if(!authGoogle || !SHEET_ID) return [];
-
   const client = await getClient();
-  const sheets = google.sheets({version:"v4",auth:client});
+  const sheets = google.sheets({ version:"v4", auth:client });
 
   const res = await sheets.spreadsheets.values.get({
-    spreadsheetId:SHEET_ID,
+    spreadsheetId: SHEET_ID,
     range
   });
 
   return res.data.values || [];
 }
 
-/* ======================
-   LIGAS
-====================== */
+/* ================= LIGAS ================= */
 
 app.get("/ligas", async (req,res)=>{
   const rows = await getSheet("LIGAS!A2:B");
@@ -66,12 +54,9 @@ app.get("/ligas", async (req,res)=>{
   });
 });
 
-/* ======================
-   EQUIPOS
-====================== */
+/* ================= EQUIPOS ================= */
 
 app.get("/equipos", async (req,res)=>{
-
   const liga = normalize(req.query.liga);
 
   const rows = await getSheet("EQUIPOS!A2:C");
@@ -83,9 +68,24 @@ app.get("/equipos", async (req,res)=>{
   });
 });
 
-/* ======================
-   PARTIDOS (CON TEMPORADA)
-====================== */
+/* ================= TEMPORADAS (REAL) ================= */
+
+app.get("/temporadas", async (req,res)=>{
+
+  const rows = await getSheet("PARTIDOS!B2:B");
+
+  const set = new Set();
+
+  rows.forEach(r=>{
+    if(r[0]) set.add(r[0]);
+  });
+
+  res.json({
+    data: Array.from(set).sort()
+  });
+});
+
+/* ================= PARTIDOS ================= */
 
 app.get("/partidos", async (req,res)=>{
 
@@ -96,14 +96,13 @@ app.get("/partidos", async (req,res)=>{
 
   const data = rows
     .map((r,i)=>({
-      id:i+2,
       liga: normalize(r[0]),
       temporada: r[1],
-      jornada:r[2],
-      local:r[3],
-      visitante:r[4],
-      goles_local:Number(r[5]||0),
-      goles_visitante:Number(r[6]||0)
+      jornada: r[2],
+      local: r[3],
+      visitante: r[4],
+      goles_local: Number(r[5]||0),
+      goles_visitante: Number(r[6]||0)
     }))
     .filter(p =>
       p.liga === liga &&
@@ -113,9 +112,7 @@ app.get("/partidos", async (req,res)=>{
   res.json({data});
 });
 
-/* ======================
-   CLASIFICACION (CON TEMPORADA)
-====================== */
+/* ================= CLASIFICACION ================= */
 
 app.get("/clasificacion", async (req,res)=>{
 
@@ -140,7 +137,7 @@ app.get("/clasificacion", async (req,res)=>{
 
   const tabla={};
 
-  const init = t=>{
+  const init=t=>{
     if(!tabla[t]){
       tabla[t]={
         equipo:t,
@@ -183,9 +180,7 @@ app.get("/clasificacion", async (req,res)=>{
   });
 });
 
-/* ======================
-   ESTADISTICAS (CON TEMPORADA)
-====================== */
+/* ================= ESTADISTICAS ================= */
 
 app.get("/estadisticas", async (req,res)=>{
 
@@ -263,56 +258,45 @@ app.get("/estadisticas", async (req,res)=>{
   res.json({data:result});
 });
 
-/* ======================
-   PARTIDO CREATE (CON TEMPORADA)
-====================== */
+/* ================= PARTIDO ================= */
 
 app.post("/partido", async (req,res)=>{
 
-  try{
+  const {
+    liga,
+    temporada,
+    jornada,
+    local,
+    visitante,
+    goles_local,
+    goles_visitante
+  } = req.body;
 
-    const {
-      liga,
-      temporada,
-      jornada,
-      local,
-      visitante,
-      goles_local,
-      goles_visitante
-    } = req.body;
+  const client = await getClient();
+  const sheets = google.sheets({version:"v4",auth:client});
 
-    const client = await getClient();
-    const sheets = google.sheets({version:"v4",auth:client});
+  await sheets.spreadsheets.values.append({
+    spreadsheetId:SHEET_ID,
+    range:"PARTIDOS!A:G",
+    valueInputOption:"RAW",
+    requestBody:{
+      values:[[
+        liga,
+        temporada,
+        jornada,
+        local,
+        visitante,
+        goles_local,
+        goles_visitante
+      ]]
+    }
+  });
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId:SHEET_ID,
-      range:"PARTIDOS!A:G",
-      valueInputOption:"RAW",
-      requestBody:{
-        values:[[
-          liga,
-          temporada,
-          jornada,
-          local,
-          visitante,
-          goles_local,
-          goles_visitante
-        ]]
-      }
-    });
-
-    res.json({ok:true});
-
-  }catch(e){
-    console.error(e);
-    res.status(500).json({ok:false});
-  }
+  res.json({ok:true});
 });
 
-/* ======================
-   SERVER
-====================== */
+/* ================= SERVER ================= */
 
 app.listen(process.env.PORT||3000,()=>{
-  console.log("FUTCAT SERVER V1.1 SEASONS READY ⚽");
+  console.log("FUTCAT SERVER FINAL V2 ⚽");
 });
