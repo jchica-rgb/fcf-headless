@@ -21,7 +21,7 @@ body{
   padding:20px;
 }
 
-h1{text-align:center}
+h1{text-align:center;margin-bottom:20px}
 
 .layout{
   display:flex;
@@ -35,10 +35,8 @@ h1{text-align:center}
   border-radius:10px;
 }
 
-/* LABELS RESTAURADOS */
-.field{
-  margin-bottom:12px;
-}
+/* FIELD */
+.field{margin-bottom:10px}
 
 label{
   display:block;
@@ -90,7 +88,7 @@ button{
 
 <div class="layout">
 
-<!-- CREAR -->
+<!-- ================= CREAR ================= -->
 <div class="col">
 
 <h3>➕ Crear Partido</h3>
@@ -134,26 +132,36 @@ button{
 
 </div>
 
-<!-- LISTA -->
+<!-- ================= LISTA ================= -->
 <div class="col">
 
 <h3>📋 Partidos</h3>
 
+<div class="field">
+<label>Filtrar Liga</label>
 <select id="filtroLiga"></select>
+</div>
+
+<div class="field">
+<label>Filtrar Temporada</label>
 <select id="filtroTemporada"></select>
+</div>
 
 <div id="lista"></div>
 
 </div>
 
-<!-- EDIT -->
+<!-- ================= EDIT ================= -->
 <div class="col">
 
 <h3>✏️ Editar Partido</h3>
 
+<!-- 🔒 ROW OCULTO -->
+<input type="hidden" id="editRow">
+
 <div class="field">
-<label>Row</label>
-<input id="editRow">
+<label>Liga</label>
+<select id="editLiga"></select>
 </div>
 
 <div class="field">
@@ -163,12 +171,12 @@ button{
 
 <div class="field">
 <label>Local</label>
-<input id="editLocal">
+<select id="editLocal"></select>
 </div>
 
 <div class="field">
 <label>Visitante</label>
-<input id="editVisitante">
+<select id="editVisitante"></select>
 </div>
 
 <div class="field">
@@ -192,11 +200,12 @@ button{
 
 const API="https://fcf-headless.onrender.com";
 
-let partidos=[];
 let ligas=[];
 let equipos=[];
+let partidos=[];
 
-/* INIT */
+/* ================= INIT ================= */
+
 async function init(){
 
   const r=await fetch(API+"/ligas");
@@ -206,10 +215,11 @@ async function init(){
   loadTemporadas();
 }
 
-/* LIGAS */
+/* ================= LIGAS ================= */
+
 function fillLigas(){
 
-  ["liga","filtroLiga"].forEach(id=>{
+  ["liga","filtroLiga","editLiga"].forEach(id=>{
     const sel=document.getElementById(id);
     sel.innerHTML="";
     ligas.forEach(l=>{
@@ -218,7 +228,8 @@ function fillLigas(){
   });
 }
 
-/* EQUIPOS */
+/* ================= EQUIPOS ================= */
+
 async function loadEquipos(){
 
   const liga=document.getElementById("liga").value;
@@ -226,84 +237,62 @@ async function loadEquipos(){
   const r=await fetch(API+"/equipos?liga="+liga);
   equipos=(await r.json()).data;
 
-  local.innerHTML="";
-  visitante.innerHTML="";
+  const local=document.getElementById("local");
+  const visitante=document.getElementById("visitante");
+  const eLocal=document.getElementById("editLocal");
+  const eVisitante=document.getElementById("editVisitante");
+
+  [local,visitante,eLocal,eVisitante].forEach(sel=>{
+    sel.innerHTML="";
+  });
 
   equipos.forEach(e=>{
     local.innerHTML+=`<option>${e}</option>`;
     visitante.innerHTML+=`<option>${e}</option>`;
+    eLocal.innerHTML+=`<option>${e}</option>`;
+    eVisitante.innerHTML+=`<option>${e}</option>`;
   });
 }
 
-/* TEMPORADAS */
+/* ================= TEMPORADAS ================= */
+
 async function loadTemporadas(){
 
   const r=await fetch(API+"/temporadas");
   const j=await r.json();
 
-  temporada.innerHTML="";
-  filtroTemporada.innerHTML="";
+  const sel=document.getElementById("temporada");
+  const sel2=document.getElementById("filtroTemporada");
+
+  sel.innerHTML="";
+  sel2.innerHTML="";
 
   j.data.forEach(s=>{
-    temporada.innerHTML+=`<option>${s}</option>`;
-    filtroTemporada.innerHTML+=`<option>${s}</option>`;
+    sel.innerHTML+=`<option>${s}</option>`;
+    sel2.innerHTML+=`<option>${s}</option>`;
   });
 
   await loadEquipos();
   loadPartidos();
 }
 
-/* DUPLICADOS */
-function isDuplicate(d){
+/* ================= LOAD ================= */
 
-  return partidos.some(p=>
-    p.local===d.local &&
-    p.visitante===d.visitante &&
-    p.jornada===d.jornada &&
-    p.temporada===d.temporada
-  );
-}
-
-/* CREATE */
-async function crear(){
-
-  const data={
-    liga:liga.value,
-    temporada:temporada.value,
-    jornada:jornada.value,
-    local:local.value,
-    visitante:visitante.value,
-    goles_local:gl.value,
-    goles_visitante:gv.value
-  };
-
-  if(isDuplicate(data)){
-    alert("❌ Duplicado");
-    return;
-  }
-
-  await fetch(API+"/partido",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(data)
-  });
-
-  loadPartidos();
-}
-
-/* LOAD */
 async function loadPartidos(){
 
+  const liga=filtroLiga.value;
+  const temporada=filtroTemporada.value;
+
   const r=await fetch(API+
-    "/partidos?liga="+filtroLiga.value+
-    "&temporada="+filtroTemporada.value);
+    "/partidos?liga="+liga+"&temporada="+temporada);
 
   partidos=(await r.json()).data;
 
   render();
 }
 
-/* RENDER */
+/* ================= RENDER ================= */
+
 function render(){
 
   lista.innerHTML="";
@@ -324,23 +313,51 @@ function render(){
   });
 }
 
-/* EDIT FIX */
+/* ================= EDIT ================= */
+
 function fillEdit(p){
 
   editRow.value=p.row;
+  editLiga.value=p.liga;
   editJornada.value=p.jornada;
-  editLocal.value=p.local;
-  editVisitante.value=p.visitante;
+
   editGL.value=p.goles_local;
   editGV.value=p.goles_visitante;
+
+  editLocal.value=p.local;
+  editVisitante.value=p.visitante;
 }
 
-/* UPDATE FIX REAL */
+/* ================= CREATE ================= */
+
+async function crear(){
+
+  const data={
+    liga:liga.value,
+    temporada:temporada.value,
+    jornada:jornada.value,
+    local:local.value,
+    visitante:visitante.value,
+    goles_local:gl.value,
+    goles_visitante:gv.value
+  };
+
+  await fetch(API+"/partido",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(data)
+  });
+
+  loadPartidos();
+}
+
+/* ================= UPDATE ================= */
+
 async function update(){
 
   const data={
     row:editRow.value,
-    liga:filtroLiga.value,
+    liga:editLiga.value,
     jornada:editJornada.value,
     local:editLocal.value,
     visitante:editVisitante.value,
@@ -357,10 +374,16 @@ async function update(){
   loadPartidos();
 }
 
-/* EVENTS */
+/* ================= EVENTS ================= */
+
 document.addEventListener("change",e=>{
-  if(e.target.id==="liga") loadEquipos();
-  if(e.target.id==="filtroLiga" || e.target.id==="filtroTemporada") loadPartidos();
+  if(e.target.id==="liga"){
+    loadEquipos();
+  }
+
+  if(e.target.id==="filtroLiga" || e.target.id==="filtroTemporada"){
+    loadPartidos();
+  }
 });
 
 init();
