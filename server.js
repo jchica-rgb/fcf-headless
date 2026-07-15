@@ -8,18 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 /* ======================
-   USERS
-====================== */
-
-const USERS = [
-  { user: "admin", pass: "admin123", role: "admin" },
-  { user: "editor", pass: "editor123", role: "editor" }
-];
-
-const TOKENS = new Set();
-
-/* ======================
-   GOOGLE SHEETS
+   GOOGLE SHEETS CONFIG
 ====================== */
 
 function safeJson(v) {
@@ -51,45 +40,7 @@ const normalize = v =>
     .replace(/\s+/g, " ");
 
 /* ======================
-   LOGIN
-====================== */
-
-app.post("/login", (req, res) => {
-
-  const { user, pass } = req.body;
-
-  const found = USERS.find(u => u.user === user && u.pass === pass);
-
-  if (!found) return res.status(401).json({ ok: false });
-
-  const token = Buffer.from(user + Date.now()).toString("base64");
-
-  TOKENS.add(token);
-
-  res.json({
-    ok: true,
-    token,
-    role: found.role
-  });
-});
-
-/* ======================
-   AUTH
-====================== */
-
-function auth(req, res, next) {
-
-  const token = req.headers.authorization;
-
-  if (!token || !TOKENS.has(token)) {
-    return res.status(403).json({ ok: false, error: "No autorizado" });
-  }
-
-  next();
-}
-
-/* ======================
-   SHEETS
+   SHEETS READ
 ====================== */
 
 async function getSheet(range) {
@@ -124,7 +75,7 @@ app.get("/ligas", async (req, res) => {
 });
 
 /* ======================
-   EQUIPOS (CORRECTO)
+   EQUIPOS (A=id B=nombre C=liga)
 ====================== */
 
 app.get("/equipos", async (req, res) => {
@@ -235,60 +186,10 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 /* ======================
-   EDITAR PARTIDO (UPDATE SHEETS)
+   GUARDAR PARTIDO
 ====================== */
 
-app.post("/partido/update", auth, async (req, res) => {
-
-  try {
-
-    const {
-      row,
-      liga,
-      jornada,
-      local,
-      visitante,
-      goles_local,
-      goles_visitante
-    } = req.body;
-
-    const client = await getClient();
-    const sheets = google.sheets({ version: "v4", auth: client });
-
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID,
-      range: `PARTIDOS!A${row}:F${row}`,
-      valueInputOption: "RAW",
-      requestBody: {
-        values: [[
-          liga,
-          jornada,
-          local,
-          visitante,
-          goles_local,
-          goles_visitante
-        ]]
-      }
-    });
-
-    res.json({ ok: true });
-
-  } catch (err) {
-
-    console.error(err);
-
-    res.status(500).json({
-      ok: false,
-      error: "Error update partido"
-    });
-  }
-});
-
-/* ======================
-   CREAR PARTIDO
-====================== */
-
-app.post("/partido", auth, async (req, res) => {
+app.post("/partido", async (req, res) => {
 
   try {
 
@@ -300,6 +201,14 @@ app.post("/partido", auth, async (req, res) => {
       goles_local,
       goles_visitante
     } = req.body;
+
+    /* VALIDACIÓN */
+    if (!local || !visitante) {
+      return res.status(400).json({
+        ok: false,
+        error: "Faltan datos"
+      });
+    }
 
     if (normalize(local) === normalize(visitante)) {
       return res.status(400).json({
@@ -331,11 +240,11 @@ app.post("/partido", auth, async (req, res) => {
 
   } catch (err) {
 
-    console.error(err);
+    console.error("ERROR /partido:", err);
 
     res.status(500).json({
       ok: false,
-      error: "Error guardar partido"
+      error: "Error interno"
     });
   }
 });
@@ -347,5 +256,5 @@ app.post("/partido", auth, async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("SERVER RUNNING ⚽", PORT);
+  console.log("FUTCAT SERVER CLEAN RUNNING ⚽", PORT);
 });
