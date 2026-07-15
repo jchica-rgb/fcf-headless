@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>FUTCAT MATCH CONTROL</title>
+<title>FUTCAT ADMIN</title>
 
 <style>
 
@@ -13,46 +13,43 @@ body {
   color:white;
 }
 
+/* HEADER igual estilo LIVE */
 header {
   background:#111;
-  padding:15px;
+  padding:12px;
   text-align:center;
   font-weight:bold;
+  border-bottom:1px solid #222;
 }
 
-/* ===== LAYOUT PRINCIPAL ===== */
+/* MISMO CONTAINER QUE INDEX */
+.container {
+  max-width:1200px;
+  margin:auto;
+  padding:15px;
+}
 
-.wrapper {
+/* LAYOUT COMPACTO */
+.layout {
   display:flex;
-  height:calc(100vh - 60px);
+  gap:20px;
 }
 
-/* IZQUIERDA */
+/* IZQUIERDA (FORM) */
 .left {
-  flex:1;
-  padding:20px;
-  overflow:auto;
+  flex:0.4;
 }
 
-/* DERECHA */
+/* DERECHA (LISTA) */
 .right {
-  flex:1;
-  padding:20px;
-  overflow:auto;
+  flex:0.6;
 }
 
-/* LINEA CENTRAL VERDE */
-.divider {
-  width:3px;
-  background:linear-gradient(to bottom, transparent, #00ff88, transparent);
-  box-shadow:0 0 12px #00ff88;
-}
-
-/* CARDS */
+/* CARD */
 .card {
   background:#111;
-  padding:15px;
-  border-radius:10px;
+  padding:12px;
+  border-radius:8px;
   margin-bottom:12px;
   border:1px solid #222;
 }
@@ -60,31 +57,33 @@ header {
 /* INPUTS */
 input, select {
   width:100%;
-  padding:10px;
-  margin:6px 0;
+  padding:8px;
+  margin:5px 0;
   background:#1a1a1a;
   border:1px solid #333;
   color:white;
-  box-sizing:border-box;
   border-radius:6px;
+  box-sizing:border-box;
+  font-size:13px;
 }
 
-/* BOTONES */
+/* BOTÓN */
 button {
   width:100%;
-  padding:12px;
+  padding:10px;
   background:#00ff88;
   border:none;
   font-weight:bold;
   cursor:pointer;
   border-radius:6px;
+  font-size:13px;
 }
 
 button:hover {
   background:#00cc6a;
 }
 
-/* LISTA PARTIDOS */
+/* PARTIDO ITEM COMPACTO */
 .match {
   background:#151515;
   padding:10px;
@@ -93,12 +92,20 @@ button:hover {
   display:flex;
   justify-content:space-between;
   align-items:center;
+  font-size:13px;
 }
 
 .small-btn {
   width:auto;
-  padding:6px 10px;
+  padding:5px 8px;
   font-size:12px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .layout {
+    flex-direction:column;
+  }
 }
 
 </style>
@@ -106,43 +113,44 @@ button:hover {
 
 <body>
 
-<header>⚽ FUTCAT MATCH CONTROL</header>
+<header>⚽ FUTCAT ADMIN PANEL</header>
 
-<div class="wrapper">
+<div class="container">
 
-  <!-- ================= LEFT ================= -->
-  <div class="left">
+  <div class="layout">
 
-    <div class="card">
-      <h3>🏆 Liga</h3>
-      <select id="liga"></select>
+    <!-- IZQUIERDA -->
+    <div class="left">
+
+      <div class="card">
+        <h3>🏆 Liga</h3>
+        <select id="liga"></select>
+      </div>
+
+      <div class="card">
+        <h3>➕ Partido</h3>
+
+        <input id="jornada" placeholder="Jornada">
+
+        <select id="local"></select>
+        <select id="visitante"></select>
+
+        <input id="gl" type="number" placeholder="Goles local">
+        <input id="gv" type="number" placeholder="Goles visitante">
+
+        <button onclick="saveMatch()">GUARDAR</button>
+      </div>
+
     </div>
 
-    <div class="card">
-      <h3>➕ Nuevo / Editar partido</h3>
+    <!-- DERECHA -->
+    <div class="right">
 
-      <input id="jornada" placeholder="Jornada">
+      <div class="card">
+        <h3>📋 Partidos</h3>
+        <div id="listaPartidos"></div>
+      </div>
 
-      <select id="local"></select>
-      <select id="visitante"></select>
-
-      <input id="gl" type="number" placeholder="Goles local">
-      <input id="gv" type="number" placeholder="Goles visitante">
-
-      <button onclick="saveMatch()">GUARDAR</button>
-    </div>
-
-  </div>
-
-  <!-- DIVIDER -->
-  <div class="divider"></div>
-
-  <!-- ================= RIGHT ================= -->
-  <div class="right">
-
-    <div class="card">
-      <h3>📋 Partidos (todos)</h3>
-      <div id="listaPartidos"></div>
     </div>
 
   </div>
@@ -236,10 +244,11 @@ async function loadPartidos() {
 
     el.innerHTML = `
       <div>
-        <b>${p.local}</b> ${p.goles_local} - ${p.goles_visitante} <b>${p.visitante}</b><br>
+        <b>${p.local}</b> ${p.goles_local}-${p.goles_visitante} <b>${p.visitante}</b>
+        <br>
         Jornada: ${p.jornada}
       </div>
-      <button class="small-btn" onclick="edit(${p.id})">EDITAR</button>
+      <button class="small-btn" onclick="edit(${p.id})">EDIT</button>
     `;
 
     div.appendChild(el);
