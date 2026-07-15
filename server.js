@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 /* ======================
-   CONFIG GOOGLE SHEETS
+   GOOGLE SHEETS CONFIG
 ====================== */
 
 function safeJson(v) {
@@ -33,7 +33,7 @@ async function getClient() {
    HELPERS
 ====================== */
 
-const normalize = (v) =>
+const normalize = v =>
   String(v || "")
     .trim()
     .toLowerCase()
@@ -45,10 +45,7 @@ const normalize = (v) =>
 
 async function getSheet(range) {
 
-  if (!authGoogle || !SHEET_ID) {
-    console.log("⚠️ SHEETS NOT CONFIGURED");
-    return [];
-  }
+  if (!authGoogle || !SHEET_ID) return [];
 
   const client = await getClient();
   const sheets = google.sheets({ version: "v4", auth: client });
@@ -141,10 +138,10 @@ app.get("/clasificacion", async (req, res) => {
 
   const tabla = {};
 
-  const init = (team) => {
-    if (!tabla[team]) {
-      tabla[team] = {
-        equipo: team,
+  const init = (t) => {
+    if (!tabla[t]) {
+      tabla[t] = {
+        equipo: t,
         puntos: 0,
         jugados: 0,
         ganados: 0,
@@ -189,14 +186,21 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 /* ======================
-   CREAR PARTIDO + DUPLICADOS
+   CREAR PARTIDO (CON DUPLICADOS BLOQUEADOS)
 ====================== */
 
 app.post("/partido", async (req, res) => {
 
   try {
 
-    const { liga, jornada, local, visitante, goles_local, goles_visitante } = req.body;
+    const {
+      liga,
+      jornada,
+      local,
+      visitante,
+      goles_local,
+      goles_visitante
+    } = req.body;
 
     if (!liga || !jornada || !local || !visitante) {
       return res.status(400).json({ ok: false, error: "Faltan datos" });
@@ -220,7 +224,7 @@ app.post("/partido", async (req, res) => {
     if (exists) {
       return res.status(409).json({
         ok: false,
-        error: "Partido duplicado en esta jornada"
+        error: "Este partido ya existe en esta jornada"
       });
     }
 
@@ -232,14 +236,21 @@ app.post("/partido", async (req, res) => {
       range: "PARTIDOS!A:F",
       valueInputOption: "RAW",
       requestBody: {
-        values: [[liga, jornada, local, visitante, goles_local, goles_visitante]]
+        values: [[
+          liga,
+          jornada,
+          local,
+          visitante,
+          goles_local,
+          goles_visitante
+        ]]
       }
     });
 
     res.json({ ok: true });
 
   } catch (err) {
-    console.error("ERROR /partido:", err);
+    console.error("ERROR CREATE:", err);
     res.status(500).json({ ok: false, error: "Error servidor" });
   }
 });
@@ -252,7 +263,15 @@ app.post("/partido/update", async (req, res) => {
 
   try {
 
-    const { row, liga, jornada, local, visitante, goles_local, goles_visitante } = req.body;
+    const {
+      row,
+      liga,
+      jornada,
+      local,
+      visitante,
+      goles_local,
+      goles_visitante
+    } = req.body;
 
     if (!row) {
       return res.status(400).json({ ok: false, error: "Falta row" });
@@ -266,7 +285,14 @@ app.post("/partido/update", async (req, res) => {
       range: `PARTIDOS!A${row}:F${row}`,
       valueInputOption: "RAW",
       requestBody: {
-        values: [[liga, jornada, local, visitante, goles_local, goles_visitante]]
+        values: [[
+          liga,
+          jornada,
+          local,
+          visitante,
+          goles_local,
+          goles_visitante
+        ]]
       }
     });
 
@@ -285,5 +311,5 @@ app.post("/partido/update", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("⚽ FUTCAT SERVER RUNNING ON", PORT);
+  console.log("⚽ FUTCAT SERVER FINAL RUNNING ON", PORT);
 });
