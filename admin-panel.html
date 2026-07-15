@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>FUTCAT ADMIN</title>
+<title>FUTCAT ADMIN PANEL</title>
 
 <style>
 
@@ -13,7 +13,7 @@ body {
   color:white;
 }
 
-/* HEADER igual estilo LIVE */
+/* HEADER */
 header {
   background:#111;
   padding:12px;
@@ -22,25 +22,25 @@ header {
   border-bottom:1px solid #222;
 }
 
-/* MISMO CONTAINER QUE INDEX */
+/* CONTAINER */
 .container {
   max-width:1200px;
   margin:auto;
   padding:15px;
 }
 
-/* LAYOUT COMPACTO */
+/* LAYOUT */
 .layout {
   display:flex;
   gap:20px;
 }
 
-/* IZQUIERDA (FORM) */
+/* IZQ */
 .left {
   flex:0.4;
 }
 
-/* DERECHA (LISTA) */
+/* DER */
 .right {
   flex:0.6;
 }
@@ -67,7 +67,7 @@ input, select {
   font-size:13px;
 }
 
-/* BOTÓN */
+/* BUTTON */
 button {
   width:100%;
   padding:10px;
@@ -83,7 +83,7 @@ button:hover {
   background:#00cc6a;
 }
 
-/* PARTIDO ITEM COMPACTO */
+/* MATCH ITEM */
 .match {
   background:#151515;
   padding:10px;
@@ -101,13 +101,6 @@ button:hover {
   font-size:12px;
 }
 
-/* RESPONSIVE */
-@media (max-width: 900px) {
-  .layout {
-    flex-direction:column;
-  }
-}
-
 </style>
 </head>
 
@@ -119,7 +112,7 @@ button:hover {
 
   <div class="layout">
 
-    <!-- IZQUIERDA -->
+    <!-- ================= LEFT ================= -->
     <div class="left">
 
       <div class="card">
@@ -143,8 +136,15 @@ button:hover {
 
     </div>
 
-    <!-- DERECHA -->
+    <!-- ================= RIGHT ================= -->
     <div class="right">
+
+      <div class="card">
+        <h3>🎯 Filtrar jornada</h3>
+        <select id="filterJornada" onchange="renderFiltered()">
+          <option value="all">Todas</option>
+        </select>
+      </div>
 
       <div class="card">
         <h3>📋 Partidos</h3>
@@ -234,18 +234,44 @@ async function loadPartidos() {
 
   partidos = json.data;
 
+  /* generar jornadas */
+  const jornadas = [...new Set(partidos.map(p => p.jornada))];
+
+  const sel = document.getElementById("filterJornada");
+
+  sel.innerHTML = `<option value="all">Todas</option>`;
+
+  jornadas.forEach(j => {
+    const opt = document.createElement("option");
+    opt.value = j;
+    opt.textContent = "Jornada " + j;
+    sel.appendChild(opt);
+  });
+
+  renderFiltered();
+}
+
+/* ================= FILTRO ================= */
+
+function renderFiltered() {
+
+  const jornada = document.getElementById("filterJornada").value;
+
   const div = document.getElementById("listaPartidos");
   div.innerHTML = "";
 
-  partidos.forEach(p => {
+  const data = (jornada === "all")
+    ? partidos
+    : partidos.filter(p => String(p.jornada) === String(jornada));
+
+  data.forEach(p => {
 
     const el = document.createElement("div");
     el.className = "match";
 
     el.innerHTML = `
       <div>
-        <b>${p.local}</b> ${p.goles_local}-${p.goles_visitante} <b>${p.visitante}</b>
-        <br>
+        <b>${p.local}</b> ${p.goles_local}-${p.goles_visitante} <b>${p.visitante}</b><br>
         Jornada: ${p.jornada}
       </div>
       <button class="small-btn" onclick="edit(${p.id})">EDIT</button>
@@ -290,13 +316,24 @@ async function saveMatch() {
     body.row = editRow;
   }
 
-  await fetch(API + url, {
+  const res = await fetch(API + url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });
 
+  const data = await res.json();
+
+  if (!data.ok) {
+    alert(data.error || "Error");
+    return;
+  }
+
   editRow = null;
+
+  document.getElementById("jornada").value = "";
+  document.getElementById("gl").value = "";
+  document.getElementById("gv").value = "";
 
   loadPartidos();
 }
