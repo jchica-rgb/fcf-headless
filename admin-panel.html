@@ -7,81 +7,81 @@
 <style>
 
 body {
-  margin: 0;
-  font-family: Arial;
-  background: #0a0a0a;
-  color: white;
+  margin:0;
+  font-family:Arial;
+  background:#0a0a0a;
+  color:white;
 }
 
 header {
-  background: #111;
-  padding: 15px;
-  text-align: center;
-  font-weight: bold;
+  background:#111;
+  padding:15px;
+  text-align:center;
+  font-weight:bold;
 }
 
 .container {
-  max-width: 800px;
-  margin: auto;
-  padding: 20px;
+  max-width:800px;
+  margin:auto;
+  padding:20px;
 }
 
 .card {
-  background: #111;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 12px;
-  border: 1px solid #222;
+  background:#111;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:12px;
+  border:1px solid #222;
 }
 
 input, select {
-  width: 100%;
-  padding: 10px;
-  margin: 6px 0;
-  background: #1a1a1a;
-  border: 1px solid #333;
-  color: white;
-  box-sizing: border-box;
-  border-radius: 6px;
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  background:#1a1a1a;
+  border:1px solid #333;
+  color:white;
+  box-sizing:border-box;
+  border-radius:6px;
 }
 
 button {
-  width: 100%;
-  padding: 12px;
-  background: #00ff88;
-  border: none;
-  font-weight: bold;
-  cursor: pointer;
-  border-radius: 6px;
+  width:100%;
+  padding:12px;
+  background:#00ff88;
+  border:none;
+  font-weight:bold;
+  cursor:pointer;
+  border-radius:6px;
 }
 
 button:hover {
-  background: #00cc6a;
+  background:#00cc6a;
 }
 
 .row {
-  display: flex;
-  gap: 10px;
+  display:flex;
+  gap:10px;
 }
 
 .row input {
-  flex: 1;
+  flex:1;
 }
 
 .match-item {
-  background: #151515;
-  padding: 10px;
-  margin: 6px 0;
-  border-radius: 6px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  background:#151515;
+  padding:10px;
+  margin:6px 0;
+  border-radius:6px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
 
 .small-btn {
-  width: auto;
-  padding: 6px 10px;
-  font-size: 12px;
+  width:auto;
+  padding:6px 10px;
+  font-size:12px;
 }
 
 </style>
@@ -113,10 +113,10 @@ button:hover {
       <input id="gv" type="number" placeholder="Goles visitante">
     </div>
 
-    <button onclick="saveMatch()">GUARDAR PARTIDO</button>
+    <button onclick="saveMatch()">GUARDAR</button>
   </div>
 
-  <!-- LISTA -->
+  <!-- LISTA PARTIDOS -->
   <div class="card">
     <h3>✏️ Editar partidos</h3>
     <div id="listaPartidos"></div>
@@ -198,6 +198,8 @@ async function loadEquipos() {
 
 async function loadPartidos() {
 
+  editRow = null; // 🔥 FIX IMPORTANTE
+
   const liga = document.getElementById("liga").value;
 
   const res = await fetch(API + "/partidos?liga=" + liga);
@@ -227,7 +229,7 @@ async function loadPartidos() {
 }
 
 /* ======================
-   EDITAR
+   EDITAR PARTIDO
 ====================== */
 
 function editMatch(id) {
@@ -246,7 +248,7 @@ function editMatch(id) {
 }
 
 /* ======================
-   GUARDAR (CREATE + UPDATE FIX)
+   GUARDAR / ACTUALIZAR
 ====================== */
 
 async function saveMatch() {
@@ -262,7 +264,6 @@ async function saveMatch() {
 
   let url = "/partido";
 
-  // 🔥 CLAVE: si editRow existe → UPDATE
   if (editRow !== null) {
     url = "/partido/update";
     body.row = editRow;
@@ -270,29 +271,26 @@ async function saveMatch() {
 
   const res = await fetch(API + url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });
 
   const data = await res.json();
 
-  if (data.ok) {
-
-    alert("✔ Guardado correctamente");
-
-    editRow = null;
-
-    document.getElementById("jornada").value = "";
-    document.getElementById("gl").value = "";
-    document.getElementById("gv").value = "";
-
-    loadPartidos();
-
-  } else {
+  if (!data.ok) {
     alert(data.error || "Error");
+    return;
   }
+
+  alert("✔ Guardado");
+
+  editRow = null;
+
+  document.getElementById("jornada").value = "";
+  document.getElementById("gl").value = "";
+  document.getElementById("gv").value = "";
+
+  loadPartidos();
 }
 
 /* ======================
