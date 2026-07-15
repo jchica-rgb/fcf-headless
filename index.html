@@ -25,7 +25,7 @@ body {
 }
 
 /* =========================
-   HEADER (TV STYLE)
+   HEADER
 ========================= */
 
 header {
@@ -37,7 +37,6 @@ header {
   letter-spacing: 1px;
 }
 
-/* línea verde decorativa superior */
 header::after {
   content: "";
   display: block;
@@ -62,7 +61,7 @@ header::after {
 }
 
 /* =========================
-   SELECT LIGA
+   SELECT
 ========================= */
 
 select {
@@ -75,7 +74,7 @@ select {
 }
 
 /* =========================
-   TITULOS SECCIONES
+   TITULOS
 ========================= */
 
 .section-title {
@@ -100,7 +99,6 @@ select {
 .layout {
   display: flex;
   gap: 35px;
-  align-items: stretch;
 }
 
 .left, .right {
@@ -109,7 +107,6 @@ select {
   flex-direction: column;
 }
 
-/* divisor central */
 .divider {
   width: 3px;
   background: linear-gradient(to bottom, transparent, #00ff88, #00ff88, transparent);
@@ -176,10 +173,7 @@ th {
   .layout {
     flex-direction: column;
   }
-
-  .divider {
-    display: none;
-  }
+  .divider { display:none; }
 }
 
 </style>
@@ -191,11 +185,13 @@ th {
 
 <div class="container">
 
+  <!-- STATUS -->
   <div id="statusBar">
     <div id="lastChange">📡 Último cambio: --</div>
     <div id="lastRefresh">🕒 Último refresh: --</div>
   </div>
 
+  <!-- LIGA -->
   <select id="liga"></select>
 
   <div class="layout">
@@ -207,11 +203,12 @@ th {
       <div class="section-line"></div>
 
       <div id="partidos"></div>
+
     </div>
 
     <div class="divider"></div>
 
-    <!-- CLASIFICACIÓN -->
+    <!-- CLASIFICACION + STATS -->
     <div class="right">
 
       <div class="section-title">📊 Clasificación</div>
@@ -232,9 +229,28 @@ th {
         <tbody id="tabla"></tbody>
       </table>
 
+      <br>
+
+      <div class="section-title">📈 Estadísticas</div>
+      <div class="section-line"></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Equipo</th>
+            <th>GF</th>
+            <th>GC</th>
+            <th>DIF</th>
+            <th>PTS</th>
+          </tr>
+        </thead>
+        <tbody id="stats"></tbody>
+      </table>
+
     </div>
 
   </div>
+
 </div>
 
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
@@ -247,42 +263,99 @@ const socket = io(API);
 let currentLiga = null;
 let lastState = new Map();
 
-/* =========================
-   RENDER CLASIFICACION
-========================= */
+/* ================= LIGAS ================= */
 
-function renderTable(data) {
+async function loadLigas(){
+
+  const res = await fetch(API+"/ligas");
+  const json = await res.json();
+
+  const select = document.getElementById("liga");
+  select.innerHTML = "";
+
+  json.data.forEach(l=>{
+    const opt = document.createElement("option");
+    opt.value = l.id;
+    opt.textContent = l.nombre;
+    select.appendChild(opt);
+  });
+
+  currentLiga = localStorage.getItem("liga") || json.data[0].id;
+  select.value = currentLiga;
+
+  select.onchange = (e)=>{
+    currentLiga = e.target.value;
+    localStorage.setItem("liga", currentLiga);
+    loadData();
+  };
+
+  loadData();
+}
+
+/* ================= DATA ================= */
+
+async function loadData(){
+
+  if(!currentLiga) return;
+
+  const [c,p,s] = await Promise.all([
+    fetch(API+"/clasificacion?liga="+currentLiga),
+    fetch(API+"/partidos?liga="+currentLiga),
+    fetch(API+"/estadisticas?liga="+currentLiga)
+  ]);
+
+  const clas = await c.json();
+  const part = await p.json();
+  const stats = await s.json();
+
+  renderClas(clas.data);
+  renderMatches(part.data);
+  renderStats(stats.data);
+
+  updateStatus(clas.lastUpdate);
+}
+
+/* ================= PARTIDOS ================= */
+
+function renderMatches(matches){
+
+  const div = document.getElementById("partidos");
+  div.innerHTML = "";
+
+  matches.forEach(p=>{
+
+    const el = document.createElement("div");
+    el.className = "match";
+
+    el.innerHTML = `
+      <div><b>${p.local}</b></div>
+      <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
+      <div><b>${p.visitante}</b></div>
+    `;
+
+    div.appendChild(el);
+  });
+}
+
+/* ================= CLASIFICACION ================= */
+
+function renderClas(data){
 
   const tbody = document.getElementById("tabla");
-
-  const sorted = [...data].sort((a,b)=>
-    Number(b.puntos)-Number(a.puntos) ||
-    a.equipo.localeCompare(b.equipo)
-  );
-
-  const newState = new Map();
   tbody.innerHTML = "";
 
-  sorted.forEach((t,i)=>{
+  data.forEach((t,i)=>{
 
-    const prev = lastState.get(t.equipo);
-
-    let arrow="";
-    if(prev){
-      if(prev.pos>i) arrow=" 📈";
-      else if(prev.pos<i) arrow=" 📉";
-    }
-
-    let cls="mid";
+    let cls = "mid";
     if(i<3) cls="up";
-    else if(i>=sorted.length-3) cls="down";
+    else if(i>=data.length-3) cls="down";
 
-    const tr=document.createElement("tr");
-    tr.className=cls;
+    const tr = document.createElement("tr");
+    tr.className = cls;
 
-    tr.innerHTML=`
+    tr.innerHTML = `
       <td>${i+1}</td>
-      <td>${t.equipo}${arrow}</td>
+      <td>${t.equipo}</td>
       <td>${t.puntos}</td>
       <td>${t.jugados}</td>
       <td>${t.ganados}</td>
@@ -291,117 +364,52 @@ function renderTable(data) {
     `;
 
     tbody.appendChild(tr);
-    newState.set(t.equipo,{pos:i});
   });
-
-  lastState=newState;
 }
 
-/* =========================
-   MATCHES
-========================= */
+/* ================= ESTADISTICAS ================= */
 
-function renderMatches(matches){
+function renderStats(data){
 
-  const div=document.getElementById("partidos");
-  div.innerHTML="";
+  const tbody = document.getElementById("stats");
+  tbody.innerHTML = "";
 
-  matches.forEach(p=>{
+  data.forEach(t=>{
 
-    const el=document.createElement("div");
-    el.className="match";
+    const tr = document.createElement("tr");
 
-    el.innerHTML=`
-      <div>${p.local}</div>
-      <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-      <div>${p.visitante}</div>
+    tr.innerHTML = `
+      <td>${t.equipo}</td>
+      <td>${t.goles_favor}</td>
+      <td>${t.goles_contra}</td>
+      <td>${t.diferencia}</td>
+      <td>${t.puntos}</td>
     `;
 
-    div.appendChild(el);
+    tbody.appendChild(tr);
   });
 }
 
-/* =========================
-   STATUS
-========================= */
+/* ================= STATUS ================= */
 
 function updateStatus(ts){
 
-  const now=new Date().toLocaleString("es-ES",{timeZone:"Europe/Madrid"});
+  const now = new Date().toLocaleString("es-ES",{timeZone:"Europe/Madrid"});
 
-  document.getElementById("lastChange").innerText=
-    "📡 Último cambio: "+(ts?new Date(ts).toLocaleString():"--");
+  document.getElementById("lastChange").innerText =
+    "📡 Último cambio: " + (ts ? new Date(ts).toLocaleString() : "--");
 
-  document.getElementById("lastRefresh").innerText=
-    "🕒 Último refresh: "+now;
+  document.getElementById("lastRefresh").innerText =
+    "🕒 Último refresh: " + now;
 }
 
-/* =========================
-   DATA
-========================= */
-
-async function loadData(){
-
-  if(!currentLiga) return;
-
-  const [c,p]=await Promise.all([
-    fetch(API+"/clasificacion?liga="+currentLiga),
-    fetch(API+"/partidos?liga="+currentLiga)
-  ]);
-
-  const clas=await c.json();
-  const part=await p.json();
-
-  renderTable(clas.data);
-  renderMatches(part.data);
-  updateStatus(clas.lastUpdate);
-}
-
-/* =========================
-   SOCKET
-========================= */
+/* ================= SOCKET ================= */
 
 socket.on("clasificacion",(msg)=>{
   if(msg.liga!==currentLiga) return;
-  renderTable(msg.data);
+  renderClas(msg.data);
   updateStatus(msg.time);
 });
-
-/* =========================
-   LIGAS
-========================= */
-
-async function loadLigas(){
-
-  const res=await fetch(API+"/ligas");
-  const json=await res.json();
-
-  const select=document.getElementById("liga");
-  select.innerHTML="";
-
-  json.data.forEach(l=>{
-    const opt=document.createElement("option");
-    opt.value=l.id;
-    opt.textContent=l.nombre;
-    select.appendChild(opt);
-  });
-
-  currentLiga=localStorage.getItem("liga")||json.data[0].id;
-  select.value=currentLiga;
-
-  select.onchange=(e)=>{
-    currentLiga=e.target.value;
-    localStorage.setItem("liga",currentLiga);
-
-    lastState.clear();
-    document.getElementById("tabla").innerHTML="";
-    document.getElementById("partidos").innerHTML="";
-
-    loadData();
-  };
-
-  loadData();
-}
 
 loadLigas();
 setInterval(loadData,10000);
