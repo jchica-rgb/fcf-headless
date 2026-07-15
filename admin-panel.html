@@ -7,72 +7,81 @@
 <style>
 
 body {
-  margin: 0;
-  font-family: Arial;
-  background: #0a0a0a;
-  color: white;
+  margin:0;
+  font-family:Arial;
+  background:#0a0a0a;
+  color:white;
 }
 
-/* HEADER */
 header {
-  background: #111;
-  padding: 15px;
-  text-align: center;
-  font-weight: bold;
-  letter-spacing: 1px;
+  background:#111;
+  padding:15px;
+  text-align:center;
+  font-weight:bold;
 }
 
-/* CONTAINER */
 .container {
-  max-width: 700px;
-  margin: auto;
-  padding: 20px;
+  max-width:800px;
+  margin:auto;
+  padding:20px;
 }
 
-/* CARD */
 .card {
-  background: #111;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 12px;
-  border: 1px solid #222;
+  background:#111;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:12px;
+  border:1px solid #222;
 }
 
-/* INPUTS Y SELECTS (FIX ESTÉTICO IMPORTANTE) */
 input, select {
-  width: 100%;
-  padding: 10px;
-  margin: 6px 0;
-  background: #1a1a1a;
-  border: 1px solid #333;
-  color: white;
-  box-sizing: border-box;
-  border-radius: 6px;
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  background:#1a1a1a;
+  border:1px solid #333;
+  color:white;
+  box-sizing:border-box;
+  border-radius:6px;
 }
 
-/* BOTÓN */
 button {
-  width: 100%;
-  padding: 12px;
-  background: #00ff88;
-  border: none;
-  font-weight: bold;
-  cursor: pointer;
-  border-radius: 6px;
+  width:100%;
+  padding:12px;
+  background:#00ff88;
+  border:none;
+  font-weight:bold;
+  cursor:pointer;
+  border-radius:6px;
 }
 
 button:hover {
-  background: #00cc6a;
+  background:#00cc6a;
 }
 
-/* ROW */
 .row {
-  display: flex;
-  gap: 10px;
+  display:flex;
+  gap:10px;
 }
 
 .row input {
-  flex: 1;
+  flex:1;
+}
+
+.match-item {
+  padding:10px;
+  background:#151515;
+  margin:6px 0;
+  border-radius:6px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.small-btn {
+  padding:6px 10px;
+  font-size:12px;
+  width:auto;
 }
 
 </style>
@@ -80,7 +89,6 @@ button:hover {
 
 <body>
 
-<!-- HEADER NUEVO -->
 <header>⚽ FUTCAT MATCH CONTROL</header>
 
 <div class="container">
@@ -91,10 +99,9 @@ button:hover {
     <select id="liga"></select>
   </div>
 
-  <!-- PARTIDO -->
+  <!-- FORM -->
   <div class="card">
-
-    <h3>➕ Nuevo partido</h3>
+    <h3>➕ Partido</h3>
 
     <input id="jornada" placeholder="Jornada">
 
@@ -106,8 +113,13 @@ button:hover {
       <input id="gv" type="number" placeholder="Goles visitante">
     </div>
 
-    <button onclick="saveMatch()">GUARDAR PARTIDO</button>
+    <button onclick="saveMatch()">GUARDAR / ACTUALIZAR</button>
+  </div>
 
+  <!-- LISTA EDIT -->
+  <div class="card">
+    <h3>✏️ Editar partidos</h3>
+    <div id="listaPartidos"></div>
   </div>
 
 </div>
@@ -117,6 +129,8 @@ button:hover {
 const API = "https://fcf-headless.onrender.com";
 
 let equipos = [];
+let partidos = [];
+let editRow = null;
 
 /* ======================
    LIGAS
@@ -127,24 +141,26 @@ async function loadLigas() {
   const res = await fetch(API + "/ligas");
   const json = await res.json();
 
-  const liga = document.getElementById("liga");
-
-  liga.innerHTML = "";
+  const sel = document.getElementById("liga");
 
   json.data.forEach(l => {
     const opt = document.createElement("option");
     opt.value = l.id;
     opt.textContent = l.nombre;
-    liga.appendChild(opt);
+    sel.appendChild(opt);
   });
 
-  liga.onchange = loadEquipos;
+  sel.onchange = () => {
+    loadEquipos();
+    loadPartidos();
+  };
 
   loadEquipos();
+  loadPartidos();
 }
 
 /* ======================
-   EQUIPOS DESDE SHEETS
+   EQUIPOS
 ====================== */
 
 async function loadEquipos() {
@@ -164,24 +180,75 @@ async function loadEquipos() {
 
   equipos.forEach(e => {
 
-    const opt1 = document.createElement("option");
-    opt1.value = e;
-    opt1.textContent = e;
+    const o1 = document.createElement("option");
+    o1.value = e;
+    o1.textContent = e;
 
-    const opt2 = opt1.cloneNode(true);
+    const o2 = o1.cloneNode(true);
 
-    local.appendChild(opt1);
-    visitante.appendChild(opt2);
+    local.appendChild(o1);
+    visitante.appendChild(o2);
   });
 }
 
 /* ======================
-   GUARDAR PARTIDO
+   PARTIDOS LISTA
+====================== */
+
+async function loadPartidos() {
+
+  const liga = document.getElementById("liga").value;
+
+  const res = await fetch(API + "/partidos?liga=" + liga);
+  const json = await res.json();
+
+  partidos = json.data;
+
+  const div = document.getElementById("listaPartidos");
+  div.innerHTML = "";
+
+  partidos.forEach(p => {
+
+    const el = document.createElement("div");
+    el.className = "match-item";
+
+    el.innerHTML = `
+      <div>
+        <b>${p.local}</b> ${p.goles_local} - ${p.goles_visitante} <b>${p.visitante}</b>
+        <br>
+        Jornada: ${p.jornada}
+      </div>
+      <button class="small-btn" onclick="edit(${p.id})">EDITAR</button>
+    `;
+
+    div.appendChild(el);
+  });
+}
+
+/* ======================
+   EDITAR
+====================== */
+
+function edit(id) {
+
+  const p = partidos.find(x => x.id === id);
+
+  editRow = id;
+
+  document.getElementById("jornada").value = p.jornada;
+  document.getElementById("local").value = p.local;
+  document.getElementById("visitante").value = p.visitante;
+  document.getElementById("gl").value = p.goles_local;
+  document.getElementById("gv").value = p.goles_visitante;
+}
+
+/* ======================
+   GUARDAR / UPDATE
 ====================== */
 
 async function saveMatch() {
 
-  const match = {
+  const body = {
     liga: document.getElementById("liga").value,
     jornada: document.getElementById("jornada").value,
     local: document.getElementById("local").value,
@@ -190,31 +257,29 @@ async function saveMatch() {
     goles_visitante: Number(document.getElementById("gv").value)
   };
 
-  if (!match.jornada) {
-    alert("Introduce jornada");
-    return;
+  let url = "/partido";
+  let method = "POST";
+
+  if (editRow) {
+    body.row = editRow;
+    url = "/partido/update";
   }
 
-  const res = await fetch(API + "/partido", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(match)
+  await fetch(API + url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
   });
 
-  const data = await res.json();
+  editRow = null;
 
-  if (data.ok) {
-    alert("✔ Partido guardado");
-
-    document.getElementById("jornada").value = "";
-    document.getElementById("gl").value = "";
-    document.getElementById("gv").value = "";
-  } else {
-    alert(data.error || "Error al guardar");
-  }
+  loadPartidos();
+  alert("✔ Guardado");
 }
+
+/* ======================
+   INIT
+====================== */
 
 loadLigas();
 
