@@ -7,81 +7,81 @@
 <style>
 
 body {
-  margin:0;
-  font-family:Arial;
-  background:#0a0a0a;
-  color:white;
+  margin: 0;
+  font-family: Arial;
+  background: #0a0a0a;
+  color: white;
 }
 
 header {
-  background:#111;
-  padding:15px;
-  text-align:center;
-  font-weight:bold;
+  background: #111;
+  padding: 15px;
+  text-align: center;
+  font-weight: bold;
 }
 
 .container {
-  max-width:800px;
-  margin:auto;
-  padding:20px;
+  max-width: 800px;
+  margin: auto;
+  padding: 20px;
 }
 
 .card {
-  background:#111;
-  padding:15px;
-  border-radius:10px;
-  margin-bottom:12px;
-  border:1px solid #222;
+  background: #111;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #222;
 }
 
 input, select {
-  width:100%;
-  padding:10px;
-  margin:6px 0;
-  background:#1a1a1a;
-  border:1px solid #333;
-  color:white;
-  box-sizing:border-box;
-  border-radius:6px;
+  width: 100%;
+  padding: 10px;
+  margin: 6px 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: white;
+  box-sizing: border-box;
+  border-radius: 6px;
 }
 
 button {
-  width:100%;
-  padding:12px;
-  background:#00ff88;
-  border:none;
-  font-weight:bold;
-  cursor:pointer;
-  border-radius:6px;
+  width: 100%;
+  padding: 12px;
+  background: #00ff88;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 6px;
 }
 
 button:hover {
-  background:#00cc6a;
+  background: #00cc6a;
 }
 
 .row {
-  display:flex;
-  gap:10px;
+  display: flex;
+  gap: 10px;
 }
 
 .row input {
-  flex:1;
+  flex: 1;
 }
 
 .match-item {
-  padding:10px;
-  background:#151515;
-  margin:6px 0;
-  border-radius:6px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
+  background: #151515;
+  padding: 10px;
+  margin: 6px 0;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .small-btn {
-  padding:6px 10px;
-  font-size:12px;
-  width:auto;
+  width: auto;
+  padding: 6px 10px;
+  font-size: 12px;
 }
 
 </style>
@@ -101,7 +101,7 @@ button:hover {
 
   <!-- FORM -->
   <div class="card">
-    <h3>➕ Partido</h3>
+    <h3>➕ / ✏️ Partido</h3>
 
     <input id="jornada" placeholder="Jornada">
 
@@ -113,10 +113,10 @@ button:hover {
       <input id="gv" type="number" placeholder="Goles visitante">
     </div>
 
-    <button onclick="saveMatch()">GUARDAR / ACTUALIZAR</button>
+    <button onclick="saveMatch()">GUARDAR PARTIDO</button>
   </div>
 
-  <!-- LISTA EDIT -->
+  <!-- LISTA -->
   <div class="card">
     <h3>✏️ Editar partidos</h3>
     <div id="listaPartidos"></div>
@@ -142,6 +142,7 @@ async function loadLigas() {
   const json = await res.json();
 
   const sel = document.getElementById("liga");
+  sel.innerHTML = "";
 
   json.data.forEach(l => {
     const opt = document.createElement("option");
@@ -218,7 +219,7 @@ async function loadPartidos() {
         <br>
         Jornada: ${p.jornada}
       </div>
-      <button class="small-btn" onclick="edit(${p.id})">EDITAR</button>
+      <button class="small-btn" onclick="editMatch(${p.id})">EDITAR</button>
     `;
 
     div.appendChild(el);
@@ -229,9 +230,11 @@ async function loadPartidos() {
    EDITAR
 ====================== */
 
-function edit(id) {
+function editMatch(id) {
 
   const p = partidos.find(x => x.id === id);
+
+  if (!p) return;
 
   editRow = id;
 
@@ -243,7 +246,7 @@ function edit(id) {
 }
 
 /* ======================
-   GUARDAR / UPDATE
+   GUARDAR (CREATE + UPDATE FIX)
 ====================== */
 
 async function saveMatch() {
@@ -258,23 +261,38 @@ async function saveMatch() {
   };
 
   let url = "/partido";
-  let method = "POST";
 
-  if (editRow) {
-    body.row = editRow;
+  // 🔥 CLAVE: si editRow existe → UPDATE
+  if (editRow !== null) {
     url = "/partido/update";
+    body.row = editRow;
   }
 
-  await fetch(API + url, {
-    method,
-    headers: { "Content-Type": "application/json" },
+  const res = await fetch(API + url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
     body: JSON.stringify(body)
   });
 
-  editRow = null;
+  const data = await res.json();
 
-  loadPartidos();
-  alert("✔ Guardado");
+  if (data.ok) {
+
+    alert("✔ Guardado correctamente");
+
+    editRow = null;
+
+    document.getElementById("jornada").value = "";
+    document.getElementById("gl").value = "";
+    document.getElementById("gv").value = "";
+
+    loadPartidos();
+
+  } else {
+    alert(data.error || "Error");
+  }
 }
 
 /* ======================
