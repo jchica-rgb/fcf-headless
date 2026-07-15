@@ -6,11 +6,7 @@
 
 <style>
 
-/* ================= BASE ================= */
-
-* {
-  box-sizing: border-box;
-}
+* { box-sizing:border-box; }
 
 body{
   margin:0;
@@ -27,75 +23,77 @@ body{
 
 h1{
   text-align:center;
-  margin-bottom:20px;
 }
 
-/* ================= LAYOUT (FIXED) ================= */
+/* ================= LAYOUT ================= */
 
 .layout{
   display:flex;
   gap:20px;
-  align-items:flex-start;
 }
 
-/* 🔥 IZQUIERDA (CREAR) */
 .col-left{
   flex:0 0 30%;
   background:#111;
   padding:15px;
   border-radius:10px;
-  min-width:0;
 }
 
-/* 🔥 CENTRO (PARTIDOS - MÁS GRANDE) */
 .col-center{
   flex:0 0 45%;
   background:#111;
   padding:15px;
   border-radius:10px;
-  min-width:0;
 }
 
-/* 🔥 DERECHA (EDITAR) */
 .col-right{
   flex:0 0 25%;
   background:#111;
   padding:15px;
   border-radius:10px;
-  min-width:0;
 }
 
-/* ================= INPUTS ================= */
+/* ================= FIELD GROUP ================= */
+
+.field{
+  margin-bottom:12px;
+}
+
+label{
+  display:block;
+  font-size:12px;
+  color:#aaa;
+  margin-bottom:4px;
+}
 
 input, select{
   width:100%;
   padding:10px;
-  margin:6px 0;
   background:#1a1a1a;
   color:white;
   border:1px solid #333;
   border-radius:6px;
+  outline:none;
 }
 
-/* evita overflow raro */
-input::placeholder{
-  color:#777;
+input:focus, select:focus{
+  border-color:#00ff88;
 }
 
-/* ================= BOTONES ================= */
+/* ================= BUTTON ================= */
 
 button{
   width:100%;
   padding:12px;
   background:#00ff88;
   border:none;
-  cursor:pointer;
   font-weight:bold;
-  margin-top:10px;
+  cursor:pointer;
   border-radius:6px;
+  margin-top:10px;
 }
 
-/* ================= LISTA PARTIDOS ================= */
+/* ================= MATCH LIST ================= */
 
 .match{
   background:#151515;
@@ -108,8 +106,9 @@ button{
 
 .match:hover{
   transform:scale(1.02);
-  background:#1c1c1c;
 }
+
+/* ================= SMALL TEXT ================= */
 
 .small{
   font-size:12px;
@@ -121,7 +120,6 @@ button{
 .section-title{
   font-weight:bold;
   margin-bottom:10px;
-  font-size:14px;
 }
 
 hr{
@@ -142,51 +140,106 @@ hr{
 
 <div class="layout">
 
-<!-- ================= LEFT (CREAR) ================= -->
+<!-- ================= LEFT ================= -->
 <div class="col-left">
 
   <div class="section-title">➕ Crear Partido</div>
   <hr>
 
-  <select id="liga"></select>
-  <select id="temporada"></select>
+  <div class="field">
+    <label>Liga</label>
+    <select id="liga"></select>
+  </div>
 
-  <input id="jornada" placeholder="Jornada">
-  <input id="local" placeholder="Local">
-  <input id="visitante" placeholder="Visitante">
-  <input id="gl" placeholder="Goles Local">
-  <input id="gv" placeholder="Goles Visitante">
+  <div class="field">
+    <label>Temporada</label>
+    <select id="temporada"></select>
+  </div>
+
+  <div class="field">
+    <label>Jornada</label>
+    <input id="jornada" placeholder="Ej: 3">
+  </div>
+
+  <div class="field">
+    <label>Local</label>
+    <input id="local" placeholder="Equipo local">
+  </div>
+
+  <div class="field">
+    <label>Visitante</label>
+    <input id="visitante" placeholder="Equipo visitante">
+  </div>
+
+  <div class="field">
+    <label>Goles Local</label>
+    <input id="gl" placeholder="0">
+  </div>
+
+  <div class="field">
+    <label>Goles Visitante</label>
+    <input id="gv" placeholder="0">
+  </div>
 
   <button onclick="crear()">Guardar Partido</button>
 
 </div>
 
-<!-- ================= CENTER (PARTIDOS BIG) ================= -->
+<!-- ================= CENTER ================= -->
 <div class="col-center">
 
   <div class="section-title">📋 Partidos</div>
   <hr>
 
-  <select id="filtroLiga"></select>
-  <select id="filtroTemporada"></select>
+  <div class="field">
+    <label>Filtrar Liga</label>
+    <select id="filtroLiga"></select>
+  </div>
+
+  <div class="field">
+    <label>Filtrar Temporada</label>
+    <select id="filtroTemporada"></select>
+  </div>
 
   <div id="lista"></div>
 
 </div>
 
-<!-- ================= RIGHT (EDIT) ================= -->
+<!-- ================= RIGHT ================= -->
 <div class="col-right">
 
   <div class="section-title">✏️ Editar Partido</div>
   <hr>
 
-  <input id="editRow" placeholder="Fila Sheet">
+  <div class="field">
+    <label>Fila Sheet</label>
+    <input id="editRow">
+  </div>
 
-  <input id="editJornada">
-  <input id="editLocal">
-  <input id="editVisitante">
-  <input id="editGL">
-  <input id="editGV">
+  <div class="field">
+    <label>Jornada</label>
+    <input id="editJornada">
+  </div>
+
+  <div class="field">
+    <label>Local</label>
+    <input id="editLocal">
+  </div>
+
+  <div class="field">
+    <label>Visitante</label>
+    <input id="editVisitante">
+  </div>
+
+  <div class="field">
+    <label>Goles Local</label>
+    <input id="editGL">
+  </div>
+
+  <div class="field">
+    <label>Goles Visitante</label>
+    <input id="editGV">
+  </div>
 
   <button onclick="update()">Actualizar</button>
 
@@ -197,7 +250,7 @@ hr{
 
 <script>
 
-const API = "https://fcf-headless.onrender.com";
+const API="https://fcf-headless.onrender.com";
 
 let ligas=[];
 let partidos=[];
@@ -222,7 +275,6 @@ function fillSelects(){
   ["liga","filtroLiga"].forEach(id=>{
     const sel=document.getElementById(id);
     sel.innerHTML="";
-
     ligas.forEach(l=>{
       const opt=document.createElement("option");
       opt.value=l.id;
@@ -236,7 +288,6 @@ function fillSelects(){
   ["temporada","filtroTemporada"].forEach(id=>{
     const sel=document.getElementById(id);
     sel.innerHTML="";
-
     seasons.forEach(s=>{
       const opt=document.createElement("option");
       opt.value=s;
