@@ -24,9 +24,7 @@ body {
   padding: 0 20px;
 }
 
-/* =========================
-   HEADER
-========================= */
+/* HEADER */
 
 header {
   padding: 18px;
@@ -45,9 +43,7 @@ header::after {
   background: linear-gradient(90deg, transparent, #00ff88, transparent);
 }
 
-/* =========================
-   STATUS BAR
-========================= */
+/* STATUS */
 
 #statusBar {
   display: flex;
@@ -60,86 +56,53 @@ header::after {
   border: 1px solid rgba(0,255,136,0.2);
 }
 
-/* =========================
-   SELECT
-========================= */
+/* SELECTS */
 
 select {
   width: 100%;
-  margin: 15px 0 20px 0;
+  margin: 10px 0;
   padding: 10px;
   background: #1a1a1a;
   color: white;
   border: 1px solid #333;
 }
 
-/* =========================
-   TITULOS
-========================= */
+/* TITLES */
 
 .section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-weight: bold;
-  margin-bottom: 10px;
+  margin-top: 10px;
 }
 
 .section-line {
   height: 2px;
-  width: 100%;
   background: linear-gradient(90deg, #00ff88, transparent);
-  margin-bottom: 15px;
+  margin: 10px 0;
 }
 
-/* =========================
-   LAYOUT
-========================= */
+/* LAYOUT */
 
 .layout {
   display: flex;
-  gap: 35px;
+  gap: 30px;
 }
 
 .left, .right {
   flex: 1;
-  display: flex;
-  flex-direction: column;
 }
 
-.divider {
-  width: 3px;
-  background: linear-gradient(to bottom, transparent, #00ff88, #00ff88, transparent);
-  box-shadow: 0 0 12px #00ff88;
-}
-
-/* =========================
-   MATCHES
-========================= */
+/* MATCH */
 
 .match {
   background: #151515;
-  padding: 12px;
-  margin-bottom: 8px;
-  border-radius: 8px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 10px;
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
 }
 
-.match div:last-child {
-  text-align: right;
-}
-
-.score {
-  color: #00ff88;
-  font-weight: bold;
-}
-
-/* =========================
-   TABLE
-========================= */
+/* TABLE */
 
 table {
   width: 100%;
@@ -148,32 +111,13 @@ table {
 }
 
 th, td {
-  padding: 10px;
+  padding: 8px;
   text-align: center;
   border-bottom: 1px solid #222;
 }
 
 th {
   color: #00ff88;
-}
-
-/* =========================
-   ZONAS
-========================= */
-
-.up td { background: rgba(0,255,0,0.15); }
-.mid td { background: rgba(255,255,255,0.03); }
-.down td { background: rgba(255,0,0,0.15); }
-
-/* =========================
-   RESPONSIVE
-========================= */
-
-@media (max-width: 900px) {
-  .layout {
-    flex-direction: column;
-  }
-  .divider { display:none; }
 }
 
 </style>
@@ -194,6 +138,9 @@ th {
   <!-- LIGA -->
   <select id="liga"></select>
 
+  <!-- TEMPORADA -->
+  <select id="temporada"></select>
+
   <div class="layout">
 
     <!-- PARTIDOS -->
@@ -206,9 +153,7 @@ th {
 
     </div>
 
-    <div class="divider"></div>
-
-    <!-- CLASIFICACION + STATS -->
+    <!-- CLASIFICACION -->
     <div class="right">
 
       <div class="section-title">📊 Clasificación</div>
@@ -217,7 +162,6 @@ th {
       <table>
         <thead>
           <tr>
-            <th>Pos</th>
             <th>Equipo</th>
             <th>Puntos</th>
             <th>J</th>
@@ -253,15 +197,12 @@ th {
 
 </div>
 
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-
 <script>
 
 const API = "https://fcf-headless.onrender.com";
-const socket = io(API);
 
 let currentLiga = null;
-let lastState = new Map();
+let currentTemporada = null;
 
 /* ================= LIGAS ================= */
 
@@ -270,22 +211,50 @@ async function loadLigas(){
   const res = await fetch(API+"/ligas");
   const json = await res.json();
 
-  const select = document.getElementById("liga");
-  select.innerHTML = "";
+  const sel = document.getElementById("liga");
+  sel.innerHTML = "";
 
   json.data.forEach(l=>{
     const opt = document.createElement("option");
     opt.value = l.id;
     opt.textContent = l.nombre;
-    select.appendChild(opt);
+    sel.appendChild(opt);
   });
 
-  currentLiga = localStorage.getItem("liga") || json.data[0].id;
-  select.value = currentLiga;
+  currentLiga = json.data[0].id;
+  sel.value = currentLiga;
 
-  select.onchange = (e)=>{
+  sel.onchange = (e)=>{
     currentLiga = e.target.value;
-    localStorage.setItem("liga", currentLiga);
+    loadData();
+  };
+
+  loadTemporadas();
+}
+
+/* ================= TEMPORADAS ================= */
+
+function loadTemporadas(){
+
+  const sel = document.getElementById("temporada");
+
+  const seasons = ["2023-24","2024-25","2025-26"];
+
+  sel.innerHTML = "";
+
+  seasons.forEach(s=>{
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = s;
+    sel.appendChild(opt);
+  });
+
+  currentTemporada = localStorage.getItem("temporada") || seasons[0];
+  sel.value = currentTemporada;
+
+  sel.onchange = (e)=>{
+    currentTemporada = e.target.value;
+    localStorage.setItem("temporada", currentTemporada);
     loadData();
   };
 
@@ -296,12 +265,12 @@ async function loadLigas(){
 
 async function loadData(){
 
-  if(!currentLiga) return;
+  if(!currentLiga || !currentTemporada) return;
 
   const [c,p,s] = await Promise.all([
-    fetch(API+"/clasificacion?liga="+currentLiga),
-    fetch(API+"/partidos?liga="+currentLiga),
-    fetch(API+"/estadisticas?liga="+currentLiga)
+    fetch(API+"/clasificacion?liga="+currentLiga+"&temporada="+currentTemporada),
+    fetch(API+"/partidos?liga="+currentLiga+"&temporada="+currentTemporada),
+    fetch(API+"/estadisticas?liga="+currentLiga+"&temporada="+currentTemporada)
   ]);
 
   const clas = await c.json();
@@ -317,20 +286,19 @@ async function loadData(){
 
 /* ================= PARTIDOS ================= */
 
-function renderMatches(matches){
+function renderMatches(data){
 
   const div = document.getElementById("partidos");
   div.innerHTML = "";
 
-  matches.forEach(p=>{
+  data.forEach(p=>{
 
     const el = document.createElement("div");
     el.className = "match";
 
     el.innerHTML = `
-      <div><b>${p.local}</b></div>
-      <div class="score">${p.goles_local} - ${p.goles_visitante}</div>
-      <div><b>${p.visitante}</b></div>
+      <div>${p.local} ${p.goles_local}-${p.goles_visitante} ${p.visitante}</div>
+      <div>${p.jornada}</div>
     `;
 
     div.appendChild(el);
@@ -344,17 +312,11 @@ function renderClas(data){
   const tbody = document.getElementById("tabla");
   tbody.innerHTML = "";
 
-  data.forEach((t,i)=>{
-
-    let cls = "mid";
-    if(i<3) cls="up";
-    else if(i>=data.length-3) cls="down";
+  data.forEach(t=>{
 
     const tr = document.createElement("tr");
-    tr.className = cls;
 
     tr.innerHTML = `
-      <td>${i+1}</td>
       <td>${t.equipo}</td>
       <td>${t.puntos}</td>
       <td>${t.jugados}</td>
@@ -394,22 +356,12 @@ function renderStats(data){
 
 function updateStatus(ts){
 
-  const now = new Date().toLocaleString("es-ES",{timeZone:"Europe/Madrid"});
-
   document.getElementById("lastChange").innerText =
     "📡 Último cambio: " + (ts ? new Date(ts).toLocaleString() : "--");
 
   document.getElementById("lastRefresh").innerText =
-    "🕒 Último refresh: " + now;
+    "🕒 Último refresh: " + new Date().toLocaleString("es-ES");
 }
-
-/* ================= SOCKET ================= */
-
-socket.on("clasificacion",(msg)=>{
-  if(msg.liga!==currentLiga) return;
-  renderClas(msg.data);
-  updateStatus(msg.time);
-});
 
 loadLigas();
 setInterval(loadData,10000);
