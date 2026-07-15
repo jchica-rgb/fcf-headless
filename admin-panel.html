@@ -33,7 +33,6 @@ h1{
   gap:20px;
 }
 
-/* CREAR */
 .col-left{
   flex:0 0 30%;
   background:#111;
@@ -41,7 +40,6 @@ h1{
   border-radius:10px;
 }
 
-/* LISTA */
 .col-center{
   flex:0 0 45%;
   background:#111;
@@ -49,7 +47,6 @@ h1{
   border-radius:10px;
 }
 
-/* EDITAR */
 .col-right{
   flex:0 0 25%;
   background:#111;
@@ -113,8 +110,6 @@ button{
   background:#1c1c1c;
 }
 
-/* ================= TEXT ================= */
-
 .small{
   font-size:12px;
   opacity:0.7;
@@ -155,7 +150,7 @@ hr{
   </div>
 
   <div class="field">
-    <label>Temporada</label>
+    <label>Temporada (ACTIVA)</label>
     <select id="temporada"></select>
   </div>
 
@@ -255,8 +250,9 @@ hr{
 
 const API = "https://fcf-headless.onrender.com";
 
-let ligas = [];
-let partidos = [];
+let ligas=[];
+let partidos=[];
+let temporadaActiva=null;
 
 /* ================= INIT ================= */
 
@@ -268,50 +264,63 @@ async function init(){
   ligas = j.data;
 
   fillSelects();
-  loadTemporadas();
+  await loadTemporadas();
 }
 
-/* ================= SELECTS ================= */
+/* ================= LIGAS ================= */
 
 function fillSelects(){
 
   ["liga","filtroLiga"].forEach(id=>{
-    const sel = document.getElementById(id);
-    sel.innerHTML = "";
-
+    const sel=document.getElementById(id);
+    sel.innerHTML="";
     ligas.forEach(l=>{
-      const opt = document.createElement("option");
-      opt.value = l.id;
-      opt.textContent = l.nombre;
+      const opt=document.createElement("option");
+      opt.value=l.id;
+      opt.textContent=l.nombre;
       sel.appendChild(opt);
     });
   });
 }
 
-/* ================= TEMPORADAS (REAL SERVER) ================= */
+/* ================= TEMPORADAS (INTELIGENTE) ================= */
 
 async function loadTemporadas(){
 
-  const r = await fetch(API + "/temporadas");
-  const j = await r.json();
+  const [t,a] = await Promise.all([
+    fetch(API+"/temporadas"),
+    fetch(API+"/temporada-activa")
+  ]);
+
+  const j = await t.json();
+  const ja = await a.json();
 
   const sel = document.getElementById("temporada");
   const sel2 = document.getElementById("filtroTemporada");
 
-  sel.innerHTML = "";
-  sel2.innerHTML = "";
+  sel.innerHTML="";
+  sel2.innerHTML="";
 
   j.data.forEach(s=>{
 
-    const opt1 = document.createElement("option");
-    const opt2 = document.createElement("option");
+    const opt1=document.createElement("option");
+    const opt2=document.createElement("option");
 
-    opt1.value = opt2.value = s;
-    opt1.textContent = opt2.textContent = s;
+    opt1.value=opt2.value=s;
+    opt1.textContent=opt2.textContent=s;
 
     sel.appendChild(opt1);
     sel2.appendChild(opt2);
   });
+
+  // 🔥 SELECCIÓN INTELIGENTE
+  const saved = localStorage.getItem("temporada");
+  temporadaActiva = saved || ja.data || j.data[j.data.length-1];
+
+  sel.value = temporadaActiva;
+  sel2.value = temporadaActiva;
+
+  localStorage.setItem("temporada", temporadaActiva);
 
   loadPartidos();
 }
@@ -320,16 +329,16 @@ async function loadTemporadas(){
 
 async function loadPartidos(){
 
-  const liga = document.getElementById("filtroLiga").value;
-  const temporada = document.getElementById("filtroTemporada").value;
+  const liga=document.getElementById("filtroLiga").value;
+  const temporada=document.getElementById("filtroTemporada").value;
 
-  const r = await fetch(
-    API + "/partidos?liga=" + liga + "&temporada=" + temporada
+  const r=await fetch(
+    API+"/partidos?liga="+liga+"&temporada="+temporada
   );
 
-  const j = await r.json();
+  const j=await r.json();
 
-  partidos = j.data;
+  partidos=j.data;
 
   render();
 }
@@ -338,20 +347,20 @@ async function loadPartidos(){
 
 function render(){
 
-  const div = document.getElementById("lista");
-  div.innerHTML = "";
+  const div=document.getElementById("lista");
+  div.innerHTML="";
 
   partidos.forEach((p,i)=>{
 
-    const el = document.createElement("div");
-    el.className = "match";
+    const el=document.createElement("div");
+    el.className="match";
 
-    el.innerHTML = `
+    el.innerHTML=`
       <b>${p.local}</b> ${p.goles_local}-${p.goles_visitante} <b>${p.visitante}</b>
       <div class="small">J${p.jornada} | ${p.temporada}</div>
     `;
 
-    el.onclick = ()=>fillEdit(p,i+2);
+    el.onclick=()=>fillEdit(p,i+2);
 
     div.appendChild(el);
   });
@@ -361,19 +370,26 @@ function render(){
 
 async function crear(){
 
-  const data = {
-    liga: document.getElementById("liga").value,
-    temporada: document.getElementById("temporada").value,
-    jornada: document.getElementById("jornada").value,
-    local: document.getElementById("local").value,
-    visitante: document.getElementById("visitante").value,
-    goles_local: document.getElementById("gl").value,
-    goles_visitante: document.getElementById("gv").value
+  const temporada=document.getElementById("temporada").value;
+
+  if(!temporada){
+    alert("Temporada obligatoria");
+    return;
+  }
+
+  const data={
+    liga:document.getElementById("liga").value,
+    temporada,
+    jornada:document.getElementById("jornada").value,
+    local:document.getElementById("local").value,
+    visitante:document.getElementById("visitante").value,
+    goles_local:document.getElementById("gl").value,
+    goles_visitante:document.getElementById("gv").value
   };
 
-  await fetch(API + "/partido",{
+  await fetch(API+"/partido",{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
+    headers:{"Content-Type":"application/json"},
     body:JSON.stringify(data)
   });
 
@@ -384,31 +400,31 @@ async function crear(){
 
 function fillEdit(p,row){
 
-  document.getElementById("editRow").value = row;
-  document.getElementById("editJornada").value = p.jornada;
-  document.getElementById("editLocal").value = p.local;
-  document.getElementById("editVisitante").value = p.visitante;
-  document.getElementById("editGL").value = p.goles_local;
-  document.getElementById("editGV").value = p.goles_visitante;
+  document.getElementById("editRow").value=row;
+  document.getElementById("editJornada").value=p.jornada;
+  document.getElementById("editLocal").value=p.local;
+  document.getElementById("editVisitante").value=p.visitante;
+  document.getElementById("editGL").value=p.goles_local;
+  document.getElementById("editGV").value=p.goles_visitante;
 }
 
 /* ================= UPDATE ================= */
 
 async function update(){
 
-  const data = {
-    row: document.getElementById("editRow").value,
-    liga: document.getElementById("filtroLiga").value,
-    jornada: document.getElementById("editJornada").value,
-    local: document.getElementById("editLocal").value,
-    visitante: document.getElementById("editVisitante").value,
-    goles_local: document.getElementById("editGL").value,
-    goles_visitante: document.getElementById("editGV").value
+  const data={
+    row:document.getElementById("editRow").value,
+    liga:document.getElementById("filtroLiga").value,
+    jornada:document.getElementById("editJornada").value,
+    local:document.getElementById("editLocal").value,
+    visitante:document.getElementById("editVisitante").value,
+    goles_local:document.getElementById("editGL").value,
+    goles_visitante:document.getElementById("editGV").value
   };
 
-  await fetch(API + "/partido/update",{
+  await fetch(API+"/partido/update",{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
+    headers:{"Content-Type":"application/json"},
     body:JSON.stringify(data)
   });
 
