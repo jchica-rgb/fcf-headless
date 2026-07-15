@@ -7,6 +7,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+/* ======================
+   GOOGLE SHEETS CONFIG
+====================== */
+
 function safeJson(v){
   try { return JSON.parse(v); } catch { return null; }
 }
@@ -41,7 +45,9 @@ async function getSheet(range){
   return res.data.values || [];
 }
 
-/* ================= LIGAS ================= */
+/* ======================
+   LIGAS
+====================== */
 
 app.get("/ligas", async (req,res)=>{
   const rows = await getSheet("LIGAS!A2:B");
@@ -54,7 +60,9 @@ app.get("/ligas", async (req,res)=>{
   });
 });
 
-/* ================= EQUIPOS ================= */
+/* ======================
+   EQUIPOS
+====================== */
 
 app.get("/equipos", async (req,res)=>{
   const liga = normalize(req.query.liga);
@@ -68,24 +76,53 @@ app.get("/equipos", async (req,res)=>{
   });
 });
 
-/* ================= TEMPORADAS (REAL) ================= */
+/* ======================
+   TEMPORADAS
+====================== */
 
 app.get("/temporadas", async (req,res)=>{
 
   const rows = await getSheet("PARTIDOS!B2:B");
 
-  const set = new Set();
+  const seasons = rows
+    .map(r => r[0])
+    .filter(Boolean);
 
-  rows.forEach(r=>{
-    if(r[0]) set.add(r[0]);
-  });
+  const unique = [...new Set(seasons)].sort();
 
   res.json({
-    data: Array.from(set).sort()
+    data: unique
   });
 });
 
-/* ================= PARTIDOS ================= */
+/* ======================
+   TEMPORADA ACTIVA (NUEVO)
+====================== */
+
+app.get("/temporada-activa", async (req,res)=>{
+
+  const rows = await getSheet("PARTIDOS!B2:B");
+
+  const seasons = rows
+    .map(r => r[0])
+    .filter(Boolean);
+
+  if(seasons.length === 0){
+    return res.json({ data: null });
+  }
+
+  const unique = [...new Set(seasons)].sort();
+
+  const active = unique[unique.length - 1];
+
+  res.json({
+    data: active
+  });
+});
+
+/* ======================
+   PARTIDOS
+====================== */
 
 app.get("/partidos", async (req,res)=>{
 
@@ -95,7 +132,7 @@ app.get("/partidos", async (req,res)=>{
   const rows = await getSheet("PARTIDOS!A2:G");
 
   const data = rows
-    .map((r,i)=>({
+    .map(r=>({
       liga: normalize(r[0]),
       temporada: r[1],
       jornada: r[2],
@@ -109,10 +146,12 @@ app.get("/partidos", async (req,res)=>{
       (!temporada || p.temporada === temporada)
     );
 
-  res.json({data});
+  res.json({ data });
 });
 
-/* ================= CLASIFICACION ================= */
+/* ======================
+   CLASIFICACION
+====================== */
 
 app.get("/clasificacion", async (req,res)=>{
 
@@ -180,7 +219,9 @@ app.get("/clasificacion", async (req,res)=>{
   });
 });
 
-/* ================= ESTADISTICAS ================= */
+/* ======================
+   ESTADISTICAS
+====================== */
 
 app.get("/estadisticas", async (req,res)=>{
 
@@ -255,10 +296,12 @@ app.get("/estadisticas", async (req,res)=>{
     diferencia:t.goles_favor-t.goles_contra
   }));
 
-  res.json({data:result});
+  res.json({ data: result });
 });
 
-/* ================= PARTIDO ================= */
+/* ======================
+   CREAR PARTIDO
+====================== */
 
 app.post("/partido", async (req,res)=>{
 
@@ -272,8 +315,15 @@ app.post("/partido", async (req,res)=>{
     goles_visitante
   } = req.body;
 
+  if(!temporada){
+    return res.status(400).json({
+      ok:false,
+      error:"Temporada obligatoria"
+    });
+  }
+
   const client = await getClient();
-  const sheets = google.sheets({version:"v4",auth:client});
+  const sheets = google.sheets({ version:"v4", auth:client });
 
   await sheets.spreadsheets.values.append({
     spreadsheetId:SHEET_ID,
@@ -292,11 +342,15 @@ app.post("/partido", async (req,res)=>{
     }
   });
 
-  res.json({ok:true});
+  res.json({ ok:true });
 });
 
-/* ================= SERVER ================= */
+/* ======================
+   SERVER START
+====================== */
 
-app.listen(process.env.PORT||3000,()=>{
-  console.log("FUTCAT SERVER FINAL V2 ⚽");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, ()=>{
+  console.log("FUTCAT SERVER V3 READY ⚽");
 });
