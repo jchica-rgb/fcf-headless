@@ -20,12 +20,35 @@ header {
   font-weight:bold;
 }
 
-.container {
-  max-width:800px;
-  margin:auto;
-  padding:20px;
+/* ===== LAYOUT PRINCIPAL ===== */
+
+.wrapper {
+  display:flex;
+  height:calc(100vh - 60px);
 }
 
+/* IZQUIERDA */
+.left {
+  flex:1;
+  padding:20px;
+  overflow:auto;
+}
+
+/* DERECHA */
+.right {
+  flex:1;
+  padding:20px;
+  overflow:auto;
+}
+
+/* LINEA CENTRAL VERDE */
+.divider {
+  width:3px;
+  background:linear-gradient(to bottom, transparent, #00ff88, transparent);
+  box-shadow:0 0 12px #00ff88;
+}
+
+/* CARDS */
 .card {
   background:#111;
   padding:15px;
@@ -34,6 +57,7 @@ header {
   border:1px solid #222;
 }
 
+/* INPUTS */
 input, select {
   width:100%;
   padding:10px;
@@ -45,6 +69,7 @@ input, select {
   border-radius:6px;
 }
 
+/* BOTONES */
 button {
   width:100%;
   padding:12px;
@@ -59,16 +84,8 @@ button:hover {
   background:#00cc6a;
 }
 
-.row {
-  display:flex;
-  gap:10px;
-}
-
-.row input {
-  flex:1;
-}
-
-.match-item {
+/* LISTA PARTIDOS */
+.match {
   background:#151515;
   padding:10px;
   margin:6px 0;
@@ -91,35 +108,43 @@ button:hover {
 
 <header>⚽ FUTCAT MATCH CONTROL</header>
 
-<div class="container">
+<div class="wrapper">
 
-  <!-- LIGA -->
-  <div class="card">
-    <h3>🏆 Liga</h3>
-    <select id="liga"></select>
-  </div>
+  <!-- ================= LEFT ================= -->
+  <div class="left">
 
-  <!-- FORM -->
-  <div class="card">
-    <h3>➕ / ✏️ Partido</h3>
-
-    <input id="jornada" placeholder="Jornada">
-
-    <select id="local"></select>
-    <select id="visitante"></select>
-
-    <div class="row">
-      <input id="gl" type="number" placeholder="Goles local">
-      <input id="gv" type="number" placeholder="Goles visitante">
+    <div class="card">
+      <h3>🏆 Liga</h3>
+      <select id="liga"></select>
     </div>
 
-    <button onclick="saveMatch()">GUARDAR</button>
+    <div class="card">
+      <h3>➕ Nuevo / Editar partido</h3>
+
+      <input id="jornada" placeholder="Jornada">
+
+      <select id="local"></select>
+      <select id="visitante"></select>
+
+      <input id="gl" type="number" placeholder="Goles local">
+      <input id="gv" type="number" placeholder="Goles visitante">
+
+      <button onclick="saveMatch()">GUARDAR</button>
+    </div>
+
   </div>
 
-  <!-- LISTA PARTIDOS -->
-  <div class="card">
-    <h3>✏️ Editar partidos</h3>
-    <div id="listaPartidos"></div>
+  <!-- DIVIDER -->
+  <div class="divider"></div>
+
+  <!-- ================= RIGHT ================= -->
+  <div class="right">
+
+    <div class="card">
+      <h3>📋 Partidos (todos)</h3>
+      <div id="listaPartidos"></div>
+    </div>
+
   </div>
 
 </div>
@@ -128,13 +153,11 @@ button:hover {
 
 const API = "https://fcf-headless.onrender.com";
 
-let equipos = [];
 let partidos = [];
+let equipos = [];
 let editRow = null;
 
-/* ======================
-   LIGAS
-====================== */
+/* ================= LIGAS ================= */
 
 async function loadLigas() {
 
@@ -160,9 +183,7 @@ async function loadLigas() {
   loadPartidos();
 }
 
-/* ======================
-   EQUIPOS
-====================== */
+/* ================= EQUIPOS ================= */
 
 async function loadEquipos() {
 
@@ -192,13 +213,11 @@ async function loadEquipos() {
   });
 }
 
-/* ======================
-   PARTIDOS LISTA
-====================== */
+/* ================= PARTIDOS ================= */
 
 async function loadPartidos() {
 
-  editRow = null; // 🔥 FIX IMPORTANTE
+  editRow = null;
 
   const liga = document.getElementById("liga").value;
 
@@ -213,30 +232,25 @@ async function loadPartidos() {
   partidos.forEach(p => {
 
     const el = document.createElement("div");
-    el.className = "match-item";
+    el.className = "match";
 
     el.innerHTML = `
       <div>
-        <b>${p.local}</b> ${p.goles_local} - ${p.goles_visitante} <b>${p.visitante}</b>
-        <br>
+        <b>${p.local}</b> ${p.goles_local} - ${p.goles_visitante} <b>${p.visitante}</b><br>
         Jornada: ${p.jornada}
       </div>
-      <button class="small-btn" onclick="editMatch(${p.id})">EDITAR</button>
+      <button class="small-btn" onclick="edit(${p.id})">EDITAR</button>
     `;
 
     div.appendChild(el);
   });
 }
 
-/* ======================
-   EDITAR PARTIDO
-====================== */
+/* ================= EDIT ================= */
 
-function editMatch(id) {
+function edit(id) {
 
   const p = partidos.find(x => x.id === id);
-
-  if (!p) return;
 
   editRow = id;
 
@@ -247,9 +261,7 @@ function editMatch(id) {
   document.getElementById("gv").value = p.goles_visitante;
 }
 
-/* ======================
-   GUARDAR / ACTUALIZAR
-====================== */
+/* ================= SAVE ================= */
 
 async function saveMatch() {
 
@@ -269,33 +281,16 @@ async function saveMatch() {
     body.row = editRow;
   }
 
-  const res = await fetch(API + url, {
+  await fetch(API + url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });
 
-  const data = await res.json();
-
-  if (!data.ok) {
-    alert(data.error || "Error");
-    return;
-  }
-
-  alert("✔ Guardado");
-
   editRow = null;
-
-  document.getElementById("jornada").value = "";
-  document.getElementById("gl").value = "";
-  document.getElementById("gv").value = "";
 
   loadPartidos();
 }
-
-/* ======================
-   INIT
-====================== */
 
 loadLigas();
 
