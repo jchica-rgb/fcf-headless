@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 /* ======================
-   CONFIG
+   CONFIG SEGURA
 ====================== */
 
 function safeJson(v){
@@ -25,20 +25,39 @@ const authGoogle = credentials
     })
   : null;
 
+/* ======================
+   CLIENT SAFE
+====================== */
+
 async function getClient(){
+  if(!authGoogle){
+    throw new Error("Google Auth no configurado");
+  }
   return await authGoogle.getClient();
 }
 
+/* ======================
+   SHEETS SAFE READ
+====================== */
+
 async function getSheet(range){
-  const client = await getClient();
-  const sheets = google.sheets({ version:"v4", auth:client });
 
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
-    range
-  });
+  try{
 
-  return res.data.values || [];
+    const client = await getClient();
+    const sheets = google.sheets({ version:"v4", auth:client });
+
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range
+    });
+
+    return res.data.values || [];
+
+  } catch(err){
+    console.error("SHEETS ERROR:", err.message);
+    return [];
+  }
 }
 
 const normalize = v =>
@@ -91,7 +110,7 @@ app.get("/temporadas", async (req,res)=>{
 });
 
 /* ======================
-   TEMPORADA ACTIVA (REAL)
+   TEMPORADA ACTIVA
 ====================== */
 
 app.get("/temporada-activa", async (req,res)=>{
@@ -112,7 +131,7 @@ app.get("/temporada-activa", async (req,res)=>{
 });
 
 /* ======================
-   PARTIDOS (ROW REAL + ETIQUETAS)
+   PARTIDOS (ROW REAL)
 ====================== */
 
 app.get("/partidos", async (req,res)=>{
@@ -127,11 +146,7 @@ app.get("/partidos", async (req,res)=>{
     row: i + 2,
 
     liga: normalize(r[0]),
-    liga_label: r[0],
-
     temporada: r[1],
-    temporada_label: r[1],
-
     jornada: r[2],
     local: r[3],
     visitante: r[4],
@@ -147,7 +162,7 @@ app.get("/partidos", async (req,res)=>{
 });
 
 /* ======================
-   CREAR PARTIDO (CONTROL TOTAL)
+   CREAR PARTIDO (CON TODO CONTROL)
 ====================== */
 
 app.post("/partido", async (req,res)=>{
@@ -170,7 +185,7 @@ app.post("/partido", async (req,res)=>{
     });
   }
 
-  /* CONTROL DUPLICADOS */
+  /* DUPLICADOS */
   const rows = await getSheet("PARTIDOS!A2:G");
 
   const exists = rows.some(r =>
@@ -214,7 +229,7 @@ app.post("/partido", async (req,res)=>{
 });
 
 /* ======================
-   UPDATE (TEMPORADA PROTEGIDA + FIX REAL)
+   UPDATE (TEMPORADA + FIX FINAL)
 ====================== */
 
 app.post("/partido/update", async (req,res)=>{
@@ -259,6 +274,20 @@ app.post("/partido/update", async (req,res)=>{
   });
 
   res.json({ ok:true });
+});
+
+/* ======================
+   DEBUG (para detectar fallos)
+====================== */
+
+app.get("/debug", (req,res)=>{
+
+  res.json({
+    ok:true,
+    sheetId: !!SHEET_ID,
+    googleAuth: !!authGoogle
+  });
+
 });
 
 /* ======================
@@ -338,5 +367,5 @@ app.get("/clasificacion", async (req,res)=>{
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT,()=>{
-  console.log("⚽ FUTCAT SERVER FINAL V7 STABLE");
+  console.log("⚽ FUTCAT SERVER COMPLETO FUNCIONAL V8");
 });
