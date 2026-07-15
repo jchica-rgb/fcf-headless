@@ -37,7 +37,7 @@ h1{
   background:#111;
   padding:15px;
   border-radius:10px;
-  position:relative; /* 🔥 IMPORTANTE para toast */
+  position:relative; /* necesario para toast */
 }
 
 /* FIELD */
@@ -87,32 +87,35 @@ button{
   opacity:0.7;
 }
 
-/* =======================
-   TOAST DENTRO DE TABLA
-======================= */
+/* =========================
+   TOAST (AJUSTE PEDIDO)
+   más arriba + más derecha
+========================= */
 
 #toast{
   position:absolute;
-  top:10px;
-  left:10px;
-  right:10px;
 
+  top:-18px;     /* 🔥 MÁS ARRIBA */
+  right:0px;     /* 🔥 MÁS A LA DERECHA */
+  
   display:flex;
   flex-direction:column;
   gap:8px;
 
   pointer-events:none;
   z-index:50;
+
+  max-width:320px;
 }
 
 .toast{
-  padding:8px 10px;
+  padding:8px 12px;
   border-radius:6px;
   font-weight:bold;
   font-size:13px;
 
   width:fit-content;
-  max-width:95%;
+  max-width:100%;
 
   animation:fade .2s ease;
   box-shadow:0 2px 10px rgba(0,0,0,0.4);
@@ -144,7 +147,7 @@ button{
 
 <div class="layout">
 
-<!-- ================= CREAR ================= -->
+<!-- CREAR -->
 <div class="col">
 
 <h3>➕ Crear Partido</h3>
@@ -188,12 +191,11 @@ button{
 
 </div>
 
-<!-- ================= LISTA ================= -->
+<!-- LISTA -->
 <div class="col">
 
 <h3>📋 Partidos</h3>
 
-<!-- 🔥 TOAST AQUÍ CERCA DE LA TABLA -->
 <div id="toast"></div>
 
 <div class="field">
@@ -210,7 +212,7 @@ button{
 
 </div>
 
-<!-- ================= EDIT ================= -->
+<!-- EDIT -->
 <div class="col">
 
 <h3>✏️ Editar Partido</h3>
