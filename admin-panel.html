@@ -37,6 +37,7 @@ h1{
   background:#111;
   padding:15px;
   border-radius:10px;
+  position:relative; /* 🔥 IMPORTANTE para toast */
 }
 
 /* FIELD */
@@ -86,25 +87,35 @@ button{
   opacity:0.7;
 }
 
-/* =========================
-   TOAST SYSTEM (NO BORRA LAYOUT)
-========================= */
+/* =======================
+   TOAST DENTRO DE TABLA
+======================= */
 
 #toast{
-  position:fixed;
-  top:20px;
-  right:20px;
+  position:absolute;
+  top:10px;
+  left:10px;
+  right:10px;
+
   display:flex;
   flex-direction:column;
-  gap:10px;
-  z-index:9999;
+  gap:8px;
+
+  pointer-events:none;
+  z-index:50;
 }
 
 .toast{
-  padding:10px 14px;
+  padding:8px 10px;
   border-radius:6px;
   font-weight:bold;
+  font-size:13px;
+
+  width:fit-content;
+  max-width:95%;
+
   animation:fade .2s ease;
+  box-shadow:0 2px 10px rgba(0,0,0,0.4);
 }
 
 .toast.ok{
@@ -118,7 +129,7 @@ button{
 }
 
 @keyframes fade{
-  from{opacity:0; transform:translateY(-10px);}
+  from{opacity:0; transform:translateY(-8px);}
   to{opacity:1; transform:translateY(0);}
 }
 
@@ -133,7 +144,7 @@ button{
 
 <div class="layout">
 
-<!-- CREAR -->
+<!-- ================= CREAR ================= -->
 <div class="col">
 
 <h3>➕ Crear Partido</h3>
@@ -177,10 +188,13 @@ button{
 
 </div>
 
-<!-- LISTA -->
+<!-- ================= LISTA ================= -->
 <div class="col">
 
 <h3>📋 Partidos</h3>
+
+<!-- 🔥 TOAST AQUÍ CERCA DE LA TABLA -->
+<div id="toast"></div>
 
 <div class="field">
 <label>Filtrar Liga</label>
@@ -196,7 +210,7 @@ button{
 
 </div>
 
-<!-- EDIT -->
+<!-- ================= EDIT ================= -->
 <div class="col">
 
 <h3>✏️ Editar Partido</h3>
@@ -244,9 +258,6 @@ button{
 
 </div>
 </div>
-
-<!-- TOAST -->
-<div id="toast"></div>
 
 <script>
 
@@ -372,20 +383,18 @@ function render(){
 
 async function crear(){
 
-  const data={
-    liga:liga.value,
-    temporada:temporada.value,
-    jornada:jornada.value,
-    local:local.value,
-    visitante:visitante.value,
-    goles_local:gl.value,
-    goles_visitante:gv.value
-  };
-
   const res=await fetch(API+"/partido",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(data)
+    body:JSON.stringify({
+      liga:liga.value,
+      temporada:temporada.value,
+      jornada:jornada.value,
+      local:local.value,
+      visitante:visitante.value,
+      goles_local:gl.value,
+      goles_visitante:gv.value
+    })
   });
 
   const json=await res.json();
@@ -421,21 +430,19 @@ function fillEdit(p){
 
 async function update(){
 
-  const data={
-    row:editRow.value,
-    liga:editLiga.value,
-    temporada:editTemporada.value,
-    jornada:editJornada.value,
-    local:editLocal.value,
-    visitante:editVisitante.value,
-    goles_local:editGL.value,
-    goles_visitante:editGV.value
-  };
-
   const res=await fetch(API+"/partido/update",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(data)
+    body:JSON.stringify({
+      row:editRow.value,
+      liga:editLiga.value,
+      temporada:editTemporada.value,
+      jornada:editJornada.value,
+      local:editLocal.value,
+      visitante:editVisitante.value,
+      goles_local:editGL.value,
+      goles_visitante:editGV.value
+    })
   });
 
   const json=await res.json();
