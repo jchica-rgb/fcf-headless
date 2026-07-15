@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 /* ======================
-   USERS (LOGIN SIMPLE)
+   USERS
 ====================== */
 
 const USERS = [
@@ -19,7 +19,7 @@ const USERS = [
 const TOKENS = new Set();
 
 /* ======================
-   GOOGLE SHEETS CONFIG
+   GOOGLE SHEETS
 ====================== */
 
 function safeJson(v) {
@@ -60,9 +60,7 @@ app.post("/login", (req, res) => {
 
   const found = USERS.find(u => u.user === user && u.pass === pass);
 
-  if (!found) {
-    return res.status(401).json({ ok: false });
-  }
+  if (!found) return res.status(401).json({ ok: false });
 
   const token = Buffer.from(user + Date.now()).toString("base64");
 
@@ -74,6 +72,21 @@ app.post("/login", (req, res) => {
     role: found.role
   });
 });
+
+/* ======================
+   AUTH
+====================== */
+
+function auth(req, res, next) {
+
+  const token = req.headers.authorization;
+
+  if (!token || !TOKENS.has(token)) {
+    return res.status(403).json({ ok: false, error: "No autorizado" });
+  }
+
+  next();
+}
 
 /* ======================
    SHEETS
@@ -116,27 +129,15 @@ app.get("/ligas", async (req, res) => {
 
 app.get("/equipos", async (req, res) => {
 
-  try {
+  const liga = normalize(req.query.liga);
 
-    const liga = normalize(req.query.liga);
+  const rows = await getSheet("EQUIPOS!A2:C");
 
-    const rows = await getSheet("EQUIPOS!A2:C");
+  const data = rows
+    .filter(r => r && normalize(r[2]) === liga)
+    .map(r => r[1]);
 
-    const data = rows
-      .filter(r =>
-        r &&
-        r.length >= 3 &&
-        normalize(r[2]) === liga
-      )
-      .map(r => r[1]);
-
-    res.json({ data });
-
-  } catch (err) {
-
-    console.error(err);
-    res.json({ data: [] });
-  }
+  res.json({ data });
 });
 
 /* ======================
@@ -145,12 +146,13 @@ app.get("/equipos", async (req, res) => {
 
 app.get("/partidos", async (req, res) => {
 
-  const ligaId = normalize(req.query.liga);
+  const liga = normalize(req.query.liga);
 
   const rows = await getSheet("PARTIDOS!A2:F");
 
   const data = rows
-    .map(r => ({
+    .map((r, i) => ({
+      id: i + 2,
       liga: normalize(r[0]),
       jornada: r[1],
       local: r[2],
@@ -158,7 +160,7 @@ app.get("/partidos", async (req, res) => {
       goles_local: Number(r[4] || 0),
       goles_visitante: Number(r[5] || 0)
     }))
-    .filter(p => p.liga === ligaId);
+    .filter(p => p.liga === liga);
 
   res.json({ data });
 });
@@ -169,7 +171,7 @@ app.get("/partidos", async (req, res) => {
 
 app.get("/clasificacion", async (req, res) => {
 
-  const ligaId = normalize(req.query.liga);
+  const liga = normalize(req.query.liga);
 
   const rows = await getSheet("PARTIDOS!A2:F");
 
@@ -181,7 +183,7 @@ app.get("/clasificacion", async (req, res) => {
       gl: Number(r[4] || 0),
       gv: Number(r[5] || 0)
     }))
-    .filter(p => p.liga === ligaId);
+    .filter(p => p.liga === liga);
 
   const tabla = {};
 
@@ -233,10 +235,60 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 /* ======================
-   GUARDAR PARTIDO (SIN AUTH → FIX 403)
+   EDITAR PARTIDO (UPDATE SHEETS)
 ====================== */
 
-app.post("/partido", async (req, res) => {
+app.post("/partido/update", auth, async (req, res) => {
+
+  try {
+
+    const {
+      row,
+      liga,
+      jornada,
+      local,
+      visitante,
+      goles_local,
+      goles_visitante
+    } = req.body;
+
+    const client = await getClient();
+    const sheets = google.sheets({ version: "v4", auth: client });
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `PARTIDOS!A${row}:F${row}`,
+      valueInputOption: "RAW",
+      requestBody: {
+        values: [[
+          liga,
+          jornada,
+          local,
+          visitante,
+          goles_local,
+          goles_visitante
+        ]]
+      }
+    });
+
+    res.json({ ok: true });
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      ok: false,
+      error: "Error update partido"
+    });
+  }
+});
+
+/* ======================
+   CREAR PARTIDO
+====================== */
+
+app.post("/partido", auth, async (req, res) => {
 
   try {
 
@@ -249,17 +301,7 @@ app.post("/partido", async (req, res) => {
       goles_visitante
     } = req.body;
 
-    // VALIDACIÓN
-    if (!local || !visitante) {
-      return res.status(400).json({
-        ok: false,
-        error: "Faltan equipos"
-      });
-    }
-
-    if (
-      normalize(local) === normalize(visitante)
-    ) {
+    if (normalize(local) === normalize(visitante)) {
       return res.status(400).json({
         ok: false,
         error: "No puede jugar contra sí mismo"
@@ -289,11 +331,11 @@ app.post("/partido", async (req, res) => {
 
   } catch (err) {
 
-    console.error("ERROR /partido:", err);
+    console.error(err);
 
     res.status(500).json({
       ok: false,
-      error: "Error interno"
+      error: "Error guardar partido"
     });
   }
 });
