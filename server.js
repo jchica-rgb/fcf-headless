@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 /* ======================
-   CONFIG GOOGLE SHEETS
+   CONFIG
 ====================== */
 
 function safeJson(v){
@@ -30,7 +30,6 @@ async function getClient(){
 }
 
 async function getSheet(range){
-
   const client = await getClient();
   const sheets = google.sheets({ version:"v4", auth:client });
 
@@ -41,10 +40,6 @@ async function getSheet(range){
 
   return res.data.values || [];
 }
-
-/* ======================
-   HELPERS
-====================== */
 
 const normalize = v =>
   String(v || "").trim().toLowerCase();
@@ -60,7 +55,7 @@ app.get("/ligas", async (req,res)=>{
   res.json({
     data: rows.map(r=>({
       id: normalize(r[0]),
-      nombre:r[1]
+      nombre: r[1]
     }))
   });
 });
@@ -96,7 +91,7 @@ app.get("/temporadas", async (req,res)=>{
 });
 
 /* ======================
-   TEMPORADA ACTIVA
+   TEMPORADA ACTIVA (CONTROL REAL)
 ====================== */
 
 app.get("/temporada-activa", async (req,res)=>{
@@ -117,7 +112,7 @@ app.get("/temporada-activa", async (req,res)=>{
 });
 
 /* ======================
-   PARTIDOS (ROW REAL)
+   PARTIDOS (CON ETIQUETAS CORRECTAS)
 ====================== */
 
 app.get("/partidos", async (req,res)=>{
@@ -129,15 +124,15 @@ app.get("/partidos", async (req,res)=>{
 
   const data = rows.map((r,i)=>({
 
-    row: i + 2, // 🔥 CRÍTICO PARA UPDATE
+    row: i + 2,
 
     liga: normalize(r[0]),
     temporada: r[1],
     jornada: r[2],
     local: r[3],
     visitante: r[4],
-    goles_local: Number(r[5] || 0),
-    goles_visitante: Number(r[6] || 0)
+    goles_local: Number(r[5]||0),
+    goles_visitante: Number(r[6]||0)
   }))
   .filter(p =>
     (!liga || p.liga === liga) &&
@@ -148,7 +143,7 @@ app.get("/partidos", async (req,res)=>{
 });
 
 /* ======================
-   DUPLICADOS + CREAR
+   CREAR PARTIDO (TODO BLOQUEADO BIEN)
 ====================== */
 
 app.post("/partido", async (req,res)=>{
@@ -163,6 +158,10 @@ app.post("/partido", async (req,res)=>{
     goles_visitante
   } = req.body;
 
+  /* ======================
+     CONTROL TEMPORADA
+  ====================== */
+
   if(!temporada){
     return res.status(400).json({
       ok:false,
@@ -170,10 +169,25 @@ app.post("/partido", async (req,res)=>{
     });
   }
 
+  /* ======================
+     BLOQUEO MISMO EQUIPO
+  ====================== */
+
+  if(local === visitante){
+    return res.status(400).json({
+      ok:false,
+      error:"Un equipo no puede jugar contra sí mismo"
+    });
+  }
+
+  /* ======================
+     CONTROL DUPLICADOS REAL
+  ====================== */
+
   const rows = await getSheet("PARTIDOS!A2:G");
 
   const exists = rows.some(r =>
-    r[0] === liga &&
+    normalize(r[0]) === normalize(liga) &&
     r[1] === temporada &&
     r[2] === jornada &&
     (
@@ -213,7 +227,7 @@ app.post("/partido", async (req,res)=>{
 });
 
 /* ======================
-   UPDATE PARTIDO
+   UPDATE (PROTEGIDO)
 ====================== */
 
 app.post("/partido/update", async (req,res)=>{
@@ -227,6 +241,13 @@ app.post("/partido/update", async (req,res)=>{
     goles_local,
     goles_visitante
   } = req.body;
+
+  if(local === visitante){
+    return res.status(400).json({
+      ok:false,
+      error:"Un equipo no puede jugar contra sí mismo"
+    });
+  }
 
   const client = await getClient();
   const sheets = google.sheets({ version:"v4", auth:client });
@@ -252,7 +273,7 @@ app.post("/partido/update", async (req,res)=>{
 });
 
 /* ======================
-   CLASIFICACION
+   CLASIFICACION (SIN CAMBIOS)
 ====================== */
 
 app.get("/clasificacion", async (req,res)=>{
@@ -322,11 +343,11 @@ app.get("/clasificacion", async (req,res)=>{
 });
 
 /* ======================
-   SERVER START
+   START
 ====================== */
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT,()=>{
-  console.log("⚽ FUTCAT SERVER V5 READY");
+app.listen(PORT, ()=>{
+  console.log("⚽ FUTCAT SERVER FINAL LOCKED READY");
 });
