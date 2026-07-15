@@ -2,9 +2,15 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>FUTCAT MATCH PANEL</title>
+<title>FUTCAT ADMIN PANEL</title>
 
 <style>
+
+/* ================= BASE ================= */
+
+* {
+  box-sizing: border-box;
+}
 
 body{
   margin:0;
@@ -14,26 +20,52 @@ body{
 }
 
 .container{
-  max-width:1200px;
+  max-width:1400px;
   margin:auto;
   padding:20px;
 }
 
 h1{
   text-align:center;
+  margin-bottom:20px;
 }
+
+/* ================= LAYOUT (FIXED) ================= */
 
 .layout{
   display:flex;
-  gap:30px;
+  gap:20px;
+  align-items:flex-start;
 }
 
-.col{
-  flex:1;
+/* 🔥 IZQUIERDA (CREAR) */
+.col-left{
+  flex:0 0 30%;
   background:#111;
   padding:15px;
   border-radius:10px;
+  min-width:0;
 }
+
+/* 🔥 CENTRO (PARTIDOS - MÁS GRANDE) */
+.col-center{
+  flex:0 0 45%;
+  background:#111;
+  padding:15px;
+  border-radius:10px;
+  min-width:0;
+}
+
+/* 🔥 DERECHA (EDITAR) */
+.col-right{
+  flex:0 0 25%;
+  background:#111;
+  padding:15px;
+  border-radius:10px;
+  min-width:0;
+}
+
+/* ================= INPUTS ================= */
 
 input, select{
   width:100%;
@@ -42,29 +74,61 @@ input, select{
   background:#1a1a1a;
   color:white;
   border:1px solid #333;
+  border-radius:6px;
 }
+
+/* evita overflow raro */
+input::placeholder{
+  color:#777;
+}
+
+/* ================= BOTONES ================= */
 
 button{
   width:100%;
-  padding:10px;
+  padding:12px;
   background:#00ff88;
   border:none;
   cursor:pointer;
   font-weight:bold;
   margin-top:10px;
+  border-radius:6px;
 }
+
+/* ================= LISTA PARTIDOS ================= */
 
 .match{
   background:#151515;
-  padding:10px;
-  margin:6px 0;
-  border-radius:6px;
+  padding:12px;
+  margin:8px 0;
+  border-radius:8px;
   cursor:pointer;
+  transition:0.2s;
+}
+
+.match:hover{
+  transform:scale(1.02);
+  background:#1c1c1c;
 }
 
 .small{
   font-size:12px;
   opacity:0.7;
+}
+
+/* ================= TITLES ================= */
+
+.section-title{
+  font-weight:bold;
+  margin-bottom:10px;
+  font-size:14px;
+}
+
+hr{
+  border:0;
+  height:1px;
+  background:#222;
+  margin:10px 0;
 }
 
 </style>
@@ -74,61 +138,57 @@ button{
 
 <div class="container">
 
-<h1>⚽ FUTCAT MATCH PANEL</h1>
+<h1>⚽ FUTCAT ADMIN PANEL</h1>
 
 <div class="layout">
 
-<!-- ================= CREAR ================= -->
-<div class="col">
+<!-- ================= LEFT (CREAR) ================= -->
+<div class="col-left">
 
-<h3>➕ Crear Partido</h3>
+  <div class="section-title">➕ Crear Partido</div>
+  <hr>
 
-<select id="liga"></select>
+  <select id="liga"></select>
+  <select id="temporada"></select>
 
-<select id="temporada"></select>
+  <input id="jornada" placeholder="Jornada">
+  <input id="local" placeholder="Local">
+  <input id="visitante" placeholder="Visitante">
+  <input id="gl" placeholder="Goles Local">
+  <input id="gv" placeholder="Goles Visitante">
 
-<input id="jornada" placeholder="Jornada">
-
-<input id="local" placeholder="Local">
-
-<input id="visitante" placeholder="Visitante">
-
-<input id="gl" placeholder="Goles Local">
-
-<input id="gv" placeholder="Goles Visitante">
-
-<button onclick="crear()">Guardar Partido</button>
+  <button onclick="crear()">Guardar Partido</button>
 
 </div>
 
-<!-- ================= LISTA ================= -->
-<div class="col">
+<!-- ================= CENTER (PARTIDOS BIG) ================= -->
+<div class="col-center">
 
-<h3>📋 Partidos</h3>
+  <div class="section-title">📋 Partidos</div>
+  <hr>
 
-<select id="filtroLiga"></select>
-<select id="filtroTemporada"></select>
+  <select id="filtroLiga"></select>
+  <select id="filtroTemporada"></select>
 
-<div id="lista"></div>
+  <div id="lista"></div>
 
 </div>
 
-<!-- ================= EDIT ================= -->
-<div class="col">
+<!-- ================= RIGHT (EDIT) ================= -->
+<div class="col-right">
 
-<h3>✏️ Editar Partido</h3>
+  <div class="section-title">✏️ Editar Partido</div>
+  <hr>
 
-<div class="small">Selecciona un partido</div>
+  <input id="editRow" placeholder="Fila Sheet">
 
-<input id="editRow" placeholder="Fila (Sheet)">
+  <input id="editJornada">
+  <input id="editLocal">
+  <input id="editVisitante">
+  <input id="editGL">
+  <input id="editGV">
 
-<input id="editJornada">
-<input id="editLocal">
-<input id="editVisitante">
-<input id="editGL">
-<input id="editGV">
-
-<button onclick="update()">Actualizar</button>
+  <button onclick="update()">Actualizar</button>
 
 </div>
 
@@ -139,19 +199,17 @@ button{
 
 const API = "https://fcf-headless.onrender.com";
 
-let ligas = [];
-let partidos = [];
-let currentLiga = "";
-let currentTemporada = "";
+let ligas=[];
+let partidos=[];
 
 /* ================= INIT ================= */
 
 async function init(){
 
-  const r = await fetch(API+"/ligas");
-  const j = await r.json();
+  const r=await fetch(API+"/ligas");
+  const j=await r.json();
 
-  ligas = j.data;
+  ligas=j.data;
 
   fillSelects();
   loadPartidos();
@@ -161,48 +219,46 @@ async function init(){
 
 function fillSelects(){
 
-  const selects = ["liga","filtroLiga"];
-
-  selects.forEach(id=>{
-    const sel = document.getElementById(id);
-    sel.innerHTML = "";
+  ["liga","filtroLiga"].forEach(id=>{
+    const sel=document.getElementById(id);
+    sel.innerHTML="";
 
     ligas.forEach(l=>{
-      const opt = document.createElement("option");
-      opt.value = l.id;
-      opt.textContent = l.nombre;
+      const opt=document.createElement("option");
+      opt.value=l.id;
+      opt.textContent=l.nombre;
       sel.appendChild(opt);
     });
   });
 
-  const seasons = ["2023-24","2024-25","2025-26"];
+  const seasons=["2023-24","2024-25","2025-26"];
 
   ["temporada","filtroTemporada"].forEach(id=>{
-    const sel = document.getElementById(id);
-    sel.innerHTML = "";
+    const sel=document.getElementById(id);
+    sel.innerHTML="";
 
     seasons.forEach(s=>{
-      const opt = document.createElement("option");
-      opt.value = s;
-      opt.textContent = s;
+      const opt=document.createElement("option");
+      opt.value=s;
+      opt.textContent=s;
       sel.appendChild(opt);
     });
   });
 }
 
-/* ================= LOAD PARTIDOS ================= */
+/* ================= LOAD ================= */
 
 async function loadPartidos(){
 
-  const liga = document.getElementById("filtroLiga").value;
-  const temporada = document.getElementById("filtroTemporada").value;
+  const liga=document.getElementById("filtroLiga").value;
+  const temporada=document.getElementById("filtroTemporada").value;
 
-  const r = await fetch(API+
+  const r=await fetch(API+
     "/partidos?liga="+liga+"&temporada="+temporada);
 
-  const j = await r.json();
+  const j=await r.json();
 
-  partidos = j.data;
+  partidos=j.data;
 
   render();
 }
@@ -211,42 +267,42 @@ async function loadPartidos(){
 
 function render(){
 
-  const div = document.getElementById("lista");
-  div.innerHTML = "";
+  const div=document.getElementById("lista");
+  div.innerHTML="";
 
   partidos.forEach((p,i)=>{
 
-    const el = document.createElement("div");
+    const el=document.createElement("div");
     el.className="match";
 
-    el.innerHTML = `
+    el.innerHTML=`
       <b>${p.local}</b> ${p.goles_local}-${p.goles_visitante} <b>${p.visitante}</b>
       <div class="small">J${p.jornada} | ${p.temporada}</div>
     `;
 
-    el.onclick = ()=>fillEdit(p,i+2);
+    el.onclick=()=>fillEdit(p,i+2);
 
     div.appendChild(el);
   });
 }
 
-/* ================= CREAR ================= */
+/* ================= CREATE ================= */
 
 async function crear(){
 
-  const data = {
-    liga: document.getElementById("liga").value,
-    temporada: document.getElementById("temporada").value,
-    jornada: document.getElementById("jornada").value,
-    local: document.getElementById("local").value,
-    visitante: document.getElementById("visitante").value,
-    goles_local: document.getElementById("gl").value,
-    goles_visitante: document.getElementById("gv").value
+  const data={
+    liga:document.getElementById("liga").value,
+    temporada:document.getElementById("temporada").value,
+    jornada:document.getElementById("jornada").value,
+    local:document.getElementById("local").value,
+    visitante:document.getElementById("visitante").value,
+    goles_local:document.getElementById("gl").value,
+    goles_visitante:document.getElementById("gv").value
   };
 
   await fetch(API+"/partido",{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
+    headers:{"Content-Type":"application/json"},
     body:JSON.stringify(data)
   });
 
@@ -269,19 +325,19 @@ function fillEdit(p,row){
 
 async function update(){
 
-  const data = {
-    row: document.getElementById("editRow").value,
-    liga: document.getElementById("filtroLiga").value,
-    jornada: document.getElementById("editJornada").value,
-    local: document.getElementById("editLocal").value,
-    visitante: document.getElementById("editVisitante").value,
-    goles_local: document.getElementById("editGL").value,
-    goles_visitante: document.getElementById("editGV").value
+  const data={
+    row:document.getElementById("editRow").value,
+    liga:document.getElementById("filtroLiga").value,
+    jornada:document.getElementById("editJornada").value,
+    local:document.getElementById("editLocal").value,
+    visitante:document.getElementById("editVisitante").value,
+    goles_local:document.getElementById("editGL").value,
+    goles_visitante:document.getElementById("editGV").value
   };
 
   await fetch(API+"/partido/update",{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
+    headers:{"Content-Type":"application/json"},
     body:JSON.stringify(data)
   });
 
@@ -290,11 +346,8 @@ async function update(){
 
 /* ================= EVENTS ================= */
 
-document.addEventListener("change", (e)=>{
-  if(
-    e.target.id==="filtroLiga" ||
-    e.target.id==="filtroTemporada"
-  ){
+document.addEventListener("change",(e)=>{
+  if(e.target.id==="filtroLiga" || e.target.id==="filtroTemporada"){
     loadPartidos();
   }
 });
