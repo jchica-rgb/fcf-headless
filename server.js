@@ -7,9 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* ======================
-   GOOGLE SHEETS CONFIG
-====================== */
+/* ================= CONFIG ================= */
 
 function safeJson(v) {
   try { return JSON.parse(v); } catch { return null; }
@@ -29,22 +27,12 @@ async function getClient() {
   return await authGoogle.getClient();
 }
 
-/* ======================
-   HELPERS
-====================== */
-
 const normalize = v =>
-  String(v || "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
+  String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
 
-/* ======================
-   SHEETS READ
-====================== */
+/* ================= SHEETS ================= */
 
 async function getSheet(range) {
-
   if (!authGoogle || !SHEET_ID) return [];
 
   const client = await getClient();
@@ -58,9 +46,7 @@ async function getSheet(range) {
   return res.data.values || [];
 }
 
-/* ======================
-   LIGAS
-====================== */
+/* ================= LIGAS ================= */
 
 app.get("/ligas", async (req, res) => {
 
@@ -74,9 +60,7 @@ app.get("/ligas", async (req, res) => {
   });
 });
 
-/* ======================
-   EQUIPOS
-====================== */
+/* ================= EQUIPOS ================= */
 
 app.get("/equipos", async (req, res) => {
 
@@ -91,9 +75,7 @@ app.get("/equipos", async (req, res) => {
   });
 });
 
-/* ======================
-   PARTIDOS
-====================== */
+/* ================= PARTIDOS ================= */
 
 app.get("/partidos", async (req, res) => {
 
@@ -116,9 +98,7 @@ app.get("/partidos", async (req, res) => {
   res.json({ data });
 });
 
-/* ======================
-   CLASIFICACION
-====================== */
+/* ================= CLASIFICACION ================= */
 
 app.get("/clasificacion", async (req, res) => {
 
@@ -175,10 +155,8 @@ app.get("/clasificacion", async (req, res) => {
     }
   });
 
-  const result = Object.values(tabla);
-
-  result.sort((a, b) =>
-    b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
+  const result = Object.values(tabla).sort(
+    (a, b) => b.puntos - a.puntos || a.equipo.localeCompare(b.equipo)
   );
 
   res.json({
@@ -187,9 +165,7 @@ app.get("/clasificacion", async (req, res) => {
   });
 });
 
-/* ======================
-   📊 ESTADISTICAS (NUEVO)
-====================== */
+/* ================= ESTADISTICAS ================= */
 
 app.get("/estadisticas", async (req, res) => {
 
@@ -209,17 +185,16 @@ app.get("/estadisticas", async (req, res) => {
 
   const stats = {};
 
-  const init = (team) => {
-    if (!stats[team]) {
-      stats[team] = {
-        equipo: team,
+  const init = (t) => {
+    if (!stats[t]) {
+      stats[t] = {
+        equipo: t,
         jugados: 0,
         ganados: 0,
         empatados: 0,
         perdidos: 0,
         goles_favor: 0,
         goles_contra: 0,
-        diferencia: 0,
         puntos: 0
       };
     }
@@ -240,46 +215,36 @@ app.get("/estadisticas", async (req, res) => {
     stats[p.visitante].goles_contra += p.gl;
 
     if (p.gl > p.gv) {
-
       stats[p.local].ganados++;
       stats[p.local].puntos += 3;
-
       stats[p.visitante].perdidos++;
-
     } else if (p.gl < p.gv) {
-
       stats[p.visitante].ganados++;
       stats[p.visitante].puntos += 3;
-
       stats[p.local].perdidos++;
-
     } else {
-
       stats[p.local].empatados++;
       stats[p.visitante].empatados++;
-
-      stats[p.local].puntos += 1;
-      stats[p.visitante].puntos += 1;
+      stats[p.local].puntos++;
+      stats[p.visitante].puntos++;
     }
   });
 
-  Object.values(stats).forEach(t => {
-    t.diferencia = t.goles_favor - t.goles_contra;
-  });
+  const result = Object.values(stats).map(t => ({
+    ...t,
+    diferencia: t.goles_favor - t.goles_contra
+  }));
 
-  const result = Object.values(stats).sort(
-    (a, b) =>
-      b.puntos - a.puntos ||
-      b.diferencia - a.diferencia ||
-      b.goles_favor - a.goles_favor
+  result.sort((a, b) =>
+    b.puntos - a.puntos ||
+    b.diferencia - a.diferencia ||
+    b.goles_favor - a.goles_favor
   );
 
   res.json({ data: result });
 });
 
-/* ======================
-   CREAR PARTIDO (DUPLICADOS)
-====================== */
+/* ================= PARTIDO CREATE ================= */
 
 app.post("/partido", async (req, res) => {
 
@@ -299,10 +264,7 @@ app.post("/partido", async (req, res) => {
     );
 
     if (exists) {
-      return res.status(409).json({
-        ok: false,
-        error: "Partido duplicado en esta jornada"
-      });
+      return res.status(409).json({ ok: false, error: "Duplicado" });
     }
 
     const client = await getClient();
@@ -319,15 +281,13 @@ app.post("/partido", async (req, res) => {
 
     res.json({ ok: true });
 
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
+    console.error(e);
     res.status(500).json({ ok: false });
   }
 });
 
-/* ======================
-   UPDATE PARTIDO
-====================== */
+/* ================= UPDATE ================= */
 
 app.post("/partido/update", async (req, res) => {
 
@@ -349,18 +309,16 @@ app.post("/partido/update", async (req, res) => {
 
     res.json({ ok: true });
 
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
+    console.error(e);
     res.status(500).json({ ok: false });
   }
 });
 
-/* ======================
-   SERVER
-====================== */
+/* ================= SERVER ================= */
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("⚽ FUTCAT SERVER FINAL RUNNING", PORT);
+  console.log("FUTCAT SERVER READY ⚽", PORT);
 });
