@@ -6,7 +6,7 @@
 
 <style>
 
-* { box-sizing:border-box; }
+*{box-sizing:border-box}
 
 body{
   margin:0;
@@ -21,44 +21,20 @@ body{
   padding:20px;
 }
 
-h1{
-  text-align:center;
-  margin-bottom:20px;
-}
+h1{text-align:center}
 
-/* ================= LAYOUT ================= */
-
+/* LAYOUT */
 .layout{
   display:flex;
   gap:20px;
 }
 
-.col-left{
-  flex:0 0 30%;
-  background:#111;
-  padding:15px;
-  border-radius:10px;
-}
+.col-left{flex:0 0 30%; background:#111; padding:15px; border-radius:10px;}
+.col-center{flex:0 0 45%; background:#111; padding:15px; border-radius:10px;}
+.col-right{flex:0 0 25%; background:#111; padding:15px; border-radius:10px;}
 
-.col-center{
-  flex:0 0 45%;
-  background:#111;
-  padding:15px;
-  border-radius:10px;
-}
-
-.col-right{
-  flex:0 0 25%;
-  background:#111;
-  padding:15px;
-  border-radius:10px;
-}
-
-/* ================= FIELDS ================= */
-
-.field{
-  margin-bottom:12px;
-}
+/* FIELDS */
+.field{margin-bottom:10px;}
 
 label{
   display:block;
@@ -74,15 +50,9 @@ input, select{
   color:white;
   border:1px solid #333;
   border-radius:6px;
-  outline:none;
 }
 
-input:focus, select:focus{
-  border-color:#00ff88;
-}
-
-/* ================= BUTTON ================= */
-
+/* BUTTON */
 button{
   width:100%;
   padding:12px;
@@ -90,42 +60,21 @@ button{
   border:none;
   font-weight:bold;
   cursor:pointer;
-  border-radius:6px;
   margin-top:10px;
+  border-radius:6px;
 }
 
-/* ================= MATCH ================= */
-
+/* MATCH */
 .match{
   background:#151515;
-  padding:12px;
-  margin:8px 0;
-  border-radius:8px;
+  padding:10px;
+  margin:6px 0;
+  border-radius:6px;
   cursor:pointer;
-  transition:0.2s;
 }
 
-.match:hover{
-  transform:scale(1.02);
-  background:#1c1c1c;
-}
-
-.small{
-  font-size:12px;
-  opacity:0.7;
-}
-
-hr{
-  border:0;
-  height:1px;
-  background:#222;
-  margin:10px 0;
-}
-
-.section-title{
-  font-weight:bold;
-  margin-bottom:10px;
-}
+/* SMALL */
+.small{font-size:12px;opacity:0.7}
 
 </style>
 </head>
@@ -141,105 +90,73 @@ hr{
 <!-- ================= CREAR ================= -->
 <div class="col-left">
 
-  <div class="section-title">➕ Crear Partido</div>
-  <hr>
+<h3>➕ Crear Partido</h3>
 
-  <div class="field">
-    <label>Liga</label>
-    <select id="liga"></select>
-  </div>
+<div class="field">
+<label>Liga</label>
+<select id="liga"></select>
+</div>
 
-  <div class="field">
-    <label>Temporada (ACTIVA)</label>
-    <select id="temporada"></select>
-  </div>
+<div class="field">
+<label>Temporada</label>
+<select id="temporada"></select>
+</div>
 
-  <div class="field">
-    <label>Jornada</label>
-    <input id="jornada">
-  </div>
+<div class="field">
+<label>Local</label>
+<select id="local"></select>
+</div>
 
-  <div class="field">
-    <label>Local</label>
-    <input id="local">
-  </div>
+<div class="field">
+<label>Visitante</label>
+<select id="visitante"></select>
+</div>
 
-  <div class="field">
-    <label>Visitante</label>
-    <input id="visitante">
-  </div>
+<div class="field">
+<label>Jornada</label>
+<input id="jornada">
+</div>
 
-  <div class="field">
-    <label>Goles Local</label>
-    <input id="gl">
-  </div>
+<div class="field">
+<label>Goles Local</label>
+<input id="gl">
+</div>
 
-  <div class="field">
-    <label>Goles Visitante</label>
-    <input id="gv">
-  </div>
+<div class="field">
+<label>Goles Visitante</label>
+<input id="gv">
+</div>
 
-  <button onclick="crear()">Guardar Partido</button>
+<button onclick="crear()">Guardar Partido</button>
 
 </div>
 
 <!-- ================= LISTA ================= -->
 <div class="col-center">
 
-  <div class="section-title">📋 Partidos</div>
-  <hr>
+<h3>📋 Partidos</h3>
 
-  <div class="field">
-    <label>Filtrar Liga</label>
-    <select id="filtroLiga"></select>
-  </div>
+<select id="filtroLiga"></select>
+<select id="filtroTemporada"></select>
 
-  <div class="field">
-    <label>Filtrar Temporada</label>
-    <select id="filtroTemporada"></select>
-  </div>
-
-  <div id="lista"></div>
+<div id="lista"></div>
 
 </div>
 
 <!-- ================= EDIT ================= -->
 <div class="col-right">
 
-  <div class="section-title">✏️ Editar Partido</div>
-  <hr>
+<h3>✏️ Editar</h3>
 
-  <div class="field">
-    <label>Fila Sheet</label>
-    <input id="editRow">
-  </div>
+<input id="editRow" placeholder="row">
 
-  <div class="field">
-    <label>Jornada</label>
-    <input id="editJornada">
-  </div>
+<input id="editJornada">
+<input id="editLocal">
+<input id="editVisitante">
+<input id="editGL">
+<input id="editGV">
 
-  <div class="field">
-    <label>Local</label>
-    <input id="editLocal">
-  </div>
-
-  <div class="field">
-    <label>Visitante</label>
-    <input id="editVisitante">
-  </div>
-
-  <div class="field">
-    <label>Goles Local</label>
-    <input id="editGL">
-  </div>
-
-  <div class="field">
-    <label>Goles Visitante</label>
-    <input id="editGV">
-  </div>
-
-  <button onclick="update()">Actualizar</button>
+<button onclick="update()">Actualizar</button>
 
 </div>
 
@@ -248,32 +165,33 @@ hr{
 
 <script>
 
-const API = "https://fcf-headless.onrender.com";
+const API="https://fcf-headless.onrender.com";
 
 let ligas=[];
+let equipos=[];
 let partidos=[];
-let temporadaActiva=null;
 
 /* ================= INIT ================= */
 
 async function init(){
 
-  const r = await fetch(API + "/ligas");
-  const j = await r.json();
+  const r=await fetch(API+"/ligas");
+  const j=await r.json();
 
-  ligas = j.data;
+  ligas=j.data;
 
-  fillSelects();
-  await loadTemporadas();
+  fillLigas();
+  loadTemporadas();
 }
 
 /* ================= LIGAS ================= */
 
-function fillSelects(){
+function fillLigas(){
 
   ["liga","filtroLiga"].forEach(id=>{
     const sel=document.getElementById(id);
     sel.innerHTML="";
+
     ligas.forEach(l=>{
       const opt=document.createElement("option");
       opt.value=l.id;
@@ -283,59 +201,113 @@ function fillSelects(){
   });
 }
 
-/* ================= TEMPORADAS (INTELIGENTE) ================= */
+/* ================= EQUIPOS (FIX IMPORTANTE) ================= */
+
+async function loadEquipos(){
+
+  const liga=document.getElementById("liga").value;
+
+  const r=await fetch(API+"/equipos?liga="+liga);
+  const j=await r.json();
+
+  equipos=j.data;
+
+  const local=document.getElementById("local");
+  const visitante=document.getElementById("visitante");
+
+  local.innerHTML="";
+  visitante.innerHTML="";
+
+  equipos.forEach(e=>{
+
+    const o1=document.createElement("option");
+    const o2=document.createElement("option");
+
+    o1.value=o2.value=e;
+    o1.textContent=o2.textContent=e;
+
+    local.appendChild(o1);
+    visitante.appendChild(o2);
+  });
+}
+
+/* ================= TEMPORADAS ================= */
 
 async function loadTemporadas(){
 
-  const [t,a] = await Promise.all([
-    fetch(API+"/temporadas"),
-    fetch(API+"/temporada-activa")
-  ]);
+  const r=await fetch(API+"/temporadas");
+  const j=await r.json();
 
-  const j = await t.json();
-  const ja = await a.json();
-
-  const sel = document.getElementById("temporada");
-  const sel2 = document.getElementById("filtroTemporada");
+  const sel=document.getElementById("temporada");
+  const sel2=document.getElementById("filtroTemporada");
 
   sel.innerHTML="";
   sel2.innerHTML="";
 
   j.data.forEach(s=>{
 
-    const opt1=document.createElement("option");
-    const opt2=document.createElement("option");
+    const o1=document.createElement("option");
+    const o2=document.createElement("option");
 
-    opt1.value=opt2.value=s;
-    opt1.textContent=opt2.textContent=s;
+    o1.value=o2.value=s;
+    o1.textContent=o2.textContent=s;
 
-    sel.appendChild(opt1);
-    sel2.appendChild(opt2);
+    sel.appendChild(o1);
+    sel2.appendChild(o2);
   });
 
-  // 🔥 SELECCIÓN INTELIGENTE
-  const saved = localStorage.getItem("temporada");
-  temporadaActiva = saved || ja.data || j.data[j.data.length-1];
+  await loadEquipos();
+  loadPartidos();
+}
 
-  sel.value = temporadaActiva;
-  sel2.value = temporadaActiva;
+/* ================= DUPLICADOS CHECK ================= */
 
-  localStorage.setItem("temporada", temporadaActiva);
+function isDuplicate(nuevo){
+
+  return partidos.some(p=>
+    p.local===nuevo.local &&
+    p.visitante===nuevo.visitante &&
+    p.jornada===nuevo.jornada &&
+    p.temporada===nuevo.temporada
+  );
+}
+
+/* ================= CREAR ================= */
+
+async function crear(){
+
+  const data={
+    liga:document.getElementById("liga").value,
+    temporada:document.getElementById("temporada").value,
+    jornada:document.getElementById("jornada").value,
+    local:document.getElementById("local").value,
+    visitante:document.getElementById("visitante").value,
+    goles_local:document.getElementById("gl").value,
+    goles_visitante:document.getElementById("gv").value
+  };
+
+  if(isDuplicate(data)){
+    alert("❌ Partido duplicado");
+    return;
+  }
+
+  await fetch(API+"/partido",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(data)
+  });
 
   loadPartidos();
 }
 
-/* ================= LOAD ================= */
+/* ================= LOAD PARTIDOS ================= */
 
 async function loadPartidos(){
 
   const liga=document.getElementById("filtroLiga").value;
   const temporada=document.getElementById("filtroTemporada").value;
 
-  const r=await fetch(
-    API+"/partidos?liga="+liga+"&temporada="+temporada
-  );
-
+  const r=await fetch(API+"/partidos?liga="+liga+"&temporada="+temporada);
   const j=await r.json();
 
   partidos=j.data;
@@ -366,37 +338,7 @@ function render(){
   });
 }
 
-/* ================= CREATE ================= */
-
-async function crear(){
-
-  const temporada=document.getElementById("temporada").value;
-
-  if(!temporada){
-    alert("Temporada obligatoria");
-    return;
-  }
-
-  const data={
-    liga:document.getElementById("liga").value,
-    temporada,
-    jornada:document.getElementById("jornada").value,
-    local:document.getElementById("local").value,
-    visitante:document.getElementById("visitante").value,
-    goles_local:document.getElementById("gl").value,
-    goles_visitante:document.getElementById("gv").value
-  };
-
-  await fetch(API+"/partido",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(data)
-  });
-
-  loadPartidos();
-}
-
-/* ================= EDIT ================= */
+/* ================= EDIT FIX ================= */
 
 function fillEdit(p,row){
 
@@ -408,12 +350,19 @@ function fillEdit(p,row){
   document.getElementById("editGV").value=p.goles_visitante;
 }
 
-/* ================= UPDATE ================= */
+/* ================= UPDATE FIX REAL ================= */
 
 async function update(){
 
+  const row=document.getElementById("editRow").value;
+
+  if(!row){
+    alert("❌ Selecciona un partido");
+    return;
+  }
+
   const data={
-    row:document.getElementById("editRow").value,
+    row,
     liga:document.getElementById("filtroLiga").value,
     jornada:document.getElementById("editJornada").value,
     local:document.getElementById("editLocal").value,
@@ -433,7 +382,12 @@ async function update(){
 
 /* ================= EVENTS ================= */
 
-document.addEventListener("change",(e)=>{
+document.addEventListener("change",e=>{
+
+  if(e.target.id==="filtroLiga"){
+    loadEquipos();
+  }
+
   if(e.target.id==="filtroLiga" || e.target.id==="filtroTemporada"){
     loadPartidos();
   }
