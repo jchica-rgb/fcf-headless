@@ -23,11 +23,10 @@ body{
 
 h1{
   text-align:center;
-  margin-bottom:10px;
+  margin-bottom:20px;
 }
 
-/* ================= LAYOUT ================= */
-
+/* LAYOUT */
 .layout{
   display:flex;
   gap:20px;
@@ -40,8 +39,7 @@ h1{
   border-radius:10px;
 }
 
-/* ================= FIELDS ================= */
-
+/* FIELD */
 .field{
   margin-bottom:10px;
 }
@@ -62,8 +60,7 @@ input, select{
   border-radius:6px;
 }
 
-/* ================= BUTTON ================= */
-
+/* BUTTON */
 button{
   width:100%;
   padding:12px;
@@ -75,8 +72,7 @@ button{
   border-radius:6px;
 }
 
-/* ================= MATCH ================= */
-
+/* MATCH */
 .match{
   background:#151515;
   padding:10px;
@@ -90,15 +86,40 @@ button{
   opacity:0.7;
 }
 
-/* ================= MENSAJES (AHORA CERCA TABLAS) ================= */
+/* =========================
+   TOAST SYSTEM (NO BORRA LAYOUT)
+========================= */
 
-#msg{
-  position:relative; /* 🔥 CAMBIO IMPORTANTE */
-  margin:10px 0 15px 0; /* 🔥 aparece cerca de contenido */
-  padding:10px;
+#toast{
+  position:fixed;
+  top:20px;
+  right:20px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  z-index:9999;
+}
+
+.toast{
+  padding:10px 14px;
   border-radius:6px;
   font-weight:bold;
-  display:none;
+  animation:fade .2s ease;
+}
+
+.toast.ok{
+  background:#00ff88;
+  color:#000;
+}
+
+.toast.error{
+  background:#ff2d2d;
+  color:#fff;
+}
+
+@keyframes fade{
+  from{opacity:0; transform:translateY(-10px);}
+  to{opacity:1; transform:translateY(0);}
 }
 
 </style>
@@ -110,12 +131,9 @@ button{
 
 <h1>⚽ FUTCAT ADMIN PANEL</h1>
 
-<!-- 🔥 MENSAJES AHORA DENTRO DEL FLUJO -->
-<div id="msg"></div>
-
 <div class="layout">
 
-<!-- ================= CREAR ================= -->
+<!-- CREAR -->
 <div class="col">
 
 <h3>➕ Crear Partido</h3>
@@ -159,7 +177,7 @@ button{
 
 </div>
 
-<!-- ================= LISTA ================= -->
+<!-- LISTA -->
 <div class="col">
 
 <h3>📋 Partidos</h3>
@@ -178,7 +196,7 @@ button{
 
 </div>
 
-<!-- ================= EDIT ================= -->
+<!-- EDIT -->
 <div class="col">
 
 <h3>✏️ Editar Partido</h3>
@@ -227,6 +245,9 @@ button{
 </div>
 </div>
 
+<!-- TOAST -->
+<div id="toast"></div>
+
 <script>
 
 const API="https://fcf-headless.onrender.com";
@@ -235,24 +256,17 @@ let ligas=[];
 let equipos=[];
 let partidos=[];
 
-/* ================= MENSAJES ================= */
+/* ================= TOAST ================= */
 
 function showMsg(text,type="ok"){
 
-  const el=document.getElementById("msg");
+  const t=document.createElement("div");
+  t.className="toast "+type;
+  t.innerText=text;
 
-  el.style.display="block";
-  el.innerText=text;
+  document.getElementById("toast").appendChild(t);
 
-  if(type==="ok"){
-    el.style.background="#00ff88";
-    el.style.color="#000";
-  }else{
-    el.style.background="#ff0033";
-    el.style.color="#fff";
-  }
-
-  setTimeout(()=>el.style.display="none",3000);
+  setTimeout(()=>t.remove(),3000);
 }
 
 /* ================= INIT ================= */
