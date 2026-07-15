@@ -21,8 +21,12 @@ body{
   padding:20px;
 }
 
-h1{text-align:center;margin-bottom:20px}
+h1{
+  text-align:center;
+  margin-bottom:20px;
+}
 
+/* LAYOUT */
 .layout{
   display:flex;
   gap:20px;
@@ -36,7 +40,9 @@ h1{text-align:center;margin-bottom:20px}
 }
 
 /* FIELD */
-.field{margin-bottom:10px}
+.field{
+  margin-bottom:10px;
+}
 
 label{
   display:block;
@@ -75,7 +81,10 @@ button{
   cursor:pointer;
 }
 
-.small{font-size:12px;opacity:0.7}
+.small{
+  font-size:12px;
+  opacity:0.7;
+}
 
 </style>
 </head>
@@ -156,12 +165,17 @@ button{
 
 <h3>✏️ Editar Partido</h3>
 
-<!-- 🔒 ROW OCULTO -->
+<!-- row oculto -->
 <input type="hidden" id="editRow">
 
 <div class="field">
 <label>Liga</label>
 <select id="editLiga"></select>
+</div>
+
+<div class="field">
+<label>Temporada</label>
+<select id="editTemporada"></select>
 </div>
 
 <div class="field">
@@ -242,9 +256,7 @@ async function loadEquipos(){
   const eLocal=document.getElementById("editLocal");
   const eVisitante=document.getElementById("editVisitante");
 
-  [local,visitante,eLocal,eVisitante].forEach(sel=>{
-    sel.innerHTML="";
-  });
+  [local,visitante,eLocal,eVisitante].forEach(s=>s.innerHTML="");
 
   equipos.forEach(e=>{
     local.innerHTML+=`<option>${e}</option>`;
@@ -263,13 +275,16 @@ async function loadTemporadas(){
 
   const sel=document.getElementById("temporada");
   const sel2=document.getElementById("filtroTemporada");
+  const sel3=document.getElementById("editTemporada");
 
   sel.innerHTML="";
   sel2.innerHTML="";
+  sel3.innerHTML="";
 
   j.data.forEach(s=>{
     sel.innerHTML+=`<option>${s}</option>`;
     sel2.innerHTML+=`<option>${s}</option>`;
+    sel3.innerHTML+=`<option>${s}</option>`;
   });
 
   await loadEquipos();
@@ -284,7 +299,8 @@ async function loadPartidos(){
   const temporada=filtroTemporada.value;
 
   const r=await fetch(API+
-    "/partidos?liga="+liga+"&temporada="+temporada);
+    "/partidos?liga="+liga+
+    "&temporada="+temporada);
 
   partidos=(await r.json()).data;
 
@@ -318,14 +334,16 @@ function render(){
 function fillEdit(p){
 
   editRow.value=p.row;
+
   editLiga.value=p.liga;
+  editTemporada.value=p.temporada;
+
   editJornada.value=p.jornada;
+  editLocal.value=p.local;
+  editVisitante.value=p.visitante;
 
   editGL.value=p.goles_local;
   editGV.value=p.goles_visitante;
-
-  editLocal.value=p.local;
-  editVisitante.value=p.visitante;
 }
 
 /* ================= CREATE ================= */
@@ -358,6 +376,7 @@ async function update(){
   const data={
     row:editRow.value,
     liga:editLiga.value,
+    temporada:editTemporada.value,
     jornada:editJornada.value,
     local:editLocal.value,
     visitante:editVisitante.value,
@@ -377,6 +396,7 @@ async function update(){
 /* ================= EVENTS ================= */
 
 document.addEventListener("change",e=>{
+
   if(e.target.id==="liga"){
     loadEquipos();
   }
