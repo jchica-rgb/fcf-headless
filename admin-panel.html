@@ -23,9 +23,10 @@ body{
 
 h1{
   text-align:center;
+  margin-bottom:20px;
 }
 
-/* LAYOUT ORIGINAL */
+/* LAYOUT */
 .layout{
   display:flex;
   gap:20px;
@@ -159,13 +160,35 @@ button{
 
 <h3>✏️ Editar Partido</h3>
 
-<input id="editRow" placeholder="row">
+<div class="field">
+<label>Row (Sheet real)</label>
+<input id="editRow">
+</div>
 
+<div class="field">
+<label>Jornada</label>
 <input id="editJornada">
+</div>
+
+<div class="field">
+<label>Local</label>
 <input id="editLocal">
+</div>
+
+<div class="field">
+<label>Visitante</label>
 <input id="editVisitante">
+</div>
+
+<div class="field">
+<label>Goles Local</label>
 <input id="editGL">
+</div>
+
+<div class="field">
+<label>Goles Visitante</label>
 <input id="editGV">
+</div>
 
 <button onclick="update()">Actualizar</button>
 
@@ -202,7 +225,6 @@ function fillLigas(){
   ["liga","filtroLiga"].forEach(id=>{
     const sel=document.getElementById(id);
     sel.innerHTML="";
-
     ligas.forEach(l=>{
       const opt=document.createElement("option");
       opt.value=l.id;
@@ -271,7 +293,7 @@ async function loadTemporadas(){
   loadPartidos();
 }
 
-/* ================= LOAD PARTIDOS ================= */
+/* ================= LOAD ================= */
 
 async function loadPartidos(){
 
@@ -288,14 +310,14 @@ async function loadPartidos(){
   render();
 }
 
-/* ================= RENDER ================= */
+/* ================= RENDER (ROW REAL FIX) ================= */
 
 function render(){
 
   const div=document.getElementById("lista");
   div.innerHTML="";
 
-  partidos.forEach((p,i)=>{
+  partidos.forEach(p=>{
 
     const el=document.createElement("div");
     el.className="match";
@@ -305,10 +327,24 @@ function render(){
       <div class="small">J${p.jornada} | ${p.temporada}</div>
     `;
 
-    el.onclick=()=>fillEdit(p,i+2);
+    // 🔥 FIX REAL: usar row del server
+    el.onclick=()=>fillEdit(p);
 
     div.appendChild(el);
   });
+}
+
+/* ================= FILL EDIT (FIX REAL) ================= */
+
+function fillEdit(p){
+
+  document.getElementById("editRow").value=p.row;
+
+  document.getElementById("editJornada").value=p.jornada;
+  document.getElementById("editLocal").value=p.local;
+  document.getElementById("editVisitante").value=p.visitante;
+  document.getElementById("editGL").value=p.goles_local;
+  document.getElementById("editGV").value=p.goles_visitante;
 }
 
 /* ================= CREATE ================= */
@@ -334,26 +370,14 @@ async function crear(){
   loadPartidos();
 }
 
-/* ================= EDIT ================= */
-
-function fillEdit(p,row){
-
-  document.getElementById("editRow").value=row;
-  document.getElementById("editJornada").value=p.jornada;
-  document.getElementById("editLocal").value=p.local;
-  document.getElementById("editVisitante").value=p.visitante;
-  document.getElementById("editGL").value=p.goles_local;
-  document.getElementById("editGV").value=p.goles_visitante;
-}
-
-/* ================= UPDATE ================= */
+/* ================= UPDATE (FIX REAL) ================= */
 
 async function update(){
 
   const row=document.getElementById("editRow").value;
 
   if(!row){
-    alert("Selecciona un partido");
+    alert("❌ Selecciona partido");
     return;
   }
 
@@ -378,7 +402,7 @@ async function update(){
 
 /* ================= EVENTS ================= */
 
-document.addEventListener("change",(e)=>{
+document.addEventListener("change",e=>{
 
   if(e.target.id==="liga"){
     loadEquipos();
