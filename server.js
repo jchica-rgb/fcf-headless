@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 /* ======================
-   SHEETS CONFIG
+   GOOGLE SHEETS CONFIG
 ====================== */
 
 function safeJson(v) {
@@ -29,11 +29,18 @@ async function getClient() {
   return await authGoogle.getClient();
 }
 
+/* ======================
+   HELPERS
+====================== */
+
 const normalize = v =>
-  String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
+  String(v || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
 
 /* ======================
-   SHEETS READ
+   READ SHEET
 ====================== */
 
 async function getSheet(range) {
@@ -85,7 +92,7 @@ app.get("/equipos", async (req, res) => {
 });
 
 /* ======================
-   PARTIDOS LISTA
+   PARTIDOS
 ====================== */
 
 app.get("/partidos", async (req, res) => {
@@ -94,15 +101,17 @@ app.get("/partidos", async (req, res) => {
 
   const rows = await getSheet("PARTIDOS!A2:F");
 
-  const data = rows.map((r, i) => ({
-    id: i + 2,
-    liga: normalize(r[0]),
-    jornada: r[1],
-    local: r[2],
-    visitante: r[3],
-    goles_local: Number(r[4] || 0),
-    goles_visitante: Number(r[5] || 0)
-  })).filter(p => p.liga === liga);
+  const data = rows
+    .map((r, i) => ({
+      id: i + 2,
+      liga: normalize(r[0]),
+      jornada: r[1],
+      local: r[2],
+      visitante: r[3],
+      goles_local: Number(r[4] || 0),
+      goles_visitante: Number(r[5] || 0)
+    }))
+    .filter(p => p.liga === liga);
 
   res.json({ data });
 });
@@ -179,14 +188,56 @@ app.get("/clasificacion", async (req, res) => {
 });
 
 /* ======================
-   CREAR PARTIDO
+   GUARDAR PARTIDO (CON DUPLICADOS)
 ====================== */
 
 app.post("/partido", async (req, res) => {
 
   try {
 
-    const { liga, jornada, local, visitante, goles_local, goles_visitante } = req.body;
+    const {
+      liga,
+      jornada,
+      local,
+      visitante,
+      goles_local,
+      goles_visitante
+    } = req.body;
+
+    if (!liga || !jornada || !local || !visitante) {
+      return res.status(400).json({ ok: false, error: "Faltan datos" });
+    }
+
+    if (local === visitante) {
+      return res.status(400).json({ ok: false, error: "No puede jugar contra sí mismo" });
+    }
+
+    /* 🔥 CHECK DUPLICADOS */
+    const rows = await getSheet("PARTIDOS!A2:F");
+
+    const exists = rows.some(r => {
+
+      const rLiga = normalize(r[0]);
+      const rJornada = String(r[1]);
+      const rLocal = r[2];
+      const rVisitante = r[3];
+
+      return (
+        rLiga === normalize(liga) &&
+        rJornada === String(jornada) &&
+        (
+          (rLocal === local && rVisitante === visitante) ||
+          (rLocal === visitante && rVisitante === local)
+        )
+      );
+    });
+
+    if (exists) {
+      return res.status(409).json({
+        ok: false,
+        error: "Este partido ya existe en esta jornada"
+      });
+    }
 
     const client = await getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
@@ -196,27 +247,43 @@ app.post("/partido", async (req, res) => {
       range: "PARTIDOS!A:F",
       valueInputOption: "RAW",
       requestBody: {
-        values: [[liga, jornada, local, visitante, goles_local, goles_visitante]]
+        values: [[
+          liga,
+          jornada,
+          local,
+          visitante,
+          goles_local,
+          goles_visitante
+        ]]
       }
     });
 
     res.json({ ok: true });
 
   } catch (err) {
+
     console.error(err);
-    res.status(500).json({ ok: false });
+    res.status(500).json({ ok: false, error: "Error servidor" });
   }
 });
 
 /* ======================
-   🔥 UPDATE PARTIDO (LO QUE TE FALTABA)
+   UPDATE PARTIDO
 ====================== */
 
 app.post("/partido/update", async (req, res) => {
 
   try {
 
-    const { row, liga, jornada, local, visitante, goles_local, goles_visitante } = req.body;
+    const {
+      row,
+      liga,
+      jornada,
+      local,
+      visitante,
+      goles_local,
+      goles_visitante
+    } = req.body;
 
     const client = await getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
@@ -226,15 +293,23 @@ app.post("/partido/update", async (req, res) => {
       range: `PARTIDOS!A${row}:F${row}`,
       valueInputOption: "RAW",
       requestBody: {
-        values: [[liga, jornada, local, visitante, goles_local, goles_visitante]]
+        values: [[
+          liga,
+          jornada,
+          local,
+          visitante,
+          goles_local,
+          goles_visitante
+        ]]
       }
     });
 
     res.json({ ok: true });
 
   } catch (err) {
+
     console.error(err);
-    res.status(500).json({ ok: false });
+    res.status(500).json({ ok: false, error: "Error update" });
   }
 });
 
@@ -245,5 +320,5 @@ app.post("/partido/update", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("SERVER OK ⚽", PORT);
+  console.log("FUTCAT SERVER RUNNING ⚽", PORT);
 });
