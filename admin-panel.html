@@ -234,8 +234,8 @@ button:disabled{
 
 <h3>✏️ Editar Partido</h3>
 
+<p class="small" id="hintEditar">👆 Haz clic en un partido de la lista central para cargarlo aquí y editarlo.</p>
 <input type="hidden" id="editRow">
-
 <div class="field">
 <label>Liga</label>
 <select id="editLiga"></select>
@@ -593,7 +593,8 @@ async function fillEdit(p){
   editGL.value = p.jugado ? p.goles_local : "";
   editGV.value = p.jugado ? p.goles_visitante : "";
 }
-
+ document.getElementById("hintEditar").style.display="none";
+  
 /* ================= UPDATE ================= */
 
 async function update(){
