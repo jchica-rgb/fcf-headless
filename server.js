@@ -45,6 +45,9 @@ async function getSheet(range){
 const normalize = v =>
   String(v||"").trim().toLowerCase();
 
+const isEmpty = v =>
+  v===undefined || v===null || String(v).trim()==="";
+
 /* ======================
    LIGAS
 ====================== */
@@ -145,6 +148,29 @@ app.get("/partidos", async (req,res)=>{
 });
 
 /* ======================
+   VALIDACION COMUN CREAR/UPDATE
+====================== */
+
+function validarPartido(body){
+
+  const { liga, temporada, jornada, local, visitante } = body;
+
+  if(isEmpty(liga) || isEmpty(temporada) || isEmpty(local) || isEmpty(visitante)){
+    return "Liga, temporada, local y visitante son obligatorios";
+  }
+
+  if(isEmpty(jornada)){
+    return "La jornada es obligatoria";
+  }
+
+  if(normalize(local)===normalize(visitante)){
+    return "Un equipo no puede jugar contra sí mismo";
+  }
+
+  return null; // sin errores
+}
+
+/* ======================
    CREAR PARTIDO
 ====================== */
 
@@ -160,11 +186,10 @@ app.post("/partido", async (req,res)=>{
     goles_visitante
   } = req.body;
 
-  if(normalize(local)===normalize(visitante)){
-    return res.status(400).json({
-      ok:false,
-      error:"Un equipo no puede jugar contra sí mismo"
-    });
+  const error = validarPartido(req.body);
+
+  if(error){
+    return res.status(400).json({ ok:false, error });
   }
 
   const rows = await getSheet("PARTIDOS!A2:G");
@@ -172,7 +197,7 @@ app.post("/partido", async (req,res)=>{
   const exists = rows.some(r =>
     normalize(r[0])===normalize(liga) &&
     r[1]===temporada &&
-    r[2]===jornada &&
+    String(r[2])===String(jornada) &&
     (
       (normalize(r[3])===normalize(local) && normalize(r[4])===normalize(visitante)) ||
       (normalize(r[3])===normalize(visitante) && normalize(r[4])===normalize(local))
@@ -229,11 +254,10 @@ app.post("/partido/update", async (req,res)=>{
     goles_visitante
   } = req.body;
 
-  if(normalize(local)===normalize(visitante)){
-    return res.status(400).json({
-      ok:false,
-      error:"No puede jugar contra sí mismo"
-    });
+  const error = validarPartido(req.body);
+
+  if(error){
+    return res.status(400).json({ ok:false, error });
   }
 
   const activeRows = await getSheet("PARTIDOS!B2:B");
@@ -254,7 +278,6 @@ app.post("/partido/update", async (req,res)=>{
       });
     }
 
-    // Bloquea también si intentan mover el partido a otra temporada distinta de la activa
     if(temporada !== active){
       return res.status(403).json({
         ok:false,
@@ -290,7 +313,7 @@ app.post("/partido/update", async (req,res)=>{
 });
 
 /* ======================
-   CLASIFICACION (ahora incluye GF / GC / DIF)
+   CLASIFICACION (incluye GF / GC / DIF)
 ====================== */
 
 app.get("/clasificacion", async (req,res)=>{
@@ -312,7 +335,7 @@ app.get("/clasificacion", async (req,res)=>{
     .filter(p =>
       (!liga || p.liga===liga) &&
       (!temporada || p.temporada===temporada) &&
-      p.gl!==null && p.gv!==null   // solo partidos jugados cuentan para la tabla
+      p.gl!==null && p.gv!==null
     );
 
   const tabla={};
@@ -367,7 +390,6 @@ app.get("/clasificacion", async (req,res)=>{
     diferencia: t.goles_favor - t.goles_contra
   }));
 
-  // Orden estándar: puntos, luego diferencia de goles, luego goles a favor
   data.sort((a,b)=>
     b.puntos - a.puntos ||
     b.diferencia - a.diferencia ||
