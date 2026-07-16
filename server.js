@@ -3,11 +3,22 @@ const cors = require("cors");
 const { google } = require("googleapis");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: { origin: "*" }
+});
+
+function notificarActualizacion(){
+  io.emit("partidos-actualizados");
+}
 
 /* ======================
    CONFIG
@@ -281,12 +292,6 @@ function validarPartido(body){
   return null;
 }
 
-/* ======================
-   VALIDACION: ¿existen liga/equipos de verdad?
-   Evita "equipos fantasma" por errores tipográficos
-   o equipos que en realidad son de otra liga.
-====================== */
-
 async function validarLigaYEquiposExisten(liga, local, visitante){
 
   const ligaNorm = normalize(liga);
@@ -384,6 +389,8 @@ app.post("/partido", requireAuth, async (req,res)=>{
     }
   });
 
+  notificarActualizacion();
+
   res.json({
     ok:true,
     message:"Partido creado correctamente"
@@ -469,6 +476,8 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
       ]]
     }
   });
+
+  notificarActualizacion();
 
   res.json({
     ok:true,
@@ -568,6 +577,6 @@ app.get("/clasificacion", async (req,res)=>{
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT,()=>{
+httpServer.listen(PORT,()=>{
   console.log("⚽ FUTCAT SERVER FINAL ESTABLE (NO CUT VERSION)");
 });
