@@ -73,6 +73,14 @@ function requireAuth(req,res,next){
   }
 }
 
+function requireAdmin(req,res,next){
+
+  if(!req.user || req.user.rol !== "admin"){
+    return res.status(403).json({ ok:false, error:"Solo un administrador puede hacer esto" });
+  }
+  next();
+}
+
 /* ======================
    LOGIN
 ====================== */
@@ -108,6 +116,47 @@ app.post("/login", async (req,res)=>{
   );
 
   res.json({ ok:true, token, rol: normalize(rol) || "editor", usuario: fila[0] });
+});
+
+/* ======================
+   CREAR USUARIO (solo admin)
+====================== */
+
+app.post("/usuarios", requireAuth, requireAdmin, async (req,res)=>{
+
+  const { usuario, password, rol } = req.body;
+
+  if(isEmpty(usuario) || isEmpty(password) || isEmpty(rol)){
+    return res.status(400).json({ ok:false, error:"Usuario, contraseña y rol son obligatorios" });
+  }
+
+  if(rol!=="admin" && rol!=="editor"){
+    return res.status(400).json({ ok:false, error:"Rol debe ser 'admin' o 'editor'" });
+  }
+
+  const rows = await getSheet("USUARIOS!A2:C");
+
+  const yaExiste = rows.some(r => normalize(r[0])===normalize(usuario));
+
+  if(yaExiste){
+    return res.status(409).json({ ok:false, error:"Ese usuario ya existe" });
+  }
+
+  const hash = bcrypt.hashSync(password, 10);
+
+  const client = await getClient();
+  const sheets = google.sheets({ version:"v4", auth:client });
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId:SHEET_ID,
+    range:"USUARIOS!A:C",
+    valueInputOption:"RAW",
+    requestBody:{
+      values:[[ usuario, hash, rol ]]
+    }
+  });
+
+  res.json({ ok:true, message:"Usuario creado correctamente" });
 });
 
 /* ======================
@@ -300,7 +349,7 @@ app.post("/partido", requireAuth, async (req,res)=>{
 });
 
 /* ======================
-   UPDATE + BLOQUEO TEMPORADA (protegido)
+   UPDATE + BLOQUEO TEMPORADA (protegido, admin puede saltarse el bloqueo)
 ====================== */
 
 app.post("/partido/update", requireAuth, async (req,res)=>{
@@ -333,18 +382,23 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
     const all = await getSheet("PARTIDOS!A2:G");
     const current = all[row-2];
 
-    if(current && current[1] !== active){
-      return res.status(403).json({
-        ok:false,
-        error:"No se pueden editar partidos de temporadas anteriores"
-      });
-    }
+    const esAdmin = req.user && req.user.rol === "admin";
 
-    if(temporada !== active){
-      return res.status(403).json({
-        ok:false,
-        error:"No se puede asignar el partido a una temporada distinta de la activa"
-      });
+    if(!esAdmin){
+
+      if(current && current[1] !== active){
+        return res.status(403).json({
+          ok:false,
+          error:"No se pueden editar partidos de temporadas anteriores"
+        });
+      }
+
+      if(temporada !== active){
+        return res.status(403).json({
+          ok:false,
+          error:"No se puede asignar el partido a una temporada distinta de la activa"
+        });
+      }
     }
   }
 
