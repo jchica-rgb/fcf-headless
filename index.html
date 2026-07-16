@@ -77,6 +77,38 @@ select {
   flex: 1;
 }
 
+/* NAVEGACION JORNADA */
+
+#jornadaNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #111;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 10px 0;
+}
+
+#jornadaNav button {
+  background: #1a1a1a;
+  color: #00ff88;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#jornadaNav button:disabled {
+  color: #444;
+  cursor: default;
+  border-color: #222;
+}
+
+#jornadaLabel {
+  font-weight: bold;
+}
+
 /* PARTIDOS: local | marcador | visitante | jornada, en columnas alineadas */
 
 .match {
@@ -121,6 +153,12 @@ select {
   font-size: 12px;
   text-align: right;
   min-width: 30px;
+}
+
+.empty-msg {
+  color: #888;
+  font-style: italic;
+  padding: 10px 0;
 }
 
 /* TABLAS: equipo alineado a la izquierda, resto centrado */
@@ -169,6 +207,12 @@ td:first-child, th:first-child {
 
       <div class="section-title">⚽ Partidos</div>
       <div class="section-line"></div>
+
+      <div id="jornadaNav">
+        <button id="btnPrevJornada">← Anterior</button>
+        <div id="jornadaLabel">Jornada --</div>
+        <button id="btnNextJornada">Siguiente →</button>
+      </div>
 
       <div id="partidos"></div>
 
@@ -223,6 +267,8 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 let currentTemporada = null;
+let currentJornada = null;   // jornada seleccionada actualmente
+let jornadasDisponibles = []; // lista ordenada de jornadas de la temporada/liga actual
 let loading = false;
 
 async function loadLigas(){
@@ -245,6 +291,7 @@ async function loadLigas(){
 
   sel.onchange = (e)=>{
     currentLiga = e.target.value;
+    currentJornada = null;
     loadData();
   };
 
@@ -275,6 +322,7 @@ async function loadTemporadas(){
 
   sel.onchange = (e)=>{
     currentTemporada = e.target.value;
+    currentJornada = null;
     localStorage.setItem("temporada", currentTemporada);
     loadData();
   };
@@ -298,6 +346,7 @@ async function loadData(){
     const clas = await c.json();
     const part = await p.json();
 
+    calcularJornadas(part.data);
     renderClas(clas.data);
     renderMatches(part.data);
     renderStats(clas.data);
@@ -311,12 +360,98 @@ async function loadData(){
   }
 }
 
+function calcularJornadas(partidos){
+
+  const jornadasSet = new Set(
+    partidos.map(p=>p.jornada).filter(j=>j!==null && j!=="" && j!==undefined)
+  );
+
+  jornadasDisponibles = [...jornadasSet].sort((a,b)=>
+    Number(a) - Number(b)
+  );
+
+  if(jornadasDisponibles.length===0){
+    currentJornada = null;
+    renderJornadaNav();
+    return;
+  }
+
+  const jornadaValida = currentJornada!==null &&
+    jornadasDisponibles.includes(currentJornada);
+
+  if(!jornadaValida){
+
+    const jugadas = jornadasDisponibles.filter(j=>
+      partidos.some(p=>p.jornada===j && p.jugado)
+    );
+
+    currentJornada = jugadas.length>0
+      ? jugadas[jugadas.length-1]
+      : jornadasDisponibles[0];
+  }
+
+  renderJornadaNav();
+}
+
+function renderJornadaNav(){
+
+  const label = document.getElementById("jornadaLabel");
+  const btnPrev = document.getElementById("btnPrevJornada");
+  const btnNext = document.getElementById("btnNextJornada");
+
+  if(currentJornada===null){
+    label.textContent = "Sin jornadas";
+    btnPrev.disabled = true;
+    btnNext.disabled = true;
+    return;
+  }
+
+  label.textContent = "Jornada " + currentJornada;
+
+  const idx = jornadasDisponibles.indexOf(currentJornada);
+
+  btnPrev.disabled = idx<=0;
+  btnNext.disabled = idx>=jornadasDisponibles.length-1;
+}
+
+function goPrevJornada(){
+
+  const idx = jornadasDisponibles.indexOf(currentJornada);
+  if(idx>0){
+    currentJornada = jornadasDisponibles[idx-1];
+    renderJornadaNav();
+    loadData();
+  }
+}
+
+function goNextJornada(){
+
+  const idx = jornadasDisponibles.indexOf(currentJornada);
+  if(idx>=0 && idx<jornadasDisponibles.length-1){
+    currentJornada = jornadasDisponibles[idx+1];
+    renderJornadaNav();
+    loadData();
+  }
+}
+
+document.getElementById("btnPrevJornada").onclick = goPrevJornada;
+document.getElementById("btnNextJornada").onclick = goNextJornada;
+
 function renderMatches(data){
 
   const div = document.getElementById("partidos");
   div.innerHTML = "";
 
-  data.forEach(p=>{
+  const filtrados = currentJornada===null
+    ? []
+    : data.filter(p=>p.jornada===currentJornada);
+
+  if(filtrados.length===0){
+    div.innerHTML = `<div class="empty-msg">No hay partidos en esta jornada.</div>`;
+    return;
+  }
+
+  filtrados.forEach(p=>{
 
     const el = document.createElement("div");
 
@@ -326,7 +461,7 @@ function renderMatches(data){
         <div class="team-local">${p.local}</div>
         <div class="score">${p.goles_local}-${p.goles_visitante}</div>
         <div class="team-visitante">${p.visitante}</div>
-        <div class="jornada">${p.jornada || ""}</div>
+        <div class="jornada">J${p.jornada}</div>
       `;
     } else {
       el.className = "match pending";
@@ -334,7 +469,7 @@ function renderMatches(data){
         <div class="team-local">${p.local}</div>
         <div class="pending-label">vs</div>
         <div class="team-visitante">${p.visitante}</div>
-        <div class="jornada">${p.jornada || ""}</div>
+        <div class="jornada">J${p.jornada}</div>
       `;
     }
 
