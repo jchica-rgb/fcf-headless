@@ -74,24 +74,6 @@ function requireAuth(req,res,next){
 }
 
 /* ======================
-   TEMPORAL: GENERAR HASH
-   Bórrala después de crear tus usuarios.
-====================== */
-
-app.get("/generar-hash", (req,res)=>{
-
-  const password = req.query.password;
-
-  if(!password){
-    return res.status(400).json({ error:"Falta ?password=tuContraseña en la URL" });
-  }
-
-  const hash = bcrypt.hashSync(password, 10);
-
-  res.json({ password, hash });
-});
-
-/* ======================
    LOGIN
 ====================== */
 
