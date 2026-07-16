@@ -276,6 +276,34 @@ button:disabled{
 </div>
 
 </div>
+
+<!-- GESTION USUARIOS (solo admin) -->
+<div class="col" id="panelUsuarios" style="display:none; margin-top:20px;">
+
+<h3>👤 Gestión de Usuarios (solo admin)</h3>
+
+<div class="field">
+<label>Usuario</label>
+<input id="nuevoUsuario" type="text">
+</div>
+
+<div class="field">
+<label>Contraseña</label>
+<input id="nuevaPassword" type="password">
+</div>
+
+<div class="field">
+<label>Rol</label>
+<select id="nuevoRol">
+  <option value="editor">editor</option>
+  <option value="admin">admin</option>
+</select>
+</div>
+
+<button id="btnCrearUsuario" onclick="crearUsuario()">Crear Usuario</button>
+
+</div>
+
 </div>
 
 <script>
@@ -622,6 +650,55 @@ async function update(){
   } finally {
     btn.disabled=false;
     btn.textContent="Actualizar";
+  }
+}
+
+/* ================= GESTION USUARIOS (solo admin) ================= */
+
+if(rolActual==="admin"){
+  document.getElementById("panelUsuarios").style.display="block";
+}
+
+async function crearUsuario(){
+
+  const usuario = document.getElementById("nuevoUsuario").value.trim();
+  const password = document.getElementById("nuevaPassword").value;
+  const rol = document.getElementById("nuevoRol").value;
+
+  if(!usuario || !password){
+    showMsg("Rellena usuario y contraseña","error");
+    return;
+  }
+
+  const btn=document.getElementById("btnCrearUsuario");
+  btn.disabled=true;
+  btn.textContent="Creando...";
+
+  try{
+
+    const res=await fetch(API+"/usuarios",{
+      method:"POST",
+      headers: authHeaders(),
+      body:JSON.stringify({ usuario, password, rol })
+    });
+
+    if(await manejarRespuestaAuth(res)) return;
+
+    const json=await res.json();
+
+    if(!res.ok){
+      showMsg(json.error || "Error","error");
+      return;
+    }
+
+    showMsg(json.message || "Usuario creado","ok");
+
+    document.getElementById("nuevoUsuario").value="";
+    document.getElementById("nuevaPassword").value="";
+
+  } finally {
+    btn.disabled=false;
+    btn.textContent="Crear Usuario";
   }
 }
 
