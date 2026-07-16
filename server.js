@@ -132,8 +132,9 @@ app.get("/partidos", async (req,res)=>{
     jornada:r[2],
     local:r[3],
     visitante:r[4],
-    goles_local:Number(r[5]||0),
-    goles_visitante:Number(r[6]||0)
+    goles_local: r[5]===undefined || r[5]==="" ? null : Number(r[5]),
+    goles_visitante: r[6]===undefined || r[6]==="" ? null : Number(r[6]),
+    jugado: !(r[5]===undefined || r[5]==="" || r[6]===undefined || r[6]==="")
   }))
   .filter(p =>
     (!liga || p.liga===liga) &&
@@ -159,7 +160,7 @@ app.post("/partido", async (req,res)=>{
     goles_visitante
   } = req.body;
 
-  if(local===visitante){
+  if(normalize(local)===normalize(visitante)){
     return res.status(400).json({
       ok:false,
       error:"Un equipo no puede jugar contra sí mismo"
@@ -173,8 +174,8 @@ app.post("/partido", async (req,res)=>{
     r[1]===temporada &&
     r[2]===jornada &&
     (
-      (r[3]===local && r[4]===visitante) ||
-      (r[3]===visitante && r[4]===local)
+      (normalize(r[3])===normalize(local) && normalize(r[4])===normalize(visitante)) ||
+      (normalize(r[3])===normalize(visitante) && normalize(r[4])===normalize(local))
     )
   );
 
@@ -228,7 +229,7 @@ app.post("/partido/update", async (req,res)=>{
     goles_visitante
   } = req.body;
 
-  if(local===visitante){
+  if(normalize(local)===normalize(visitante)){
     return res.status(400).json({
       ok:false,
       error:"No puede jugar contra sí mismo"
@@ -250,6 +251,14 @@ app.post("/partido/update", async (req,res)=>{
       return res.status(403).json({
         ok:false,
         error:"No se pueden editar partidos de temporadas anteriores"
+      });
+    }
+
+    // Bloquea también si intentan mover el partido a otra temporada distinta de la activa
+    if(temporada !== active){
+      return res.status(403).json({
+        ok:false,
+        error:"No se puede asignar el partido a una temporada distinta de la activa"
       });
     }
   }
@@ -281,7 +290,7 @@ app.post("/partido/update", async (req,res)=>{
 });
 
 /* ======================
-   CLASIFICACION
+   CLASIFICACION (ahora incluye GF / GC / DIF)
 ====================== */
 
 app.get("/clasificacion", async (req,res)=>{
@@ -297,12 +306,13 @@ app.get("/clasificacion", async (req,res)=>{
       temporada:r[1],
       local:r[3],
       visitante:r[4],
-      gl:Number(r[5]||0),
-      gv:Number(r[6]||0)
+      gl: r[5]===undefined || r[5]==="" ? null : Number(r[5]),
+      gv: r[6]===undefined || r[6]==="" ? null : Number(r[6])
     }))
     .filter(p =>
       (!liga || p.liga===liga) &&
-      (!temporada || p.temporada===temporada)
+      (!temporada || p.temporada===temporada) &&
+      p.gl!==null && p.gv!==null   // solo partidos jugados cuentan para la tabla
     );
 
   const tabla={};
@@ -315,7 +325,10 @@ app.get("/clasificacion", async (req,res)=>{
         jugados:0,
         ganados:0,
         empatados:0,
-        perdidos:0
+        perdidos:0,
+        goles_favor:0,
+        goles_contra:0,
+        diferencia:0
       };
     }
   };
@@ -327,6 +340,11 @@ app.get("/clasificacion", async (req,res)=>{
 
     tabla[p.local].jugados++;
     tabla[p.visitante].jugados++;
+
+    tabla[p.local].goles_favor += p.gl;
+    tabla[p.local].goles_contra += p.gv;
+    tabla[p.visitante].goles_favor += p.gv;
+    tabla[p.visitante].goles_contra += p.gl;
 
     if(p.gl>p.gv){
       tabla[p.local].ganados++;
@@ -344,8 +362,20 @@ app.get("/clasificacion", async (req,res)=>{
     }
   });
 
+  const data = Object.values(tabla).map(t=>({
+    ...t,
+    diferencia: t.goles_favor - t.goles_contra
+  }));
+
+  // Orden estándar: puntos, luego diferencia de goles, luego goles a favor
+  data.sort((a,b)=>
+    b.puntos - a.puntos ||
+    b.diferencia - a.diferencia ||
+    b.goles_favor - a.goles_favor
+  );
+
   res.json({
-    data:Object.values(tabla),
+    data,
     lastUpdate:Date.now()
   });
 });
