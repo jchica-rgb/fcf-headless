@@ -26,7 +26,6 @@ h1{
   margin-bottom:20px;
 }
 
-/* LAYOUT */
 .layout{
   display:flex;
   gap:20px;
@@ -40,7 +39,6 @@ h1{
   position:relative;
 }
 
-/* FIELD */
 .field{
   margin-bottom:10px;
 }
@@ -61,7 +59,6 @@ input, select{
   border-radius:6px;
 }
 
-/* BUTTON */
 button{
   width:100%;
   padding:12px;
@@ -79,7 +76,6 @@ button:disabled{
   cursor:not-allowed;
 }
 
-/* MATCH */
 .match{
   background:#151515;
   padding:10px;
@@ -92,8 +88,6 @@ button:disabled{
   font-size:12px;
   opacity:0.7;
 }
-
-/* TOAST */
 
 #toast{
   position:absolute;
@@ -170,8 +164,8 @@ button:disabled{
 </div>
 
 <div class="field">
-<label>Jornada</label>
-<input id="jornada" type="number" min="1" step="1">
+<label>Jornada *</label>
+<input id="jornada" type="number" min="1" step="1" required>
 </div>
 
 <div class="field">
@@ -227,8 +221,8 @@ button:disabled{
 </div>
 
 <div class="field">
-<label>Jornada</label>
-<input id="editJornada" type="number" min="1" step="1">
+<label>Jornada *</label>
+<input id="editJornada" type="number" min="1" step="1" required>
 </div>
 
 <div class="field">
@@ -295,7 +289,6 @@ async function init(){
 
 function fillLigas(){
 
-  // Crear y Editar: solo ligas reales, sin "Todas"
   ["liga","editLiga"].forEach(id=>{
     const sel=document.getElementById(id);
     sel.innerHTML="";
@@ -304,7 +297,6 @@ function fillLigas(){
     });
   });
 
-  // Filtro: incluye "Todas"
   const filtro=document.getElementById("filtroLiga");
   filtro.innerHTML=`<option value="">Todas</option>`;
   ligas.forEach(l=>{
@@ -312,12 +304,7 @@ function fillLigas(){
   });
 }
 
-/* ================= EQUIPOS =================
-   Antes: solo se cargaban al cambiar "liga" (Crear),
-   y "editLocal"/"editVisitante" quedaban con los
-   equipos de la liga equivocada al editar un partido
-   de otra liga. Ahora cada panel carga sus propios
-   equipos según su propio select de liga. */
+/* ================= EQUIPOS ================= */
 
 async function loadEquiposCrear(){
 
@@ -358,7 +345,6 @@ async function loadTemporadas(){
   const r=await fetch(API+"/temporadas");
   const j=await r.json();
 
-  // Crear y Editar: solo temporadas reales
   ["temporada","editTemporada"].forEach(id=>{
     const sel=document.getElementById(id);
     sel.innerHTML="";
@@ -367,12 +353,10 @@ async function loadTemporadas(){
     });
   });
 
-  // Por comodidad, Crear arranca en la temporada más reciente
   if(j.data.length>0){
     document.getElementById("temporada").value = j.data[j.data.length-1];
   }
 
-  // Filtro: incluye "Todas"
   const filtro=document.getElementById("filtroTemporada");
   filtro.innerHTML=`<option value="">Todas</option>`;
   j.data.forEach(s=>{
@@ -429,11 +413,9 @@ function render(){
 /* ================= VALIDACION GOLES ================= */
 
 function golesValidos(gl,gv){
-
   if(gl===""||gv===""){
-    return false; // permitir vacío si el partido aún no se ha jugado, pero no mezclar uno vacío y otro no
+    return false;
   }
-
   return true;
 }
 
@@ -445,8 +427,15 @@ function ambosVacios(gl,gv){
 
 async function crear(){
 
-  const gl = gl_input_value();
-  const gv = gv_input_value();
+  const jornadaVal = document.getElementById("jornada").value;
+
+  if(jornadaVal===""){
+    showMsg("La jornada es obligatoria","error");
+    return;
+  }
+
+  const gl = document.getElementById("gl").value;
+  const gv = document.getElementById("gv").value;
 
   if(!ambosVacios(gl,gv) && !golesValidos(gl,gv)){
     showMsg("Rellena ambos marcadores o déjalos vacíos si el partido no se ha jugado","error");
@@ -465,7 +454,7 @@ async function crear(){
       body:JSON.stringify({
         liga:liga.value,
         temporada:temporada.value,
-        jornada:jornada.value,
+        jornada:jornadaVal,
         local:local.value,
         visitante:visitante.value,
         goles_local:gl,
@@ -482,7 +471,6 @@ async function crear(){
 
     showMsg(json.message || "OK","ok");
 
-    // Limpia solo los campos específicos del partido, mantiene liga/temporada/equipos
     document.getElementById("jornada").value="";
     document.getElementById("gl").value="";
     document.getElementById("gv").value="";
@@ -494,9 +482,6 @@ async function crear(){
     btn.textContent="Guardar Partido";
   }
 }
-
-function gl_input_value(){ return document.getElementById("gl").value; }
-function gv_input_value(){ return document.getElementById("gv").value; }
 
 /* ================= EDIT ================= */
 
@@ -521,6 +506,13 @@ async function fillEdit(p){
 
 async function update(){
 
+  const jornadaVal = document.getElementById("editJornada").value;
+
+  if(jornadaVal===""){
+    showMsg("La jornada es obligatoria","error");
+    return;
+  }
+
   const gl = document.getElementById("editGL").value;
   const gv = document.getElementById("editGV").value;
 
@@ -542,7 +534,7 @@ async function update(){
         row:editRow.value,
         liga:editLiga.value,
         temporada:editTemporada.value,
-        jornada:editJornada.value,
+        jornada:jornadaVal,
         local:editLocal.value,
         visitante:editVisitante.value,
         goles_local:gl,
