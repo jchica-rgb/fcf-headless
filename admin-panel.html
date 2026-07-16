@@ -21,9 +21,32 @@ body{
   padding:20px;
 }
 
-h1{
-  text-align:center;
+.top-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
   margin-bottom:20px;
+}
+
+h1{
+  margin:0;
+}
+
+#userInfo{
+  font-size:13px;
+  color:#aaa;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+#userInfo button{
+  width:auto;
+  margin:0;
+  padding:6px 12px;
+  font-size:12px;
+  background:#ff2d2d;
+  color:white;
 }
 
 .layout{
@@ -134,7 +157,10 @@ button:disabled{
 
 <div class="container">
 
-<h1>⚽ FUTCAT ADMIN PANEL</h1>
+<div class="top-bar">
+  <h1>⚽ FUTCAT ADMIN PANEL</h1>
+  <div id="userInfo"></div>
+</div>
 
 <div class="layout">
 
@@ -255,6 +281,42 @@ button:disabled{
 <script>
 
 const API="https://fcf-headless.onrender.com";
+
+/* ================= AUTH GUARD ================= */
+
+const token = localStorage.getItem("token");
+const rolActual = localStorage.getItem("rol");
+const usuarioActual = localStorage.getItem("usuario");
+
+if(!token){
+  window.location.href = "admin.html";
+}
+
+document.getElementById("userInfo").innerHTML =
+  `${usuarioActual} (${rolActual}) <button onclick="logout()">Salir</button>`;
+
+function authHeaders(){
+  return {
+    "Content-Type":"application/json",
+    "Authorization":"Bearer " + token
+  };
+}
+
+function logout(){
+  localStorage.removeItem("token");
+  localStorage.removeItem("rol");
+  localStorage.removeItem("usuario");
+  window.location.href = "admin.html";
+}
+
+async function manejarRespuestaAuth(res){
+  if(res.status===401){
+    showMsg("Sesión caducada, vuelve a iniciar sesión","error");
+    setTimeout(logout, 1500);
+    return true;
+  }
+  return false;
+}
 
 let ligas=[];
 let partidos=[];
@@ -450,7 +512,7 @@ async function crear(){
 
     const res=await fetch(API+"/partido",{
       method:"POST",
-      headers:{"Content-Type":"application/json"},
+      headers: authHeaders(),
       body:JSON.stringify({
         liga:liga.value,
         temporada:temporada.value,
@@ -461,6 +523,8 @@ async function crear(){
         goles_visitante:gv
       })
     });
+
+    if(await manejarRespuestaAuth(res)) return;
 
     const json=await res.json();
 
@@ -529,7 +593,7 @@ async function update(){
 
     const res=await fetch(API+"/partido/update",{
       method:"POST",
-      headers:{"Content-Type":"application/json"},
+      headers: authHeaders(),
       body:JSON.stringify({
         row:editRow.value,
         liga:editLiga.value,
@@ -541,6 +605,8 @@ async function update(){
         goles_visitante:gv
       })
     });
+
+    if(await manejarRespuestaAuth(res)) return;
 
     const json=await res.json();
 
