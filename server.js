@@ -414,6 +414,16 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
     goles_visitante
   } = req.body;
 
+  // NUEVO: valida que "row" sea un número de fila real antes de nada más.
+  const rowNum = Number(row);
+
+  if(isEmpty(row) || !Number.isInteger(rowNum) || rowNum < 2){
+    return res.status(400).json({
+      ok:false,
+      error:"No se ha seleccionado ningún partido para actualizar. Haz clic en un partido de la lista antes de editarlo."
+    });
+  }
+
   const error = validarPartido(req.body);
 
   if(error){
@@ -425,7 +435,19 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
   if(errorEquipos){
     return res.status(400).json({ ok:false, error: errorEquipos });
   }
+  
+  const todasLasFilas = await getSheet("PARTIDOS!A2:G");
+  const filaExiste = todasLasFilas[rowNum-2];
 
+  if(!filaExiste){
+    return res.status(404).json({
+      ok:false,
+      error:"El partido que intentas actualizar ya no existe en esa posición"
+    });
+  }
+
+  const activeRows = await getSheet("PARTIDOS!B2:B");
+  
   const activeRows = await getSheet("PARTIDOS!B2:B");
 
   const seasons = [...new Set(activeRows.map(r=>r[0]).filter(Boolean))];
