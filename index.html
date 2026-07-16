@@ -77,28 +77,53 @@ select {
   flex: 1;
 }
 
+/* PARTIDOS: local | marcador | visitante | jornada, en columnas alineadas */
+
 .match {
   background: #151515;
-  padding: 10px;
+  padding: 10px 14px;
   margin: 5px 0;
   border-radius: 6px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  align-items: center;
+  gap: 10px;
 }
 
 .match.pending {
   opacity: 0.6;
 }
 
+.match .team-local {
+  text-align: left;
+}
+
+.match .team-visitante {
+  text-align: right;
+}
+
 .match .score {
   color: #00ff88;
   font-weight: bold;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .match .pending-label {
   color: #888;
   font-style: italic;
+  text-align: center;
+  white-space: nowrap;
 }
+
+.match .jornada {
+  color: #888;
+  font-size: 12px;
+  text-align: right;
+  min-width: 30px;
+}
+
+/* TABLAS: equipo alineado a la izquierda, resto centrado */
 
 table {
   width: 100%;
@@ -114,6 +139,10 @@ th, td {
 
 th {
   color: #00ff88;
+}
+
+td:first-child, th:first-child {
+  text-align: left;
 }
 
 </style>
@@ -294,14 +323,18 @@ function renderMatches(data){
     if(p.jugado){
       el.className = "match";
       el.innerHTML = `
-        <div>${p.local} <span class="score">${p.goles_local}-${p.goles_visitante}</span> ${p.visitante}</div>
-        <div>${p.jornada || ""}</div>
+        <div class="team-local">${p.local}</div>
+        <div class="score">${p.goles_local}-${p.goles_visitante}</div>
+        <div class="team-visitante">${p.visitante}</div>
+        <div class="jornada">${p.jornada || ""}</div>
       `;
     } else {
       el.className = "match pending";
       el.innerHTML = `
-        <div>${p.local} <span class="pending-label">vs</span> ${p.visitante}</div>
-        <div>${p.jornada || ""}</div>
+        <div class="team-local">${p.local}</div>
+        <div class="pending-label">vs</div>
+        <div class="team-visitante">${p.visitante}</div>
+        <div class="jornada">${p.jornada || ""}</div>
       `;
     }
 
