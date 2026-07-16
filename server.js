@@ -282,6 +282,42 @@ function validarPartido(body){
 }
 
 /* ======================
+   VALIDACION: ¿existen liga/equipos de verdad?
+   Evita "equipos fantasma" por errores tipográficos
+   o equipos que en realidad son de otra liga.
+====================== */
+
+async function validarLigaYEquiposExisten(liga, local, visitante){
+
+  const ligaNorm = normalize(liga);
+
+  const [ligasRows, equiposRows] = await Promise.all([
+    getSheet("LIGAS!A2:B"),
+    getSheet("EQUIPOS!A2:C")
+  ]);
+
+  const ligaExiste = ligasRows.some(r => normalize(r[0])===ligaNorm);
+
+  if(!ligaExiste){
+    return `La liga "${liga}" no existe`;
+  }
+
+  const equiposDeLaLiga = equiposRows
+    .filter(r => normalize(r[2])===ligaNorm)
+    .map(r => normalize(r[1]));
+
+  if(!equiposDeLaLiga.includes(normalize(local))){
+    return `El equipo local "${local}" no existe en esa liga`;
+  }
+
+  if(!equiposDeLaLiga.includes(normalize(visitante))){
+    return `El equipo visitante "${visitante}" no existe en esa liga`;
+  }
+
+  return null;
+}
+
+/* ======================
    CREAR PARTIDO (protegido)
 ====================== */
 
@@ -301,6 +337,12 @@ app.post("/partido", requireAuth, async (req,res)=>{
 
   if(error){
     return res.status(400).json({ ok:false, error });
+  }
+
+  const errorEquipos = await validarLigaYEquiposExisten(liga, local, visitante);
+
+  if(errorEquipos){
+    return res.status(400).json({ ok:false, error: errorEquipos });
   }
 
   const rows = await getSheet("PARTIDOS!A2:G");
@@ -369,6 +411,12 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
 
   if(error){
     return res.status(400).json({ ok:false, error });
+  }
+
+  const errorEquipos = await validarLigaYEquiposExisten(liga, local, visitante);
+
+  if(errorEquipos){
+    return res.status(400).json({ ok:false, error: errorEquipos });
   }
 
   const activeRows = await getSheet("PARTIDOS!B2:B");
