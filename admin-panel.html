@@ -598,6 +598,13 @@ async function fillEdit(p){
 
 async function update(){
 
+  const rowVal = document.getElementById("editRow").value;
+
+  if(rowVal===""){
+    showMsg("Selecciona un partido de la lista antes de actualizar","error");
+    return;
+  }
+
   const jornadaVal = document.getElementById("editJornada").value;
 
   if(jornadaVal===""){
