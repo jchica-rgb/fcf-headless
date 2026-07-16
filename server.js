@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const { google } = require("googleapis");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 const app = express();
 
@@ -17,6 +19,7 @@ function safeJson(v){
 
 const SHEET_ID = process.env.SHEET_ID || "";
 const credentials = safeJson(process.env.GOOGLE_CREDENTIALS);
+const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_cambia_esto_en_render";
 
 const authGoogle = credentials
   ? new google.auth.GoogleAuth({
@@ -47,6 +50,83 @@ const normalize = v =>
 
 const isEmpty = v =>
   v===undefined || v===null || String(v).trim()==="";
+
+/* ======================
+   AUTH MIDDLEWARE
+====================== */
+
+function requireAuth(req,res,next){
+
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+
+  if(!token){
+    return res.status(401).json({ ok:false, error:"No autorizado" });
+  }
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = payload;
+    next();
+  } catch(err){
+    return res.status(401).json({ ok:false, error:"Sesión inválida o caducada" });
+  }
+}
+
+/* ======================
+   TEMPORAL: GENERAR HASH
+   Bórrala después de crear tus usuarios.
+====================== */
+
+app.get("/generar-hash", (req,res)=>{
+
+  const password = req.query.password;
+
+  if(!password){
+    return res.status(400).json({ error:"Falta ?password=tuContraseña en la URL" });
+  }
+
+  const hash = bcrypt.hashSync(password, 10);
+
+  res.json({ password, hash });
+});
+
+/* ======================
+   LOGIN
+====================== */
+
+app.post("/login", async (req,res)=>{
+
+  const { usuario, password } = req.body;
+
+  if(isEmpty(usuario) || isEmpty(password)){
+    return res.status(400).json({ ok:false, error:"Usuario y contraseña son obligatorios" });
+  }
+
+  const rows = await getSheet("USUARIOS!A2:C");
+
+  const fila = rows.find(r => normalize(r[0])===normalize(usuario));
+
+  if(!fila){
+    return res.status(401).json({ ok:false, error:"Usuario o contraseña incorrectos" });
+  }
+
+  const [ , passwordHash, rol ] = fila;
+
+  const valido = bcrypt.compareSync(password, passwordHash || "");
+
+  if(!valido){
+    return res.status(401).json({ ok:false, error:"Usuario o contraseña incorrectos" });
+  }
+
+  const token = jwt.sign(
+    { usuario: fila[0], rol: normalize(rol) || "editor" },
+    JWT_SECRET,
+    { expiresIn: "8h" }
+  );
+
+  res.json({ ok:true, token, rol: normalize(rol) || "editor", usuario: fila[0] });
+});
 
 /* ======================
    LIGAS
@@ -167,14 +247,14 @@ function validarPartido(body){
     return "Un equipo no puede jugar contra sí mismo";
   }
 
-  return null; // sin errores
+  return null;
 }
 
 /* ======================
-   CREAR PARTIDO
+   CREAR PARTIDO (protegido)
 ====================== */
 
-app.post("/partido", async (req,res)=>{
+app.post("/partido", requireAuth, async (req,res)=>{
 
   const {
     liga,
@@ -238,10 +318,10 @@ app.post("/partido", async (req,res)=>{
 });
 
 /* ======================
-   UPDATE + BLOQUEO TEMPORADA
+   UPDATE + BLOQUEO TEMPORADA (protegido)
 ====================== */
 
-app.post("/partido/update", async (req,res)=>{
+app.post("/partido/update", requireAuth, async (req,res)=>{
 
   const {
     row,
