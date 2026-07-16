@@ -48,6 +48,14 @@ header::after {
   border: 1px solid rgba(0,255,136,0.2);
 }
 
+#connStatus.online {
+  color: #00ff88;
+}
+
+#connStatus.offline {
+  color: #ff5555;
+}
+
 select {
   width: 100%;
   margin: 10px 0;
@@ -126,6 +134,15 @@ select {
   opacity: 0.6;
 }
 
+.match.recent {
+  animation: flash 1.5s ease;
+}
+
+@keyframes flash {
+  0% { background: rgba(0,255,136,0.35); }
+  100% { background: #151515; }
+}
+
 .match .team-local {
   text-align: left;
 }
@@ -193,8 +210,8 @@ td:first-child, th:first-child {
 <div class="container">
 
   <div id="statusBar">
+    <div id="connStatus" class="offline">🔌 Conectando...</div>
     <div id="lastChange">📡 Último cambio: --</div>
-    <div id="lastRefresh">🕒 Último refresh: --</div>
   </div>
 
   <select id="liga"></select>
@@ -261,15 +278,41 @@ td:first-child, th:first-child {
 
 </div>
 
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
 
 const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 let currentTemporada = null;
-let currentJornada = null;   // jornada seleccionada actualmente
-let jornadasDisponibles = []; // lista ordenada de jornadas de la temporada/liga actual
+let currentJornada = null;
+let jornadasDisponibles = [];
 let loading = false;
+
+/* ================= SOCKET.IO (tiempo real) =================
+   Antes: setInterval(loadData, 10000) preguntaba cada 10s
+   aunque no hubiera cambios. Ahora el servidor avisa en el
+   momento exacto en que se crea/edita un partido, y aquí
+   solo recargamos cuando llega ese aviso. Se mantiene un
+   polling de respaldo cada 60s por si el socket se cae. */
+
+const socket = io(API);
+
+socket.on("connect", ()=>{
+  const el = document.getElementById("connStatus");
+  el.textContent = "🟢 En directo";
+  el.className = "online";
+});
+
+socket.on("disconnect", ()=>{
+  const el = document.getElementById("connStatus");
+  el.textContent = "🔌 Reconectando...";
+  el.className = "offline";
+});
+
+socket.on("partidos-actualizados", ()=>{
+  loadData();
+});
 
 async function loadLigas(){
 
@@ -524,13 +567,13 @@ function updateStatus(ts){
 
   document.getElementById("lastChange").innerText =
     "📡 Último cambio: " + (ts ? new Date(ts).toLocaleString() : "--");
-
-  document.getElementById("lastRefresh").innerText =
-    "🕒 Último refresh: " + new Date().toLocaleString("es-ES");
 }
 
 loadLigas();
-setInterval(loadData,10000);
+
+// Red de seguridad: si el socket se cae y no se reconecta,
+// esto asegura que como mucho pasa 1 minuto sin refrescar.
+setInterval(loadData, 60000);
 
 </script>
 
