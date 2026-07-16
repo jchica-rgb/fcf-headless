@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Admin Login</title>
-
 <style>
 body {
   margin:0;
@@ -15,14 +14,12 @@ body {
   align-items:center;
   height:100vh;
 }
-
 .box {
   width:300px;
   background:#111;
   padding:20px;
   border-radius:10px;
 }
-
 input {
   width:100%;
   padding:10px;
@@ -30,8 +27,8 @@ input {
   background:#1a1a1a;
   border:1px solid #333;
   color:white;
+  box-sizing:border-box;
 }
-
 button {
   width:100%;
   padding:10px;
@@ -40,29 +37,28 @@ button {
   font-weight:bold;
   cursor:pointer;
 }
-
+button:disabled {
+  background:#0a5c38;
+  color:#aaa;
+  cursor:not-allowed;
+}
 .error {
-  color:red;
+  color:#ff5555;
   font-size:12px;
+  min-height:16px;
+  margin-top:6px;
 }
 </style>
 </head>
-
 <body>
-
 <div class="box">
   <h3>🔐 LOGIN ADMIN</h3>
-
   <input id="user" placeholder="Usuario">
   <input id="pass" type="password" placeholder="Contraseña">
-
-  <button onclick="login()">Entrar</button>
-
+  <button id="btnLogin" onclick="login()">Entrar</button>
   <div class="error" id="error"></div>
 </div>
-
 <script>
-
 const API = "https://fcf-headless.onrender.com";
 
 async function login() {
@@ -90,7 +86,30 @@ async function login() {
       body: JSON.stringify({ usuario, password })
     });
 
-</script>
+    const data = await res.json();
 
+    if (!res.ok || !data.ok) {
+      errorEl.innerText = data.error || "Login incorrecto";
+      return;
+    }
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("rol", data.rol);
+    localStorage.setItem("usuario", data.usuario);
+
+    window.location.href = "admin-panel.html";
+
+  } catch(err){
+    errorEl.innerText = "Error de conexión";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Entrar";
+  }
+}
+
+document.getElementById("pass").addEventListener("keydown", e=>{
+  if(e.key==="Enter") login();
+});
+</script>
 </body>
 </html>
