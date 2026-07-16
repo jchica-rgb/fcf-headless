@@ -6,10 +6,6 @@
 
 <style>
 
-/* =========================
-   BASE
-========================= */
-
 body {
   margin: 0;
   font-family: Arial;
@@ -23,8 +19,6 @@ body {
   margin: 0 auto;
   padding: 0 20px;
 }
-
-/* HEADER */
 
 header {
   padding: 18px;
@@ -43,8 +37,6 @@ header::after {
   background: linear-gradient(90deg, transparent, #00ff88, transparent);
 }
 
-/* STATUS */
-
 #statusBar {
   display: flex;
   justify-content: space-between;
@@ -56,8 +48,6 @@ header::after {
   border: 1px solid rgba(0,255,136,0.2);
 }
 
-/* SELECTS */
-
 select {
   width: 100%;
   margin: 10px 0;
@@ -66,8 +56,6 @@ select {
   color: white;
   border: 1px solid #333;
 }
-
-/* TITLES */
 
 .section-title {
   font-weight: bold;
@@ -80,8 +68,6 @@ select {
   margin: 10px 0;
 }
 
-/* LAYOUT */
-
 .layout {
   display: flex;
   gap: 30px;
@@ -90,8 +76,6 @@ select {
 .left, .right {
   flex: 1;
 }
-
-/* MATCH */
 
 .match {
   background: #151515;
@@ -102,7 +86,19 @@ select {
   justify-content: space-between;
 }
 
-/* TABLE */
+.match.pending {
+  opacity: 0.6;
+}
+
+.match .score {
+  color: #00ff88;
+  font-weight: bold;
+}
+
+.match .pending-label {
+  color: #888;
+  font-style: italic;
+}
 
 table {
   width: 100%;
@@ -129,21 +125,17 @@ th {
 
 <div class="container">
 
-  <!-- STATUS -->
   <div id="statusBar">
     <div id="lastChange">📡 Último cambio: --</div>
     <div id="lastRefresh">🕒 Último refresh: --</div>
   </div>
 
-  <!-- LIGA -->
   <select id="liga"></select>
 
-  <!-- TEMPORADA -->
   <select id="temporada"></select>
 
   <div class="layout">
 
-    <!-- PARTIDOS -->
     <div class="left">
 
       <div class="section-title">⚽ Partidos</div>
@@ -153,7 +145,6 @@ th {
 
     </div>
 
-    <!-- CLASIFICACION -->
     <div class="right">
 
       <div class="section-title">📊 Clasificación</div>
@@ -203,8 +194,7 @@ const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
 let currentTemporada = null;
-
-/* ================= LIGAS ================= */
+let loading = false;
 
 async function loadLigas(){
 
@@ -229,27 +219,29 @@ async function loadLigas(){
     loadData();
   };
 
-  loadTemporadas();
+  await loadTemporadas();
 }
 
-/* ================= TEMPORADAS ================= */
+async function loadTemporadas(){
 
-function loadTemporadas(){
+  const res = await fetch(API+"/temporadas");
+  const json = await res.json();
 
   const sel = document.getElementById("temporada");
-
-  const seasons = ["2023-24","2024-25","2025-26"];
-
   sel.innerHTML = "";
 
-  seasons.forEach(s=>{
+  json.data.forEach(s=>{
     const opt = document.createElement("option");
     opt.value = s;
     opt.textContent = s;
     sel.appendChild(opt);
   });
 
-  currentTemporada = localStorage.getItem("temporada") || seasons[0];
+  const saved = localStorage.getItem("temporada");
+  currentTemporada = (saved && json.data.includes(saved))
+    ? saved
+    : json.data[json.data.length-1];
+
   sel.value = currentTemporada;
 
   sel.onchange = (e)=>{
@@ -261,30 +253,34 @@ function loadTemporadas(){
   loadData();
 }
 
-/* ================= DATA ================= */
-
 async function loadData(){
 
   if(!currentLiga || !currentTemporada) return;
+  if(loading) return;
+  loading = true;
 
-  const [c,p,s] = await Promise.all([
-    fetch(API+"/clasificacion?liga="+currentLiga+"&temporada="+currentTemporada),
-    fetch(API+"/partidos?liga="+currentLiga+"&temporada="+currentTemporada),
-    fetch(API+"/estadisticas?liga="+currentLiga+"&temporada="+currentTemporada)
-  ]);
+  try {
 
-  const clas = await c.json();
-  const part = await p.json();
-  const stats = await s.json();
+    const [c,p] = await Promise.all([
+      fetch(API+"/clasificacion?liga="+currentLiga+"&temporada="+currentTemporada),
+      fetch(API+"/partidos?liga="+currentLiga+"&temporada="+currentTemporada)
+    ]);
 
-  renderClas(clas.data);
-  renderMatches(part.data);
-  renderStats(stats.data);
+    const clas = await c.json();
+    const part = await p.json();
 
-  updateStatus(clas.lastUpdate);
+    renderClas(clas.data);
+    renderMatches(part.data);
+    renderStats(clas.data);
+
+    updateStatus(clas.lastUpdate);
+
+  } catch(err){
+    console.error("Error cargando datos:", err);
+  } finally {
+    loading = false;
+  }
 }
-
-/* ================= PARTIDOS ================= */
 
 function renderMatches(data){
 
@@ -294,18 +290,24 @@ function renderMatches(data){
   data.forEach(p=>{
 
     const el = document.createElement("div");
-    el.className = "match";
 
-    el.innerHTML = `
-      <div>${p.local} ${p.goles_local}-${p.goles_visitante} ${p.visitante}</div>
-      <div>${p.jornada}</div>
-    `;
+    if(p.jugado){
+      el.className = "match";
+      el.innerHTML = `
+        <div>${p.local} <span class="score">${p.goles_local}-${p.goles_visitante}</span> ${p.visitante}</div>
+        <div>${p.jornada || ""}</div>
+      `;
+    } else {
+      el.className = "match pending";
+      el.innerHTML = `
+        <div>${p.local} <span class="pending-label">vs</span> ${p.visitante}</div>
+        <div>${p.jornada || ""}</div>
+      `;
+    }
 
     div.appendChild(el);
   });
 }
-
-/* ================= CLASIFICACION ================= */
 
 function renderClas(data){
 
@@ -329,8 +331,6 @@ function renderClas(data){
   });
 }
 
-/* ================= ESTADISTICAS ================= */
-
 function renderStats(data){
 
   const tbody = document.getElementById("stats");
@@ -351,8 +351,6 @@ function renderStats(data){
     tbody.appendChild(tr);
   });
 }
-
-/* ================= STATUS ================= */
 
 function updateStatus(ts){
 
