@@ -392,6 +392,7 @@ async function init(){
   await loadEquiposEditar(document.getElementById("editLiga").value);
   await loadTemporadas();
   await initEditDefaults();
+  await autoRellenarJornadaCrear();
 }
 
 /* ================= LIGAS ================= */
@@ -531,10 +532,7 @@ async function loadFiltroJornadas(){
   loadPartidos();
 }
 
-/* ================= DEFAULTS PANEL EDITAR =================
-   Antes de seleccionar ningún partido, muestra la
-   temporada y jornada activas como referencia visual.
-   fillEdit() los sobrescribe en cuanto se elige un partido real. */
+/* ================= DEFAULTS PANEL EDITAR ================= */
 
 async function initEditDefaults(){
 
@@ -552,6 +550,31 @@ async function initEditDefaults(){
     }
   } catch(err){
     // si falla, se deja vacío sin más
+  }
+}
+
+/* ================= AUTORRELLENO JORNADA EN CREAR =================
+   Rellena el campo Jornada del panel "Crear Partido" con la
+   jornada que el backend realmente va a aceptar, para minimizar
+   errores. Se recalcula si cambian Liga o Temporada, y también
+   después de crear un partido con éxito (para saltar sola a la
+   jornada que corresponda a continuación). */
+
+async function autoRellenarJornadaCrear(){
+
+  const liga = document.getElementById("liga").value;
+  const temporada = document.getElementById("temporada").value;
+
+  if(!liga || !temporada) return;
+
+  try{
+    const r = await fetch(API+"/jornada-permitida-crear?liga="+liga+"&temporada="+temporada);
+    const j = await r.json();
+
+    document.getElementById("jornada").value = (j.data!==null) ? j.data : "";
+
+  } catch(err){
+    // si falla, se deja como estaba
   }
 }
 
@@ -667,10 +690,10 @@ async function crear(){
 
     showMsg(json.message || "OK","ok");
 
-    document.getElementById("jornada").value="";
     document.getElementById("gl").value="";
     document.getElementById("gv").value="";
 
+    await autoRellenarJornadaCrear();
     loadPartidos();
 
   } finally {
@@ -821,6 +844,11 @@ document.addEventListener("change",e=>{
 
   if(e.target.id==="liga"){
     loadEquiposCrear();
+    autoRellenarJornadaCrear();
+  }
+
+  if(e.target.id==="temporada"){
+    autoRellenarJornadaCrear();
   }
 
   if(e.target.id==="editLiga"){
