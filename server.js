@@ -323,6 +323,47 @@ async function validarLigaYEquiposExisten(liga, local, visitante){
 }
 
 /* ======================
+   JORNADA ACTUAL DE UNA LIGA (OPCION A)
+   Es la jornada con el número más bajo que todavía
+   tiene algún partido pendiente (sin resultado) dentro
+   de esa liga y temporada. Así, si precargas partidos
+   futuros o alguno se retrasa, la jornada "abierta" para
+   editores sigue siendo la que realmente se está jugando.
+   Si no queda ningún partido pendiente, se considera
+   jornada actual la última jugada (todo cerrado).
+====================== */
+
+function calcularJornadaActual(filasLigaTemporada){
+
+  const porJornada = {};
+
+  filasLigaTemporada.forEach(r=>{
+    const j = Number(r[2]);
+    if(isNaN(j)) return;
+    if(!porJornada[j]) porJornada[j] = [];
+    const pendiente = isEmpty(r[5]) || isEmpty(r[6]);
+    porJornada[j].push(pendiente);
+  });
+
+  const jornadasConPendiente = Object.keys(porJornada)
+    .map(Number)
+    .filter(j => porJornada[j].some(p => p===true))
+    .sort((a,b)=>a-b);
+
+  if(jornadasConPendiente.length>0){
+    return jornadasConPendiente[0];
+  }
+
+  const todasLasJornadas = Object.keys(porJornada).map(Number);
+
+  if(todasLasJornadas.length===0){
+    return null;
+  }
+
+  return Math.max(...todasLasJornadas);
+}
+
+/* ======================
    CREAR PARTIDO (protegido)
 ====================== */
 
@@ -351,6 +392,22 @@ app.post("/partido", requireAuth, async (req,res)=>{
   }
 
   const rows = await getSheet("PARTIDOS!A2:G");
+
+  const esAdmin = req.user && req.user.rol === "admin";
+
+  if(!esAdmin){
+    const seasons = [...new Set(rows.map(r=>r[1]).filter(Boolean))];
+    if(seasons.length>0){
+      seasons.sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
+      const activeSeason = seasons[seasons.length-1];
+      if(temporada !== activeSeason){
+        return res.status(403).json({
+          ok:false,
+          error:"Solo puedes crear partidos en la temporada activa"
+        });
+      }
+    }
+  }
 
   const exists = rows.some(r =>
     normalize(r[0])===normalize(liga) &&
@@ -398,7 +455,7 @@ app.post("/partido", requireAuth, async (req,res)=>{
 });
 
 /* ======================
-   UPDATE + BLOQUEO TEMPORADA (protegido, admin puede saltarse el bloqueo)
+   UPDATE + BLOQUEO TEMPORADA/JORNADA (protegido, admin sin restricciones)
 ====================== */
 
 app.post("/partido/update", requireAuth, async (req,res)=>{
@@ -414,7 +471,6 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
     goles_visitante
   } = req.body;
 
-  // NUEVO: valida que "row" sea un número de fila real antes de nada más.
   const rowNum = Number(row);
 
   if(isEmpty(row) || !Number.isInteger(rowNum) || rowNum < 2){
@@ -435,46 +491,65 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
   if(errorEquipos){
     return res.status(400).json({ ok:false, error: errorEquipos });
   }
-  
-  const todasLasFilas = await getSheet("PARTIDOS!A2:G");
-  const filaExiste = todasLasFilas[rowNum-2];
 
-  if(!filaExiste){
+  const todasLasFilas = await getSheet("PARTIDOS!A2:G");
+  const current = todasLasFilas[rowNum-2];
+
+  if(!current){
     return res.status(404).json({
       ok:false,
       error:"El partido que intentas actualizar ya no existe en esa posición"
     });
   }
 
-  const activeRows = await getSheet("PARTIDOS!B2:B");
-  
-  const activeRows = await getSheet("PARTIDOS!B2:B");
+  const esAdmin = req.user && req.user.rol === "admin";
 
-  const seasons = [...new Set(activeRows.map(r=>r[0]).filter(Boolean))];
+  if(!esAdmin){
 
-  if(seasons.length>0){
-    seasons.sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
-    const active = seasons[seasons.length-1];
+    const seasons = [...new Set(todasLasFilas.map(r=>r[1]).filter(Boolean))];
 
-    const all = await getSheet("PARTIDOS!A2:G");
-    const current = all[row-2];
+    if(seasons.length>0){
 
-    const esAdmin = req.user && req.user.rol === "admin";
+      seasons.sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
+      const activeSeason = seasons[seasons.length-1];
 
-    if(!esAdmin){
-
-      if(current && current[1] !== active){
+      // Bloqueo por TEMPORADA
+      if(current[1] !== activeSeason){
         return res.status(403).json({
           ok:false,
           error:"No se pueden editar partidos de temporadas anteriores"
         });
       }
 
-      if(temporada !== active){
+      if(temporada !== activeSeason){
         return res.status(403).json({
           ok:false,
           error:"No se puede asignar el partido a una temporada distinta de la activa"
         });
+      }
+
+      // Bloqueo por JORNADA (Opción A: primera jornada con algo pendiente)
+      const filasLigaTemporada = todasLasFilas.filter(r =>
+        normalize(r[0])===normalize(current[0]) && r[1]===activeSeason
+      );
+
+      const jornadaActual = calcularJornadaActual(filasLigaTemporada);
+
+      if(jornadaActual!==null){
+
+        if(Number(current[2]) !== jornadaActual){
+          return res.status(403).json({
+            ok:false,
+            error:`Solo puedes editar partidos de la jornada actual (jornada ${jornadaActual})`
+          });
+        }
+
+        if(Number(jornada) !== jornadaActual){
+          return res.status(403).json({
+            ok:false,
+            error:`No se puede mover el partido a una jornada distinta de la actual (jornada ${jornadaActual})`
+          });
+        }
       }
     }
   }
@@ -484,7 +559,7 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
 
   await sheets.spreadsheets.values.update({
     spreadsheetId:SHEET_ID,
-    range:`PARTIDOS!A${row}:G${row}`,
+    range:`PARTIDOS!A${rowNum}:G${rowNum}`,
     valueInputOption:"RAW",
     requestBody:{
       values:[[
