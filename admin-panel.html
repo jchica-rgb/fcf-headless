@@ -66,7 +66,6 @@ h1{
   margin-bottom:10px;
 }
 
-/* NUEVO: fila de dos columnas para Temporada + Jornada */
 .row-2col{
   display:flex;
   gap:10px;
@@ -391,7 +390,8 @@ async function init(){
   fillLigas();
   await loadEquiposCrear();
   await loadEquiposEditar(document.getElementById("editLiga").value);
-  loadTemporadas();
+  await loadTemporadas();
+  await initEditDefaults();
 }
 
 /* ================= LIGAS ================= */
@@ -412,8 +412,6 @@ function fillLigas(){
     filtro.innerHTML+=`<option value="${l.id}">${l.nombre}</option>`;
   });
 
-  // NUEVO: por defecto, la primera liga (no "Todas"), para poder
-  // calcular una jornada activa concreta al abrir el panel.
   if(ligas.length>0){
     filtro.value = ligas[0].id;
   }
@@ -469,7 +467,9 @@ async function loadTemporadas(){
   });
 
   if(j.data.length>0){
-    document.getElementById("temporada").value = j.data[j.data.length-1];
+    const ultimaTemporada = j.data[j.data.length-1];
+    document.getElementById("temporada").value = ultimaTemporada;
+    document.getElementById("editTemporada").value = ultimaTemporada;
   }
 
   const filtro=document.getElementById("filtroTemporada");
@@ -478,7 +478,6 @@ async function loadTemporadas(){
     filtro.innerHTML+=`<option>${s}</option>`;
   });
 
-  // NUEVO: por defecto, la temporada más reciente (no "Todas").
   if(j.data.length>0){
     filtro.value = j.data[j.data.length-1];
   }
@@ -486,11 +485,7 @@ async function loadTemporadas(){
   await loadFiltroJornadas();
 }
 
-/* ================= FILTRO JORNADA (NUEVO) =================
-   Se recalcula cada vez que cambia el filtro de Liga o Temporada.
-   Si cualquiera de los dos está en "Todas", no tiene sentido
-   calcular una única jornada activa, así que se deja en "Todas".
-====================== */
+/* ================= FILTRO JORNADA ================= */
 
 async function loadFiltroJornadas(){
 
@@ -520,7 +515,6 @@ async function loadFiltroJornadas(){
     sel.innerHTML += `<option value="${jn}">Jornada ${jn}</option>`;
   });
 
-  // Por defecto: la jornada activa (misma lógica que bloquea la edición)
   try{
     const ra = await fetch(API+"/jornada-activa?liga="+liga+"&temporada="+temporada);
     const ja = await ra.json();
@@ -535,6 +529,30 @@ async function loadFiltroJornadas(){
   }
 
   loadPartidos();
+}
+
+/* ================= DEFAULTS PANEL EDITAR =================
+   Antes de seleccionar ningún partido, muestra la
+   temporada y jornada activas como referencia visual.
+   fillEdit() los sobrescribe en cuanto se elige un partido real. */
+
+async function initEditDefaults(){
+
+  const liga = document.getElementById("editLiga").value;
+  const temporada = document.getElementById("editTemporada").value;
+
+  if(!liga || !temporada) return;
+
+  try{
+    const r = await fetch(API+"/jornada-activa?liga="+liga+"&temporada="+temporada);
+    const j = await r.json();
+
+    if(j.data!==null){
+      document.getElementById("editJornada").value = j.data;
+    }
+  } catch(err){
+    // si falla, se deja vacío sin más
+  }
 }
 
 /* ================= PARTIDOS ================= */
