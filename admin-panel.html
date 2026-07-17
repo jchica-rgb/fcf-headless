@@ -774,4 +774,53 @@ async function crearUsuario(){
     const res=await fetch(API+"/usuarios",{
       method:"POST",
       headers: authHeaders(),
-      body:JSON.stringify({ usuario,
+      body:JSON.stringify({ usuario, password, rol })
+    });
+
+    if(await manejarRespuestaAuth(res)) return;
+
+    const json=await res.json();
+
+    if(!res.ok){
+      showMsg(json.error || "Error","error");
+      return;
+    }
+
+    showMsg(json.message || "Usuario creado","ok");
+
+    document.getElementById("nuevoUsuario").value="";
+    document.getElementById("nuevaPassword").value="";
+
+  } finally {
+    btn.disabled=false;
+    btn.textContent="Crear Usuario";
+  }
+}
+
+/* ================= EVENTS ================= */
+
+document.addEventListener("change",e=>{
+
+  if(e.target.id==="liga"){
+    loadEquiposCrear();
+  }
+
+  if(e.target.id==="editLiga"){
+    loadEquiposEditar(e.target.value);
+  }
+
+  if(e.target.id==="filtroLiga" || e.target.id==="filtroTemporada"){
+    loadFiltroJornadas();
+  }
+
+  if(e.target.id==="filtroJornada"){
+    loadPartidos();
+  }
+});
+
+init();
+
+</script>
+
+</body>
+</html>
