@@ -3,9 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Territori FUTCAT LIVE</title>
-
 <style>
-
 body {
   margin: 0;
   font-family: Arial;
@@ -21,6 +19,7 @@ body {
 }
 
 header {
+  position: relative;
   padding: 18px;
   text-align: center;
   background: #111;
@@ -35,6 +34,25 @@ header::after {
   height: 2px;
   margin-top: 10px;
   background: linear-gradient(90deg, transparent, #00ff88, transparent);
+}
+
+#adminBtn {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #00ff88;
+  color: #0a0a0a;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: normal;
+  text-decoration: none;
+}
+
+#adminBtn:hover {
+  background: #00cc6a;
 }
 
 #statusBar {
@@ -86,7 +104,6 @@ select {
 }
 
 /* NAVEGACION JORNADA */
-
 #jornadaNav {
   display: flex;
   align-items: center;
@@ -118,7 +135,6 @@ select {
 }
 
 /* PARTIDOS: local | marcador | visitante | jornada, en columnas alineadas */
-
 .match {
   background: #151515;
   padding: 10px 14px;
@@ -179,7 +195,6 @@ select {
 }
 
 /* TABLAS: equipo alineado a la izquierda, resto centrado */
-
 table {
   width: 100%;
   border-collapse: collapse;
@@ -199,29 +214,27 @@ th {
 td:first-child, th:first-child {
   text-align: left;
 }
-
 </style>
 </head>
-
 <body>
 
-<header>⚽ TERRITORI FUTCAT LIVE</header>
+<header>
+  ⚽ TERRITORI FUTCAT LIVE
+  <a id="adminBtn" href="https://fcf-headless.vercel.app/admin.html">🔐 Acceso Admin</a>
+</header>
 
 <div class="container">
 
   <div id="statusBar">
-    <div id="connStatus" class="offline">🔌 Conectando...</div>
-    <div id="lastChange">📡 Último cambio: --</div>
+    <div id="connStatus" class="offline">🔴 Conectando...</div>
+    <div id="lastChange">🕐 Último cambio: --</div>
   </div>
 
   <select id="liga"></select>
-
   <select id="temporada"></select>
 
   <div class="layout">
-
     <div class="left">
-
       <div class="section-title">⚽ Partidos</div>
       <div class="section-line"></div>
 
@@ -232,14 +245,11 @@ td:first-child, th:first-child {
       </div>
 
       <div id="partidos"></div>
-
     </div>
 
     <div class="right">
-
       <div class="section-title">📊 Clasificación</div>
       <div class="section-line"></div>
-
       <table>
         <thead>
           <tr>
@@ -258,7 +268,6 @@ td:first-child, th:first-child {
 
       <div class="section-title">📈 Estadísticas</div>
       <div class="section-line"></div>
-
       <table>
         <thead>
           <tr>
@@ -271,16 +280,13 @@ td:first-child, th:first-child {
         </thead>
         <tbody id="stats"></tbody>
       </table>
-
     </div>
-
   </div>
 
 </div>
 
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-
 const API = "https://fcf-headless.onrender.com";
 
 let currentLiga = null;
@@ -295,7 +301,6 @@ let loading = false;
    momento exacto en que se crea/edita un partido, y aquí
    solo recargamos cuando llega ese aviso. Se mantiene un
    polling de respaldo cada 60s por si el socket se cae. */
-
 const socket = io(API);
 
 socket.on("connect", ()=>{
@@ -306,7 +311,7 @@ socket.on("connect", ()=>{
 
 socket.on("disconnect", ()=>{
   const el = document.getElementById("connStatus");
-  el.textContent = "🔌 Reconectando...";
+  el.textContent = "🔴 Reconectando...";
   el.className = "offline";
 });
 
@@ -315,7 +320,6 @@ socket.on("partidos-actualizados", ()=>{
 });
 
 async function loadLigas(){
-
   const res = await fetch(API+"/ligas");
   const json = await res.json();
 
@@ -342,7 +346,6 @@ async function loadLigas(){
 }
 
 async function loadTemporadas(){
-
   const res = await fetch(API+"/temporadas");
   const json = await res.json();
 
@@ -374,13 +377,11 @@ async function loadTemporadas(){
 }
 
 async function loadData(){
-
   if(!currentLiga || !currentTemporada) return;
   if(loading) return;
   loading = true;
 
   try {
-
     const [c,p] = await Promise.all([
       fetch(API+"/clasificacion?liga="+currentLiga+"&temporada="+currentTemporada),
       fetch(API+"/partidos?liga="+currentLiga+"&temporada="+currentTemporada)
@@ -393,9 +394,7 @@ async function loadData(){
     renderClas(clas.data);
     renderMatches(part.data);
     renderStats(clas.data);
-
     updateStatus(clas.lastUpdate);
-
   } catch(err){
     console.error("Error cargando datos:", err);
   } finally {
@@ -404,7 +403,6 @@ async function loadData(){
 }
 
 function calcularJornadas(partidos){
-
   const jornadasSet = new Set(
     partidos.map(p=>p.jornada).filter(j=>j!==null && j!=="" && j!==undefined)
   );
@@ -423,7 +421,6 @@ function calcularJornadas(partidos){
     jornadasDisponibles.includes(currentJornada);
 
   if(!jornadaValida){
-
     const jugadas = jornadasDisponibles.filter(j=>
       partidos.some(p=>p.jornada===j && p.jugado)
     );
@@ -437,7 +434,6 @@ function calcularJornadas(partidos){
 }
 
 function renderJornadaNav(){
-
   const label = document.getElementById("jornadaLabel");
   const btnPrev = document.getElementById("btnPrevJornada");
   const btnNext = document.getElementById("btnNextJornada");
@@ -452,13 +448,11 @@ function renderJornadaNav(){
   label.textContent = "Jornada " + currentJornada;
 
   const idx = jornadasDisponibles.indexOf(currentJornada);
-
   btnPrev.disabled = idx<=0;
   btnNext.disabled = idx>=jornadasDisponibles.length-1;
 }
 
 function goPrevJornada(){
-
   const idx = jornadasDisponibles.indexOf(currentJornada);
   if(idx>0){
     currentJornada = jornadasDisponibles[idx-1];
@@ -468,7 +462,6 @@ function goPrevJornada(){
 }
 
 function goNextJornada(){
-
   const idx = jornadasDisponibles.indexOf(currentJornada);
   if(idx>=0 && idx<jornadasDisponibles.length-1){
     currentJornada = jornadasDisponibles[idx+1];
@@ -481,7 +474,6 @@ document.getElementById("btnPrevJornada").onclick = goPrevJornada;
 document.getElementById("btnNextJornada").onclick = goNextJornada;
 
 function renderMatches(data){
-
   const div = document.getElementById("partidos");
   div.innerHTML = "";
 
@@ -495,7 +487,6 @@ function renderMatches(data){
   }
 
   filtrados.forEach(p=>{
-
     const el = document.createElement("div");
 
     if(p.jugado){
@@ -521,14 +512,11 @@ function renderMatches(data){
 }
 
 function renderClas(data){
-
   const tbody = document.getElementById("tabla");
   tbody.innerHTML = "";
 
   data.forEach(t=>{
-
     const tr = document.createElement("tr");
-
     tr.innerHTML = `
       <td>${t.equipo}</td>
       <td>${t.puntos}</td>
@@ -537,20 +525,16 @@ function renderClas(data){
       <td>${t.empatados}</td>
       <td>${t.perdidos}</td>
     `;
-
     tbody.appendChild(tr);
   });
 }
 
 function renderStats(data){
-
   const tbody = document.getElementById("stats");
   tbody.innerHTML = "";
 
   data.forEach(t=>{
-
     const tr = document.createElement("tr");
-
     tr.innerHTML = `
       <td>${t.equipo}</td>
       <td>${t.goles_favor}</td>
@@ -558,15 +542,13 @@ function renderStats(data){
       <td>${t.diferencia}</td>
       <td>${t.puntos}</td>
     `;
-
     tbody.appendChild(tr);
   });
 }
 
 function updateStatus(ts){
-
   document.getElementById("lastChange").innerText =
-    "📡 Último cambio: " + (ts ? new Date(ts).toLocaleString() : "--");
+    "🕐 Último cambio: " + (ts ? new Date(ts).toLocaleString() : "--");
 }
 
 loadLigas();
@@ -574,8 +556,6 @@ loadLigas();
 // Red de seguridad: si el socket se cae y no se reconecta,
 // esto asegura que como mucho pasa 1 minuto sin refrescar.
 setInterval(loadData, 60000);
-
 </script>
-
 </body>
 </html>
