@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 const { google } = require("googleapis");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -8,29 +9,60 @@ const { Server } = require("socket.io");
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
-
-const httpServer = http.createServer(app);
-const io = new Server(httpServer, {
-  cors: { origin: "*" }
-});
-
-function notificarActualizacion(){
-  io.emit("partidos-actualizados");
-}
-
 /* ======================
    CONFIG
 ====================== */
-
 function safeJson(v){
   try { return JSON.parse(v); } catch { return null; }
 }
 
 const SHEET_ID = process.env.SHEET_ID || "";
 const credentials = safeJson(process.env.GOOGLE_CREDENTIALS);
-const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_cambia_esto_en_render";
+
+// JWT_SECRET es obligatorio. Sin ella, el servidor no arranca
+// (antes usaba un valor de desarrollo inseguro por defecto).
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error("❌ Falta la variable de entorno JWT_SECRET. El servidor no puede arrancar sin ella.");
+  process.exit(1);
+}
+
+/* ======================
+   CORS (restringido por whitelist)
+   Configura en Render la variable ALLOWED_ORIGINS con las URLs
+   de Vercel separadas por comas, ej:
+   ALLOWED_ORIGINS=https://territori-futcat.vercel.app,https://territori-futcat-admin.vercel.app
+====================== */
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean);
+
+if (allowedOrigins.length === 0) {
+  console.warn("⚠️  ALLOWED_ORIGINS no está configurada — CORS queda abierto a cualquier origen. Configúrala en Render en cuanto tengas las URLs finales de Vercel.");
+}
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Sin origin = llamadas server-to-server, curl, etc. Se permiten.
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("Origen no permitido por CORS: " + origin));
+  }
+};
+
+app.use(cors(corsOptions));
+app.use(express.json());
+
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: corsOptions
+});
+
+function notificarActualizacion(){
+  io.emit("partidos-actualizados");
+}
 
 const authGoogle = credentials
   ? new google.auth.GoogleAuth({
@@ -44,7 +76,6 @@ async function getClient(){
 }
 
 async function getSheet(range){
-
   const client = await getClient();
   const sheets = google.sheets({ version:"v4", auth:client });
 
@@ -65,9 +96,7 @@ const isEmpty = v =>
 /* ======================
    AUTH MIDDLEWARE
 ====================== */
-
 function requireAuth(req,res,next){
-
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
 
@@ -85,7 +114,6 @@ function requireAuth(req,res,next){
 }
 
 function requireAdmin(req,res,next){
-
   if(!req.user || req.user.rol !== "admin"){
     return res.status(403).json({ ok:false, error:"Solo un administrador puede hacer esto" });
   }
@@ -93,11 +121,22 @@ function requireAdmin(req,res,next){
 }
 
 /* ======================
+   RATE LIMIT LOGIN
+   Máximo 10 intentos por IP cada 15 minutos, para dificultar
+   ataques de fuerza bruta contra bcrypt.compareSync.
+====================== */
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok:false, error:"Demasiados intentos de login. Prueba de nuevo en unos minutos." }
+});
+
+/* ======================
    LOGIN
 ====================== */
-
-app.post("/login", async (req,res)=>{
-
+app.post("/login", loginLimiter, async (req,res)=>{
   const { usuario, password } = req.body;
 
   if(isEmpty(usuario) || isEmpty(password)){
@@ -105,7 +144,6 @@ app.post("/login", async (req,res)=>{
   }
 
   const rows = await getSheet("USUARIOS!A2:C");
-
   const fila = rows.find(r => normalize(r[0])===normalize(usuario));
 
   if(!fila){
@@ -113,7 +151,6 @@ app.post("/login", async (req,res)=>{
   }
 
   const [ , passwordHash, rol ] = fila;
-
   const valido = bcrypt.compareSync(password, passwordHash || "");
 
   if(!valido){
@@ -132,9 +169,7 @@ app.post("/login", async (req,res)=>{
 /* ======================
    CREAR USUARIO (solo admin)
 ====================== */
-
 app.post("/usuarios", requireAuth, requireAdmin, async (req,res)=>{
-
   const { usuario, password, rol } = req.body;
 
   if(isEmpty(usuario) || isEmpty(password) || isEmpty(rol)){
@@ -146,7 +181,6 @@ app.post("/usuarios", requireAuth, requireAdmin, async (req,res)=>{
   }
 
   const rows = await getSheet("USUARIOS!A2:C");
-
   const yaExiste = rows.some(r => normalize(r[0])===normalize(usuario));
 
   if(yaExiste){
@@ -173,11 +207,8 @@ app.post("/usuarios", requireAuth, requireAdmin, async (req,res)=>{
 /* ======================
    LIGAS
 ====================== */
-
 app.get("/ligas", async (req,res)=>{
-
   const rows = await getSheet("LIGAS!A2:B");
-
   res.json({
     data: rows.map(r=>({
       id: normalize(r[0]),
@@ -189,11 +220,8 @@ app.get("/ligas", async (req,res)=>{
 /* ======================
    EQUIPOS
 ====================== */
-
 app.get("/equipos", async (req,res)=>{
-
   const liga = normalize(req.query.liga);
-
   const rows = await getSheet("EQUIPOS!A2:C");
 
   res.json({
@@ -206,26 +234,18 @@ app.get("/equipos", async (req,res)=>{
 /* ======================
    TEMPORADAS
 ====================== */
-
 app.get("/temporadas", async (req,res)=>{
-
   const rows = await getSheet("PARTIDOS!B2:B");
-
   const seasons = [...new Set(rows.map(r=>r[0]).filter(Boolean))];
-
   seasons.sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
-
   res.json({ data: seasons });
 });
 
 /* ======================
    TEMPORADA ACTIVA
 ====================== */
-
 app.get("/temporada-activa", async (req,res)=>{
-
   const rows = await getSheet("PARTIDOS!B2:B");
-
   const seasons = [...new Set(rows.map(r=>r[0]).filter(Boolean))];
 
   if(seasons.length===0){
@@ -245,9 +265,7 @@ app.get("/temporada-activa", async (req,res)=>{
    tiene algún partido pendiente (sin resultado). Si no
    queda ninguna pendiente, es la última jugada.
 ====================== */
-
 function calcularJornadaActual(filasLigaTemporada){
-
   const porJornada = {};
 
   filasLigaTemporada.forEach(r=>{
@@ -285,9 +303,7 @@ function calcularJornadaActual(filasLigaTemporada){
    para esa liga+temporada, no se restringe nada (primera
    vez que se registra algo ahí).
 ====================== */
-
 function calcularJornadaPermitidaParaCrear(filasLigaTemporada){
-
   const porJornada = {};
 
   filasLigaTemporada.forEach(r=>{
@@ -320,20 +336,16 @@ function calcularJornadaPermitidaParaCrear(filasLigaTemporada){
    JORNADA ACTIVA (endpoint público, usado por el filtro
    del panel para preseleccionar la jornada "editable")
 ====================== */
-
 app.get("/jornada-activa", async (req,res)=>{
-
   const liga = normalize(req.query.liga);
   const temporada = req.query.temporada;
 
   const rows = await getSheet("PARTIDOS!A2:G");
-
   const filasLigaTemporada = rows.filter(r =>
     normalize(r[0])===liga && r[1]===temporada
   );
 
   const jornada = calcularJornadaActual(filasLigaTemporada);
-
   res.json({ data: jornada });
 });
 
@@ -342,29 +354,23 @@ app.get("/jornada-activa", async (req,res)=>{
    usado para autorellenar el campo Jornada en el
    panel de "Crear Partido")
 ====================== */
-
 app.get("/jornada-permitida-crear", async (req,res)=>{
-
   const liga = normalize(req.query.liga);
   const temporada = req.query.temporada;
 
   const rows = await getSheet("PARTIDOS!A2:G");
-
   const filasLigaTemporada = rows.filter(r =>
     normalize(r[0])===liga && r[1]===temporada
   );
 
   const jornada = calcularJornadaPermitidaParaCrear(filasLigaTemporada);
-
   res.json({ data: jornada });
 });
 
 /* ======================
    PARTIDOS
 ====================== */
-
 app.get("/partidos", async (req,res)=>{
-
   const liga = normalize(req.query.liga);
   const temporada = req.query.temporada;
   const jornada = req.query.jornada;
@@ -372,21 +378,21 @@ app.get("/partidos", async (req,res)=>{
   const rows = await getSheet("PARTIDOS!A2:G");
 
   const data = rows.map((r,i)=>({
-    row:i+2,
-    liga: normalize(r[0]),
-    temporada:r[1],
-    jornada:r[2],
-    local:r[3],
-    visitante:r[4],
-    goles_local: r[5]===undefined || r[5]==="" ? null : Number(r[5]),
-    goles_visitante: r[6]===undefined || r[6]==="" ? null : Number(r[6]),
-    jugado: !(r[5]===undefined || r[5]==="" || r[6]===undefined || r[6]==="")
-  }))
-  .filter(p =>
-    (!liga || p.liga===liga) &&
-    (!temporada || p.temporada===temporada) &&
-    (!jornada || String(p.jornada)===String(jornada))
-  );
+      row:i+2,
+      liga: normalize(r[0]),
+      temporada:r[1],
+      jornada:r[2],
+      local:r[3],
+      visitante:r[4],
+      goles_local: r[5]===undefined || r[5]==="" ? null : Number(r[5]),
+      goles_visitante: r[6]===undefined || r[6]==="" ? null : Number(r[6]),
+      jugado: !(r[5]===undefined || r[5]==="" || r[6]===undefined || r[6]==="")
+    }))
+    .filter(p =>
+      (!liga || p.liga===liga) &&
+      (!temporada || p.temporada===temporada) &&
+      (!jornada || String(p.jornada)===String(jornada))
+    );
 
   res.json({ data });
 });
@@ -395,9 +401,19 @@ app.get("/partidos", async (req,res)=>{
    VALIDACION COMUN CREAR/UPDATE
 ====================== */
 
-function validarPartido(body){
+// Un valor de goles es válido si está vacío (partido no jugado)
+// o si es un entero >= 0. Antes esto solo se comprobaba en el
+// frontend (admin-panel.html); ahora también se exige en el
+// backend, para que una petición directa a la API no pueda
+// guardar goles negativos, decimales o texto arbitrario.
+function golesValido(v){
+  if(isEmpty(v)) return true;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0;
+}
 
-  const { liga, temporada, jornada, local, visitante } = body;
+function validarPartido(body){
+  const { liga, temporada, jornada, local, visitante, goles_local, goles_visitante } = body;
 
   if(isEmpty(liga) || isEmpty(temporada) || isEmpty(local) || isEmpty(visitante)){
     return "Liga, temporada, local y visitante son obligatorios";
@@ -411,11 +427,18 @@ function validarPartido(body){
     return "Un equipo no puede jugar contra sí mismo";
   }
 
+  if(!golesValido(goles_local) || !golesValido(goles_visitante)){
+    return "Los goles deben ser números enteros mayores o iguales a 0 (o quedar vacíos si el partido no se ha jugado)";
+  }
+
+  if(isEmpty(goles_local) !== isEmpty(goles_visitante)){
+    return "Rellena ambos marcadores, o déjalos los dos vacíos si el partido no se ha jugado";
+  }
+
   return null;
 }
 
 async function validarLigaYEquiposExisten(liga, local, visitante){
-
   const ligaNorm = normalize(liga);
 
   const [ligasRows, equiposRows] = await Promise.all([
@@ -424,7 +447,6 @@ async function validarLigaYEquiposExisten(liga, local, visitante){
   ]);
 
   const ligaExiste = ligasRows.some(r => normalize(r[0])===ligaNorm);
-
   if(!ligaExiste){
     return `La liga "${liga}" no existe`;
   }
@@ -447,9 +469,7 @@ async function validarLigaYEquiposExisten(liga, local, visitante){
 /* ======================
    CREAR PARTIDO (protegido)
 ====================== */
-
 app.post("/partido", requireAuth, async (req,res)=>{
-
   const {
     liga,
     temporada,
@@ -461,13 +481,11 @@ app.post("/partido", requireAuth, async (req,res)=>{
   } = req.body;
 
   const error = validarPartido(req.body);
-
   if(error){
     return res.status(400).json({ ok:false, error });
   }
 
   const errorEquipos = await validarLigaYEquiposExisten(liga, local, visitante);
-
   if(errorEquipos){
     return res.status(400).json({ ok:false, error: errorEquipos });
   }
@@ -477,11 +495,9 @@ app.post("/partido", requireAuth, async (req,res)=>{
   const esAdmin = req.user && req.user.rol === "admin";
 
   if(!esAdmin){
-
     const seasons = [...new Set(rows.map(r=>r[1]).filter(Boolean))];
 
     if(seasons.length>0){
-
       seasons.sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
       const activeSeason = seasons[seasons.length-1];
 
@@ -492,7 +508,6 @@ app.post("/partido", requireAuth, async (req,res)=>{
         });
       }
 
-      // NUEVO: bloqueo por jornada al crear (antes solo existía al editar)
       const filasLigaTemporada = rows.filter(r =>
         normalize(r[0])===normalize(liga) && r[1]===activeSeason
       );
@@ -556,9 +571,7 @@ app.post("/partido", requireAuth, async (req,res)=>{
 /* ======================
    UPDATE + BLOQUEO TEMPORADA/JORNADA (protegido, admin sin restricciones)
 ====================== */
-
 app.post("/partido/update", requireAuth, async (req,res)=>{
-
   const {
     row,
     liga,
@@ -580,13 +593,11 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
   }
 
   const error = validarPartido(req.body);
-
   if(error){
     return res.status(400).json({ ok:false, error });
   }
 
   const errorEquipos = await validarLigaYEquiposExisten(liga, local, visitante);
-
   if(errorEquipos){
     return res.status(400).json({ ok:false, error: errorEquipos });
   }
@@ -604,11 +615,9 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
   const esAdmin = req.user && req.user.rol === "admin";
 
   if(!esAdmin){
-
     const seasons = [...new Set(todasLasFilas.map(r=>r[1]).filter(Boolean))];
 
     if(seasons.length>0){
-
       seasons.sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
       const activeSeason = seasons[seasons.length-1];
 
@@ -633,7 +642,6 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
       const jornadaActual = calcularJornadaActual(filasLigaTemporada);
 
       if(jornadaActual!==null){
-
         if(Number(current[2]) !== jornadaActual){
           return res.status(403).json({
             ok:false,
@@ -682,9 +690,7 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
 /* ======================
    CLASIFICACION (incluye GF / GC / DIF)
 ====================== */
-
 app.get("/clasificacion", async (req,res)=>{
-
   const liga = normalize(req.query.liga);
   const temporada = req.query.temporada;
 
@@ -724,7 +730,6 @@ app.get("/clasificacion", async (req,res)=>{
   };
 
   partidos.forEach(p=>{
-
     init(p.local);
     init(p.visitante);
 
@@ -770,7 +775,6 @@ app.get("/clasificacion", async (req,res)=>{
 });
 
 const PORT = process.env.PORT || 3000;
-
 httpServer.listen(PORT,()=>{
   console.log("⚽ FUTCAT SERVER FINAL ESTABLE (NO CUT VERSION)");
 });
