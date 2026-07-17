@@ -19,7 +19,6 @@ body {
 }
 
 header {
-  position: relative;
   padding: 18px;
   text-align: center;
   background: #111;
@@ -36,28 +35,10 @@ header::after {
   background: linear-gradient(90deg, transparent, #00ff88, transparent);
 }
 
-#adminBtn {
-  position: absolute;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: #00ff88;
-  color: #0a0a0a;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: bold;
-  letter-spacing: normal;
-  text-decoration: none;
-}
-
-#adminBtn:hover {
-  background: #00cc6a;
-}
-
 #statusBar {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   background: #111;
   padding: 10px;
   border-radius: 6px;
@@ -72,6 +53,27 @@ header::after {
 
 #connStatus.offline {
   color: #ff5555;
+}
+
+.statusRight {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+#adminBtn {
+  background: #00ff88;
+  color: #0a0a0a;
+  padding: 5px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: bold;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+#adminBtn:hover {
+  background: #00cc6a;
 }
 
 select {
@@ -218,16 +220,16 @@ td:first-child, th:first-child {
 </head>
 <body>
 
-<header>
-  ⚽ TERRITORI FUTCAT LIVE
-  <a id="adminBtn" href="https://fcf-headless.vercel.app/admin.html">🔐 Acceso Admin</a>
-</header>
+<header>⚽ TERRITORI FUTCAT LIVE</header>
 
 <div class="container">
 
   <div id="statusBar">
     <div id="connStatus" class="offline">🔴 Conectando...</div>
-    <div id="lastChange">🕐 Último cambio: --</div>
+    <div class="statusRight">
+      <div id="lastChange">🕐 Último cambio: --</div>
+      <a id="adminBtn" href="https://fcf-headless.vercel.app/admin.html">🔐 Acceso Admin</a>
+    </div>
   </div>
 
   <select id="liga"></select>
