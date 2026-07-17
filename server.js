@@ -338,6 +338,28 @@ app.get("/jornada-activa", async (req,res)=>{
 });
 
 /* ======================
+   JORNADA PERMITIDA PARA CREAR (endpoint público,
+   usado para autorellenar el campo Jornada en el
+   panel de "Crear Partido")
+====================== */
+
+app.get("/jornada-permitida-crear", async (req,res)=>{
+
+  const liga = normalize(req.query.liga);
+  const temporada = req.query.temporada;
+
+  const rows = await getSheet("PARTIDOS!A2:G");
+
+  const filasLigaTemporada = rows.filter(r =>
+    normalize(r[0])===liga && r[1]===temporada
+  );
+
+  const jornada = calcularJornadaPermitidaParaCrear(filasLigaTemporada);
+
+  res.json({ data: jornada });
+});
+
+/* ======================
    PARTIDOS
 ====================== */
 
