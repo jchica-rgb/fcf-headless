@@ -66,6 +66,16 @@ h1{
   margin-bottom:10px;
 }
 
+/* NUEVO: fila de dos columnas para Temporada + Jornada */
+.row-2col{
+  display:flex;
+  gap:10px;
+}
+
+.row-2col .field{
+  flex:1;
+}
+
 label{
   display:block;
   font-size:12px;
@@ -174,9 +184,15 @@ button:disabled{
 <select id="liga"></select>
 </div>
 
+<div class="row-2col">
 <div class="field">
 <label>Temporada</label>
 <select id="temporada"></select>
+</div>
+<div class="field">
+<label>Jornada *</label>
+<input id="jornada" type="number" min="1" step="1" required>
+</div>
 </div>
 
 <div class="field">
@@ -187,11 +203,6 @@ button:disabled{
 <div class="field">
 <label>Visitante</label>
 <select id="visitante"></select>
-</div>
-
-<div class="field">
-<label>Jornada *</label>
-<input id="jornada" type="number" min="1" step="1" required>
 </div>
 
 <div class="field">
@@ -220,9 +231,15 @@ button:disabled{
 <select id="filtroLiga"></select>
 </div>
 
+<div class="row-2col">
 <div class="field">
 <label>Filtrar Temporada</label>
 <select id="filtroTemporada"></select>
+</div>
+<div class="field">
+<label>Filtrar Jornada</label>
+<select id="filtroJornada"><option value="">Todas</option></select>
+</div>
 </div>
 
 <div id="lista"></div>
@@ -236,19 +253,21 @@ button:disabled{
 
 <p class="small" id="hintEditar">👆 Haz clic en un partido de la lista central para cargarlo aquí y editarlo.</p>
 <input type="hidden" id="editRow">
+
 <div class="field">
 <label>Liga</label>
 <select id="editLiga"></select>
 </div>
 
+<div class="row-2col">
 <div class="field">
 <label>Temporada</label>
 <select id="editTemporada"></select>
 </div>
-
 <div class="field">
 <label>Jornada *</label>
 <input id="editJornada" type="number" min="1" step="1" required>
+</div>
 </div>
 
 <div class="field">
@@ -277,10 +296,10 @@ button:disabled{
 
 </div>
 
-<!-- GESTION USUARIOS -->
+<!-- GESTION USUARIOS (solo admin) -->
 <div class="col" id="panelUsuarios" style="display:none; margin-top:20px;">
 
-<h3>👤 Gestión de Usuarios </h3>
+<h3>👤 Gestión de Usuarios</h3>
 
 <div class="field">
 <label>Usuario</label>
@@ -392,6 +411,12 @@ function fillLigas(){
   ligas.forEach(l=>{
     filtro.innerHTML+=`<option value="${l.id}">${l.nombre}</option>`;
   });
+
+  // NUEVO: por defecto, la primera liga (no "Todas"), para poder
+  // calcular una jornada activa concreta al abrir el panel.
+  if(ligas.length>0){
+    filtro.value = ligas[0].id;
+  }
 }
 
 /* ================= EQUIPOS ================= */
@@ -453,6 +478,62 @@ async function loadTemporadas(){
     filtro.innerHTML+=`<option>${s}</option>`;
   });
 
+  // NUEVO: por defecto, la temporada más reciente (no "Todas").
+  if(j.data.length>0){
+    filtro.value = j.data[j.data.length-1];
+  }
+
+  await loadFiltroJornadas();
+}
+
+/* ================= FILTRO JORNADA (NUEVO) =================
+   Se recalcula cada vez que cambia el filtro de Liga o Temporada.
+   Si cualquiera de los dos está en "Todas", no tiene sentido
+   calcular una única jornada activa, así que se deja en "Todas".
+====================== */
+
+async function loadFiltroJornadas(){
+
+  const liga = document.getElementById("filtroLiga").value;
+  const temporada = document.getElementById("filtroTemporada").value;
+
+  const sel = document.getElementById("filtroJornada");
+
+  if(liga==="" || temporada===""){
+    sel.innerHTML = `<option value="">Todas</option>`;
+    sel.value = "";
+    loadPartidos();
+    return;
+  }
+
+  const r = await fetch(API+"/partidos?liga="+liga+"&temporada="+temporada);
+  const j = await r.json();
+
+  const jornadasSet = new Set(
+    j.data.map(p=>p.jornada).filter(x=>x!==null && x!=="" && x!==undefined)
+  );
+
+  const jornadasOrdenadas = [...jornadasSet].sort((a,b)=>Number(a)-Number(b));
+
+  sel.innerHTML = `<option value="">Todas</option>`;
+  jornadasOrdenadas.forEach(jn=>{
+    sel.innerHTML += `<option value="${jn}">Jornada ${jn}</option>`;
+  });
+
+  // Por defecto: la jornada activa (misma lógica que bloquea la edición)
+  try{
+    const ra = await fetch(API+"/jornada-activa?liga="+liga+"&temporada="+temporada);
+    const ja = await ra.json();
+
+    const opciones = Array.from(sel.options).map(o=>o.value);
+    sel.value = (ja.data!==null && opciones.includes(String(ja.data)))
+      ? String(ja.data)
+      : "";
+
+  } catch(err){
+    sel.value = "";
+  }
+
   loadPartidos();
 }
 
@@ -460,9 +541,14 @@ async function loadTemporadas(){
 
 async function loadPartidos(){
 
-  const r=await fetch(API+
-    "/partidos?liga="+filtroLiga.value+
-    "&temporada="+filtroTemporada.value);
+  let url = API+"/partidos?liga="+filtroLiga.value+"&temporada="+filtroTemporada.value;
+
+  const filtroJornadaVal = document.getElementById("filtroJornada").value;
+  if(filtroJornadaVal!==""){
+    url += "&jornada="+filtroJornadaVal;
+  }
+
+  const r=await fetch(url);
 
   partidos=(await r.json()).data;
 
@@ -592,9 +678,10 @@ async function fillEdit(p){
 
   editGL.value = p.jugado ? p.goles_local : "";
   editGV.value = p.jugado ? p.goles_visitante : "";
+
+  document.getElementById("hintEditar").style.display="none";
 }
- document.getElementById("hintEditar").style.display="none";
-  
+
 /* ================= UPDATE ================= */
 
 async function update(){
@@ -687,49 +774,4 @@ async function crearUsuario(){
     const res=await fetch(API+"/usuarios",{
       method:"POST",
       headers: authHeaders(),
-      body:JSON.stringify({ usuario, password, rol })
-    });
-
-    if(await manejarRespuestaAuth(res)) return;
-
-    const json=await res.json();
-
-    if(!res.ok){
-      showMsg(json.error || "Error","error");
-      return;
-    }
-
-    showMsg(json.message || "Usuario creado","ok");
-
-    document.getElementById("nuevoUsuario").value="";
-    document.getElementById("nuevaPassword").value="";
-
-  } finally {
-    btn.disabled=false;
-    btn.textContent="Crear Usuario";
-  }
-}
-
-/* ================= EVENTS ================= */
-
-document.addEventListener("change",e=>{
-
-  if(e.target.id==="liga"){
-    loadEquiposCrear();
-  }
-
-  if(e.target.id==="editLiga"){
-    loadEquiposEditar(e.target.value);
-  }
-
-  if(e.target.id==="filtroLiga" || e.target.id==="filtroTemporada"){
-    loadPartidos();
-  }
-});
-
-init();
-
-</script>
-
-</body>
-</html>
+      body:JSON.stringify({ usuario,
