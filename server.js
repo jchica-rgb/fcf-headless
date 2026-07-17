@@ -240,14 +240,10 @@ app.get("/temporada-activa", async (req,res)=>{
 });
 
 /* ======================
-   JORNADA ACTUAL DE UNA LIGA (OPCION A)
+   JORNADA "EDITABLE" DE UNA LIGA (para bloquear UPDATE)
    Es la jornada con el número más bajo que todavía
-   tiene algún partido pendiente (sin resultado) dentro
-   de esa liga y temporada. Así, si precargas partidos
-   futuros o alguno se retrasa, la jornada "abierta" para
-   editores sigue siendo la que realmente se está jugando.
-   Si no queda ningún partido pendiente, se considera
-   jornada actual la última jugada (todo cerrado).
+   tiene algún partido pendiente (sin resultado). Si no
+   queda ninguna pendiente, es la última jugada.
 ====================== */
 
 function calcularJornadaActual(filasLigaTemporada){
@@ -281,9 +277,48 @@ function calcularJornadaActual(filasLigaTemporada){
 }
 
 /* ======================
-   JORNADA ACTIVA (por liga + temporada) — usada por el
-   filtro del panel de admin para seleccionar por defecto
-   la misma jornada que el backend considera "editable".
+   JORNADA "PERMITIDA PARA CREAR"
+   Igual que la anterior, pero si la jornada actual ya
+   está completa del todo (sin pendientes), permite abrir
+   la SIGUIENTE jornada (jornadaActual + 1) — así se puede
+   seguir avanzando la temporada. Si no hay datos todavía
+   para esa liga+temporada, no se restringe nada (primera
+   vez que se registra algo ahí).
+====================== */
+
+function calcularJornadaPermitidaParaCrear(filasLigaTemporada){
+
+  const porJornada = {};
+
+  filasLigaTemporada.forEach(r=>{
+    const j = Number(r[2]);
+    if(isNaN(j)) return;
+    if(!porJornada[j]) porJornada[j] = [];
+    const pendiente = isEmpty(r[5]) || isEmpty(r[6]);
+    porJornada[j].push(pendiente);
+  });
+
+  const jornadasConPendiente = Object.keys(porJornada)
+    .map(Number)
+    .filter(j => porJornada[j].some(p => p===true))
+    .sort((a,b)=>a-b);
+
+  if(jornadasConPendiente.length>0){
+    return jornadasConPendiente[0];
+  }
+
+  const todasLasJornadas = Object.keys(porJornada).map(Number);
+
+  if(todasLasJornadas.length===0){
+    return null;
+  }
+
+  return Math.max(...todasLasJornadas) + 1;
+}
+
+/* ======================
+   JORNADA ACTIVA (endpoint público, usado por el filtro
+   del panel para preseleccionar la jornada "editable")
 ====================== */
 
 app.get("/jornada-activa", async (req,res)=>{
@@ -420,14 +455,32 @@ app.post("/partido", requireAuth, async (req,res)=>{
   const esAdmin = req.user && req.user.rol === "admin";
 
   if(!esAdmin){
+
     const seasons = [...new Set(rows.map(r=>r[1]).filter(Boolean))];
+
     if(seasons.length>0){
+
       seasons.sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
       const activeSeason = seasons[seasons.length-1];
+
       if(temporada !== activeSeason){
         return res.status(403).json({
           ok:false,
           error:"Solo puedes crear partidos en la temporada activa"
+        });
+      }
+
+      // NUEVO: bloqueo por jornada al crear (antes solo existía al editar)
+      const filasLigaTemporada = rows.filter(r =>
+        normalize(r[0])===normalize(liga) && r[1]===activeSeason
+      );
+
+      const jornadaPermitida = calcularJornadaPermitidaParaCrear(filasLigaTemporada);
+
+      if(jornadaPermitida!==null && Number(jornada)!==jornadaPermitida){
+        return res.status(403).json({
+          ok:false,
+          error:`Solo puedes crear partidos en la jornada ${jornadaPermitida} (la jornada actual)`
         });
       }
     }
@@ -537,7 +590,6 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
       seasons.sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
       const activeSeason = seasons[seasons.length-1];
 
-      // Bloqueo por TEMPORADA
       if(current[1] !== activeSeason){
         return res.status(403).json({
           ok:false,
@@ -552,7 +604,6 @@ app.post("/partido/update", requireAuth, async (req,res)=>{
         });
       }
 
-      // Bloqueo por JORNADA (Opción A: primera jornada con algo pendiente)
       const filasLigaTemporada = todasLasFilas.filter(r =>
         normalize(r[0])===normalize(current[0]) && r[1]===activeSeason
       );
