@@ -240,6 +240,69 @@ app.get("/temporada-activa", async (req,res)=>{
 });
 
 /* ======================
+   JORNADA ACTUAL DE UNA LIGA (OPCION A)
+   Es la jornada con el número más bajo que todavía
+   tiene algún partido pendiente (sin resultado) dentro
+   de esa liga y temporada. Así, si precargas partidos
+   futuros o alguno se retrasa, la jornada "abierta" para
+   editores sigue siendo la que realmente se está jugando.
+   Si no queda ningún partido pendiente, se considera
+   jornada actual la última jugada (todo cerrado).
+====================== */
+
+function calcularJornadaActual(filasLigaTemporada){
+
+  const porJornada = {};
+
+  filasLigaTemporada.forEach(r=>{
+    const j = Number(r[2]);
+    if(isNaN(j)) return;
+    if(!porJornada[j]) porJornada[j] = [];
+    const pendiente = isEmpty(r[5]) || isEmpty(r[6]);
+    porJornada[j].push(pendiente);
+  });
+
+  const jornadasConPendiente = Object.keys(porJornada)
+    .map(Number)
+    .filter(j => porJornada[j].some(p => p===true))
+    .sort((a,b)=>a-b);
+
+  if(jornadasConPendiente.length>0){
+    return jornadasConPendiente[0];
+  }
+
+  const todasLasJornadas = Object.keys(porJornada).map(Number);
+
+  if(todasLasJornadas.length===0){
+    return null;
+  }
+
+  return Math.max(...todasLasJornadas);
+}
+
+/* ======================
+   JORNADA ACTIVA (por liga + temporada) — usada por el
+   filtro del panel de admin para seleccionar por defecto
+   la misma jornada que el backend considera "editable".
+====================== */
+
+app.get("/jornada-activa", async (req,res)=>{
+
+  const liga = normalize(req.query.liga);
+  const temporada = req.query.temporada;
+
+  const rows = await getSheet("PARTIDOS!A2:G");
+
+  const filasLigaTemporada = rows.filter(r =>
+    normalize(r[0])===liga && r[1]===temporada
+  );
+
+  const jornada = calcularJornadaActual(filasLigaTemporada);
+
+  res.json({ data: jornada });
+});
+
+/* ======================
    PARTIDOS
 ====================== */
 
@@ -247,6 +310,7 @@ app.get("/partidos", async (req,res)=>{
 
   const liga = normalize(req.query.liga);
   const temporada = req.query.temporada;
+  const jornada = req.query.jornada;
 
   const rows = await getSheet("PARTIDOS!A2:G");
 
@@ -263,7 +327,8 @@ app.get("/partidos", async (req,res)=>{
   }))
   .filter(p =>
     (!liga || p.liga===liga) &&
-    (!temporada || p.temporada===temporada)
+    (!temporada || p.temporada===temporada) &&
+    (!jornada || String(p.jornada)===String(jornada))
   );
 
   res.json({ data });
@@ -320,47 +385,6 @@ async function validarLigaYEquiposExisten(liga, local, visitante){
   }
 
   return null;
-}
-
-/* ======================
-   JORNADA ACTUAL DE UNA LIGA (OPCION A)
-   Es la jornada con el número más bajo que todavía
-   tiene algún partido pendiente (sin resultado) dentro
-   de esa liga y temporada. Así, si precargas partidos
-   futuros o alguno se retrasa, la jornada "abierta" para
-   editores sigue siendo la que realmente se está jugando.
-   Si no queda ningún partido pendiente, se considera
-   jornada actual la última jugada (todo cerrado).
-====================== */
-
-function calcularJornadaActual(filasLigaTemporada){
-
-  const porJornada = {};
-
-  filasLigaTemporada.forEach(r=>{
-    const j = Number(r[2]);
-    if(isNaN(j)) return;
-    if(!porJornada[j]) porJornada[j] = [];
-    const pendiente = isEmpty(r[5]) || isEmpty(r[6]);
-    porJornada[j].push(pendiente);
-  });
-
-  const jornadasConPendiente = Object.keys(porJornada)
-    .map(Number)
-    .filter(j => porJornada[j].some(p => p===true))
-    .sort((a,b)=>a-b);
-
-  if(jornadasConPendiente.length>0){
-    return jornadasConPendiente[0];
-  }
-
-  const todasLasJornadas = Object.keys(porJornada).map(Number);
-
-  if(todasLasJornadas.length===0){
-    return null;
-  }
-
-  return Math.max(...todasLasJornadas);
 }
 
 /* ======================
