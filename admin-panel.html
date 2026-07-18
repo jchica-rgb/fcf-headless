@@ -3,35 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <title>FUTCAT ADMIN PANEL</title>
-
 <style>
-
 *{box-sizing:border-box}
-
 body{
   margin:0;
   font-family:Arial;
   background:#0a0a0a;
   color:white;
 }
-
 .container{
   max-width:1400px;
   margin:auto;
   padding:20px;
 }
-
 .top-bar{
   display:flex;
   justify-content:space-between;
   align-items:center;
   margin-bottom:20px;
 }
-
 h1{
   margin:0;
 }
-
 #userInfo{
   font-size:13px;
   color:#aaa;
@@ -39,7 +32,6 @@ h1{
   align-items:center;
   gap:10px;
 }
-
 #userInfo button{
   width:auto;
   margin:0;
@@ -48,12 +40,10 @@ h1{
   background:#ff2d2d;
   color:white;
 }
-
 .layout{
   display:flex;
   gap:20px;
 }
-
 .col{
   flex:1;
   background:#111;
@@ -61,27 +51,22 @@ h1{
   border-radius:10px;
   position:relative;
 }
-
 .field{
   margin-bottom:10px;
 }
-
 .row-2col{
   display:flex;
   gap:10px;
 }
-
 .row-2col .field{
   flex:1;
 }
-
 label{
   display:block;
   font-size:12px;
   color:#aaa;
   margin-bottom:4px;
 }
-
 input, select{
   width:100%;
   padding:10px;
@@ -90,7 +75,6 @@ input, select{
   border:1px solid #333;
   border-radius:6px;
 }
-
 button{
   width:100%;
   padding:12px;
@@ -101,13 +85,11 @@ button{
   margin-top:10px;
   border-radius:6px;
 }
-
 button:disabled{
   background:#0a5c38;
   color:#aaa;
   cursor:not-allowed;
 }
-
 .match{
   background:#151515;
   padding:10px;
@@ -115,12 +97,10 @@ button:disabled{
   border-radius:6px;
   cursor:pointer;
 }
-
 .small{
   font-size:12px;
   opacity:0.7;
 }
-
 #toast{
   position:absolute;
   top:-18px;
@@ -132,7 +112,6 @@ button:disabled{
   z-index:50;
   max-width:320px;
 }
-
 .toast{
   padding:8px 12px;
   border-radius:6px;
@@ -143,193 +122,255 @@ button:disabled{
   animation:fade .2s ease;
   box-shadow:0 2px 10px rgba(0,0,0,0.4);
 }
-
 .toast.ok{
   background:#00ff88;
   color:#000;
 }
-
 .toast.error{
   background:#ff2d2d;
   color:#fff;
 }
-
 @keyframes fade{
   from{opacity:0; transform:translateY(-8px);}
   to{opacity:1; transform:translateY(0);}
 }
 
+/* ================= TEAM PICKER (select con logo) ================= */
+.team-picker{
+  position:relative;
+}
+.team-picker-btn{
+  width:100%;
+  padding:10px;
+  background:#1a1a1a;
+  color:white;
+  border:1px solid #333;
+  border-radius:6px;
+  cursor:pointer;
+  font-weight:normal;
+  margin-top:0;
+  text-align:left;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:14px;
+}
+.team-picker-btn:hover{
+  border-color:#555;
+}
+.team-picker-placeholder{
+  color:#777;
+}
+.team-picker-logo{
+  height:20px;
+  width:20px;
+  object-fit:contain;
+  border-radius:3px;
+  flex-shrink:0;
+}
+.team-picker-menu{
+  display:none;
+  position:absolute;
+  top:calc(100% + 4px);
+  left:0;
+  right:0;
+  background:#1a1a1a;
+  border:1px solid #333;
+  border-radius:6px;
+  max-height:220px;
+  overflow-y:auto;
+  z-index:40;
+  box-shadow:0 6px 16px rgba(0,0,0,0.4);
+}
+.team-picker-menu.open{
+  display:block;
+}
+.team-picker-item{
+  padding:8px 10px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  cursor:pointer;
+  font-size:14px;
+}
+.team-picker-item:hover{
+  background:#262626;
+}
 </style>
 </head>
-
 <body>
 
 <div class="container">
 
-<div class="top-bar">
-  <h1>⚽ FUTCAT ADMIN PANEL</h1>
-  <div id="userInfo"></div>
-</div>
+  <div class="top-bar">
+    <h1>FUTCAT ADMIN PANEL</h1>
+    <div id="userInfo"></div>
+  </div>
 
-<div class="layout">
+  <div class="layout">
 
-<!-- CREAR -->
-<div class="col">
+    <!-- CREAR -->
+    <div class="col">
+      <h3>Crear Partido</h3>
 
-<h3>➕ Crear Partido</h3>
+      <div class="field">
+        <label>Liga</label>
+        <select id="liga"></select>
+      </div>
 
-<div class="field">
-<label>Liga</label>
-<select id="liga"></select>
-</div>
+      <div class="row-2col">
+        <div class="field">
+          <label>Temporada</label>
+          <select id="temporada"></select>
+        </div>
+        <div class="field">
+          <label>Jornada *</label>
+          <input id="jornada" type="number" min="1" step="1" required>
+        </div>
+      </div>
 
-<div class="row-2col">
-<div class="field">
-<label>Temporada</label>
-<select id="temporada"></select>
-</div>
-<div class="field">
-<label>Jornada *</label>
-<input id="jornada" type="number" min="1" step="1" required>
-</div>
-</div>
+      <div class="field">
+        <label>Local</label>
+        <div class="team-picker" id="localPicker">
+          <button type="button" class="team-picker-btn"><span class="team-picker-placeholder">Selecciona equipo</span></button>
+          <div class="team-picker-menu"></div>
+        </div>
+        <input type="hidden" id="local">
+      </div>
 
-<div class="field">
-<label>Local</label>
-<select id="local"></select>
-</div>
+      <div class="field">
+        <label>Visitante</label>
+        <div class="team-picker" id="visitantePicker">
+          <button type="button" class="team-picker-btn"><span class="team-picker-placeholder">Selecciona equipo</span></button>
+          <div class="team-picker-menu"></div>
+        </div>
+        <input type="hidden" id="visitante">
+      </div>
 
-<div class="field">
-<label>Visitante</label>
-<select id="visitante"></select>
-</div>
+      <div class="field">
+        <label>Goles Local</label>
+        <input id="gl" type="number" min="0" step="1">
+      </div>
 
-<div class="field">
-<label>Goles Local</label>
-<input id="gl" type="number" min="0" step="1">
-</div>
+      <div class="field">
+        <label>Goles Visitante</label>
+        <input id="gv" type="number" min="0" step="1">
+      </div>
 
-<div class="field">
-<label>Goles Visitante</label>
-<input id="gv" type="number" min="0" step="1">
-</div>
+      <button id="btnCrear" onclick="crear()">Guardar Partido</button>
+    </div>
 
-<button id="btnCrear" onclick="crear()">Guardar Partido</button>
+    <!-- LISTA -->
+    <div class="col">
+      <h3>Partidos</h3>
 
-</div>
+      <div id="toast"></div>
 
-<!-- LISTA -->
-<div class="col">
+      <div class="field">
+        <label>Filtrar Liga</label>
+        <select id="filtroLiga"></select>
+      </div>
 
-<h3>📋 Partidos</h3>
+      <div class="row-2col">
+        <div class="field">
+          <label>Filtrar Temporada</label>
+          <select id="filtroTemporada"></select>
+        </div>
+        <div class="field">
+          <label>Filtrar Jornada</label>
+          <select id="filtroJornada"><option value="">Todas</option></select>
+        </div>
+      </div>
 
-<div id="toast"></div>
+      <div id="lista"></div>
+    </div>
 
-<div class="field">
-<label>Filtrar Liga</label>
-<select id="filtroLiga"></select>
-</div>
+    <!-- EDIT -->
+    <div class="col">
+      <h3>Editar Partido</h3>
+      <p class="small" id="hintEditar">Haz clic en un partido de la lista central para cargarlo aquí y editarlo.</p>
+      <input type="hidden" id="editRow">
 
-<div class="row-2col">
-<div class="field">
-<label>Filtrar Temporada</label>
-<select id="filtroTemporada"></select>
-</div>
-<div class="field">
-<label>Filtrar Jornada</label>
-<select id="filtroJornada"><option value="">Todas</option></select>
-</div>
-</div>
+      <div class="field">
+        <label>Liga</label>
+        <select id="editLiga"></select>
+      </div>
 
-<div id="lista"></div>
+      <div class="row-2col">
+        <div class="field">
+          <label>Temporada</label>
+          <select id="editTemporada"></select>
+        </div>
+        <div class="field">
+          <label>Jornada *</label>
+          <input id="editJornada" type="number" min="1" step="1" required>
+        </div>
+      </div>
 
-</div>
+      <div class="field">
+        <label>Local</label>
+        <div class="team-picker" id="editLocalPicker">
+          <button type="button" class="team-picker-btn"><span class="team-picker-placeholder">Selecciona equipo</span></button>
+          <div class="team-picker-menu"></div>
+        </div>
+        <input type="hidden" id="editLocal">
+      </div>
 
-<!-- EDIT -->
-<div class="col">
+      <div class="field">
+        <label>Visitante</label>
+        <div class="team-picker" id="editVisitantePicker">
+          <button type="button" class="team-picker-btn"><span class="team-picker-placeholder">Selecciona equipo</span></button>
+          <div class="team-picker-menu"></div>
+        </div>
+        <input type="hidden" id="editVisitante">
+      </div>
 
-<h3>✏️ Editar Partido</h3>
+      <div class="field">
+        <label>Goles Local</label>
+        <input id="editGL" type="number" min="0" step="1">
+      </div>
 
-<p class="small" id="hintEditar">👆 Haz clic en un partido de la lista central para cargarlo aquí y editarlo.</p>
-<input type="hidden" id="editRow">
+      <div class="field">
+        <label>Goles Visitante</label>
+        <input id="editGV" type="number" min="0" step="1">
+      </div>
 
-<div class="field">
-<label>Liga</label>
-<select id="editLiga"></select>
-</div>
+      <button id="btnUpdate" onclick="update()">Actualizar</button>
+    </div>
 
-<div class="row-2col">
-<div class="field">
-<label>Temporada</label>
-<select id="editTemporada"></select>
-</div>
-<div class="field">
-<label>Jornada *</label>
-<input id="editJornada" type="number" min="1" step="1" required>
-</div>
-</div>
+  </div>
 
-<div class="field">
-<label>Local</label>
-<select id="editLocal"></select>
-</div>
+  <!-- GESTION USUARIOS (solo admin) -->
+  <div class="col" id="panelUsuarios" style="display:none; margin-top:20px;">
+    <h3>Gestión de Usuarios</h3>
 
-<div class="field">
-<label>Visitante</label>
-<select id="editVisitante"></select>
-</div>
+    <div class="field">
+      <label>Usuario</label>
+      <input id="nuevoUsuario" type="text">
+    </div>
 
-<div class="field">
-<label>Goles Local</label>
-<input id="editGL" type="number" min="0" step="1">
-</div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input id="nuevaPassword" type="password">
+    </div>
 
-<div class="field">
-<label>Goles Visitante</label>
-<input id="editGV" type="number" min="0" step="1">
-</div>
+    <div class="field">
+      <label>Rol</label>
+      <select id="nuevoRol">
+        <option value="editor">editor</option>
+        <option value="admin">admin</option>
+      </select>
+    </div>
 
-<button id="btnUpdate" onclick="update()">Actualizar</button>
-
-</div>
-
-</div>
-
-<!-- GESTION USUARIOS (solo admin) -->
-<div class="col" id="panelUsuarios" style="display:none; margin-top:20px;">
-
-<h3>👤 Gestión de Usuarios</h3>
-
-<div class="field">
-<label>Usuario</label>
-<input id="nuevoUsuario" type="text">
-</div>
-
-<div class="field">
-<label>Contraseña</label>
-<input id="nuevaPassword" type="password">
-</div>
-
-<div class="field">
-<label>Rol</label>
-<select id="nuevoRol">
-  <option value="editor">editor</option>
-  <option value="admin">admin</option>
-</select>
-</div>
-
-<button id="btnCrearUsuario" onclick="crearUsuario()">Crear Usuario</button>
-
-</div>
+    <button id="btnCrearUsuario" onclick="crearUsuario()">Crear Usuario</button>
+  </div>
 
 </div>
 
 <script>
-
 const API="https://fcf-headless.onrender.com";
 
 /* ================= AUTH GUARD ================= */
-
 const token = localStorage.getItem("token");
 const rolActual = localStorage.getItem("rol");
 const usuarioActual = localStorage.getItem("usuario");
@@ -367,23 +408,102 @@ async function manejarRespuestaAuth(res){
 let ligas=[];
 let partidos=[];
 
+/* ================= TEAM PICKER (select con logo, sustituye a <select> nativo) =================
+   Un <select> normal no puede mostrar imágenes dentro de las opciones,
+   así que esto es un desplegable propio: un botón + una lista de
+   equipos (cada uno con su logo si lo tiene). El valor elegido se
+   guarda en un <input type="hidden"> con el mismo id que antes tenía
+   el <select> (local, visitante, editLocal, editVisitante), así que
+   el resto del código (crear, update, fillEdit) no necesita cambios
+   más allá de usar el picker para fijar el valor. */
+function createTeamPicker(containerId, hiddenInputId){
+  const container = document.getElementById(containerId);
+  const btn = container.querySelector(".team-picker-btn");
+  const menu = container.querySelector(".team-picker-menu");
+  const hidden = document.getElementById(hiddenInputId);
+  let equiposActuales = [];
+
+  function renderBtn(nombre, logo){
+    if(!nombre){
+      btn.innerHTML = '<span class="team-picker-placeholder">Selecciona equipo</span>';
+      return;
+    }
+    btn.innerHTML = logo
+      ? `<img src="${logo}" class="team-picker-logo" alt="" onerror="this.style.display='none'">${nombre}`
+      : nombre;
+  }
+
+  function closeMenu(){
+    menu.classList.remove("open");
+  }
+
+  function toggleMenu(){
+    const willOpen = !menu.classList.contains("open");
+    document.querySelectorAll(".team-picker-menu.open").forEach(m=>m.classList.remove("open"));
+    if(willOpen) menu.classList.add("open");
+  }
+
+  btn.addEventListener("click", (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    toggleMenu();
+  });
+
+  document.addEventListener("click", (e)=>{
+    if(!container.contains(e.target)) closeMenu();
+  });
+
+  function selectByName(nombre){
+    const found = equiposActuales.find(eq=>eq.nombre===nombre);
+    hidden.value = nombre || "";
+    renderBtn(nombre, found ? found.logo : null);
+  }
+
+  function setOptions(equipos){
+    equiposActuales = equipos;
+    menu.innerHTML = "";
+
+    equipos.forEach(eq=>{
+      const item = document.createElement("div");
+      item.className = "team-picker-item";
+      item.innerHTML = eq.logo
+        ? `<img src="${eq.logo}" class="team-picker-logo" alt="" onerror="this.style.display='none'">${eq.nombre}`
+        : eq.nombre;
+      item.addEventListener("click", ()=>{
+        selectByName(eq.nombre);
+        closeMenu();
+      });
+      menu.appendChild(item);
+    });
+
+    // Si no hay nada seleccionado todavía, o el equipo que había
+    // seleccionado ya no pertenece a esta liga, se elige el primero
+    // por defecto -- igual que hacía el <select> nativo antes.
+    const sigueValido = equipos.some(eq=>eq.nombre===hidden.value);
+    if(!sigueValido){
+      selectByName(equipos.length>0 ? equipos[0].nombre : "");
+    }
+  }
+
+  return { setOptions, selectByName };
+}
+
+const localPicker = createTeamPicker("localPicker", "local");
+const visitantePicker = createTeamPicker("visitantePicker", "visitante");
+const editLocalPicker = createTeamPicker("editLocalPicker", "editLocal");
+const editVisitantePicker = createTeamPicker("editVisitantePicker", "editVisitante");
+
 /* ================= TOAST ================= */
-
 function showMsg(text,type="ok"){
-
   const t=document.createElement("div");
   t.className="toast "+type;
   t.innerText=text;
-
   document.getElementById("toast").appendChild(t);
-
   setTimeout(()=>t.remove(),3000);
 }
 
 /* ================= INIT ================= */
-
 async function init(){
-
   const r=await fetch(API+"/ligas");
   ligas=(await r.json()).data;
 
@@ -396,9 +516,7 @@ async function init(){
 }
 
 /* ================= LIGAS ================= */
-
 function fillLigas(){
-
   ["liga","editLiga"].forEach(id=>{
     const sel=document.getElementById(id);
     sel.innerHTML="";
@@ -419,43 +537,25 @@ function fillLigas(){
 }
 
 /* ================= EQUIPOS ================= */
-
 async function loadEquiposCrear(){
-
   const liga=document.getElementById("liga").value;
-
   const r=await fetch(API+"/equipos?liga="+liga);
   const equipos=(await r.json()).data;
 
-  ["local","visitante"].forEach(id=>{
-    document.getElementById(id).innerHTML="";
-  });
-
-  equipos.forEach(e=>{
-    local.innerHTML+=`<option>${e}</option>`;
-    visitante.innerHTML+=`<option>${e}</option>`;
-  });
+  localPicker.setOptions(equipos);
+  visitantePicker.setOptions(equipos);
 }
 
 async function loadEquiposEditar(liga){
-
   const r=await fetch(API+"/equipos?liga="+liga);
   const equipos=(await r.json()).data;
 
-  ["editLocal","editVisitante"].forEach(id=>{
-    document.getElementById(id).innerHTML="";
-  });
-
-  equipos.forEach(e=>{
-    editLocal.innerHTML+=`<option>${e}</option>`;
-    editVisitante.innerHTML+=`<option>${e}</option>`;
-  });
+  editLocalPicker.setOptions(equipos);
+  editVisitantePicker.setOptions(equipos);
 }
 
 /* ================= TEMPORADAS ================= */
-
 async function loadTemporadas(){
-
   const r=await fetch(API+"/temporadas");
   const j=await r.json();
 
@@ -487,12 +587,9 @@ async function loadTemporadas(){
 }
 
 /* ================= FILTRO JORNADA ================= */
-
 async function loadFiltroJornadas(){
-
   const liga = document.getElementById("filtroLiga").value;
   const temporada = document.getElementById("filtroTemporada").value;
-
   const sel = document.getElementById("filtroJornada");
 
   if(liga==="" || temporada===""){
@@ -508,7 +605,6 @@ async function loadFiltroJornadas(){
   const jornadasSet = new Set(
     j.data.map(p=>p.jornada).filter(x=>x!==null && x!=="" && x!==undefined)
   );
-
   const jornadasOrdenadas = [...jornadasSet].sort((a,b)=>Number(a)-Number(b));
 
   sel.innerHTML = `<option value="">Todas</option>`;
@@ -524,7 +620,6 @@ async function loadFiltroJornadas(){
     sel.value = (ja.data!==null && opciones.includes(String(ja.data)))
       ? String(ja.data)
       : "";
-
   } catch(err){
     sel.value = "";
   }
@@ -532,10 +627,11 @@ async function loadFiltroJornadas(){
   loadPartidos();
 }
 
-/* ================= DEFAULTS PANEL EDITAR ================= */
-
+/* ================= DEFAULTS PANEL EDITAR =================
+   Antes de seleccionar ningún partido, muestra la
+   temporada y jornada activas como referencia visual.
+   fillEdit() los sobrescribe en cuanto se elige un partido real. */
 async function initEditDefaults(){
-
   const liga = document.getElementById("editLiga").value;
   const temporada = document.getElementById("editTemporada").value;
 
@@ -559,9 +655,7 @@ async function initEditDefaults(){
    errores. Se recalcula si cambian Liga o Temporada, y también
    después de crear un partido con éxito (para saltar sola a la
    jornada que corresponda a continuación). */
-
 async function autoRellenarJornadaCrear(){
-
   const liga = document.getElementById("liga").value;
   const temporada = document.getElementById("temporada").value;
 
@@ -570,18 +664,14 @@ async function autoRellenarJornadaCrear(){
   try{
     const r = await fetch(API+"/jornada-permitida-crear?liga="+liga+"&temporada="+temporada);
     const j = await r.json();
-
     document.getElementById("jornada").value = (j.data!==null) ? j.data : "";
-
   } catch(err){
     // si falla, se deja como estaba
   }
 }
 
 /* ================= PARTIDOS ================= */
-
 async function loadPartidos(){
-
   let url = API+"/partidos?liga="+filtroLiga.value+"&temporada="+filtroTemporada.value;
 
   const filtroJornadaVal = document.getElementById("filtroJornada").value;
@@ -590,16 +680,12 @@ async function loadPartidos(){
   }
 
   const r=await fetch(url);
-
   partidos=(await r.json()).data;
-
   render();
 }
 
 /* ================= RENDER ================= */
-
 function render(){
-
   lista.innerHTML="";
 
   if(partidos.length===0){
@@ -608,7 +694,6 @@ function render(){
   }
 
   partidos.forEach(p=>{
-
     const el=document.createElement("div");
     el.className="match";
 
@@ -622,13 +707,11 @@ function render(){
     `;
 
     el.onclick=()=>fillEdit(p);
-
     lista.appendChild(el);
   });
 }
 
 /* ================= VALIDACION GOLES ================= */
-
 function golesValidos(gl,gv){
   if(gl===""||gv===""){
     return false;
@@ -641,11 +724,8 @@ function ambosVacios(gl,gv){
 }
 
 /* ================= CREATE ================= */
-
 async function crear(){
-
   const jornadaVal = document.getElementById("jornada").value;
-
   if(jornadaVal===""){
     showMsg("La jornada es obligatoria","error");
     return;
@@ -664,7 +744,6 @@ async function crear(){
   btn.textContent="Guardando...";
 
   try{
-
     const res=await fetch(API+"/partido",{
       method:"POST",
       headers: authHeaders(),
@@ -689,10 +768,8 @@ async function crear(){
     }
 
     showMsg(json.message || "OK","ok");
-
     document.getElementById("gl").value="";
     document.getElementById("gv").value="";
-
     await autoRellenarJornadaCrear();
     loadPartidos();
 
@@ -703,19 +780,16 @@ async function crear(){
 }
 
 /* ================= EDIT ================= */
-
 async function fillEdit(p){
-
   editRow.value=p.row;
-
   editLiga.value=p.liga;
 
   await loadEquiposEditar(p.liga);
 
   editTemporada.value=p.temporada;
   editJornada.value=p.jornada;
-  editLocal.value=p.local;
-  editVisitante.value=p.visitante;
+  editLocalPicker.selectByName(p.local);
+  editVisitantePicker.selectByName(p.visitante);
 
   editGL.value = p.jugado ? p.goles_local : "";
   editGV.value = p.jugado ? p.goles_visitante : "";
@@ -724,18 +798,14 @@ async function fillEdit(p){
 }
 
 /* ================= UPDATE ================= */
-
 async function update(){
-
   const rowVal = document.getElementById("editRow").value;
-
   if(rowVal===""){
     showMsg("Selecciona un partido de la lista antes de actualizar","error");
     return;
   }
 
   const jornadaVal = document.getElementById("editJornada").value;
-
   if(jornadaVal===""){
     showMsg("La jornada es obligatoria","error");
     return;
@@ -754,7 +824,6 @@ async function update(){
   btn.textContent="Actualizando...";
 
   try{
-
     const res=await fetch(API+"/partido/update",{
       method:"POST",
       headers: authHeaders(),
@@ -780,7 +849,6 @@ async function update(){
     }
 
     showMsg(json.message || "Actualizado","ok");
-
     loadPartidos();
 
   } finally {
@@ -790,13 +858,11 @@ async function update(){
 }
 
 /* ================= GESTION USUARIOS (solo admin) ================= */
-
 if(rolActual==="admin"){
   document.getElementById("panelUsuarios").style.display="block";
 }
 
 async function crearUsuario(){
-
   const usuario = document.getElementById("nuevoUsuario").value.trim();
   const password = document.getElementById("nuevaPassword").value;
   const rol = document.getElementById("nuevoRol").value;
@@ -811,7 +877,6 @@ async function crearUsuario(){
   btn.textContent="Creando...";
 
   try{
-
     const res=await fetch(API+"/usuarios",{
       method:"POST",
       headers: authHeaders(),
@@ -828,7 +893,6 @@ async function crearUsuario(){
     }
 
     showMsg(json.message || "Usuario creado","ok");
-
     document.getElementById("nuevoUsuario").value="";
     document.getElementById("nuevaPassword").value="";
 
@@ -839,34 +903,26 @@ async function crearUsuario(){
 }
 
 /* ================= EVENTS ================= */
-
 document.addEventListener("change",e=>{
-
   if(e.target.id==="liga"){
     loadEquiposCrear();
     autoRellenarJornadaCrear();
   }
-
   if(e.target.id==="temporada"){
     autoRellenarJornadaCrear();
   }
-
   if(e.target.id==="editLiga"){
     loadEquiposEditar(e.target.value);
   }
-
   if(e.target.id==="filtroLiga" || e.target.id==="filtroTemporada"){
     loadFiltroJornadas();
   }
-
   if(e.target.id==="filtroJornada"){
     loadPartidos();
   }
 });
 
 init();
-
 </script>
-
 </body>
 </html>
