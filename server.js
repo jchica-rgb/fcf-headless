@@ -222,12 +222,15 @@ app.get("/ligas", async (req,res)=>{
 ====================== */
 app.get("/equipos", async (req,res)=>{
   const liga = normalize(req.query.liga);
-  const rows = await getSheet("EQUIPOS!A2:C");
+  const rows = await getSheet("EQUIPOS!A2:D");
 
   res.json({
     data: rows
       .filter(r=>normalize(r[2])===liga)
-      .map(r=>r[1])
+      .map(r=>({
+        nombre: r[1],
+        logo: isEmpty(r[3]) ? null : r[3]
+      }))
   });
 });
 
